@@ -13,7 +13,9 @@
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status",
     "supabase:reset": "npx supabase db reset",
-    "supabase:functions": "npx supabase functions serve --env-file supabase/functions/.env"
+    "supabase:functions": "npx supabase functions serve --env-file supabase/functions/.env",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
