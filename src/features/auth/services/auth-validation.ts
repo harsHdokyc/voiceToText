@@ -1,4 +1,5 @@
 import { EMAIL_OTP_LENGTH, MIN_PASSWORD_LENGTH } from '@/lib/constants';
+import { errorMessageForUi } from '@/lib/api-error';
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
@@ -36,5 +37,5 @@ export function assertOtp(token: string) {
 }
 
 export function authErrorMessage(error: unknown, fallback = 'Something went wrong') {
-  return error instanceof Error ? error.message : fallback;
+  return errorMessageForUi(error, fallback);
 }

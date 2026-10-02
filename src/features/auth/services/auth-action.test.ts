@@ -20,9 +20,16 @@ describe('settleAuthAction', () => {
     expect(result).toEqual({ message: 'Invalid login' });
   });
 
-  it('uses the default fallback for non-Error throws', async () => {
+  it('surfaces string throws as the reason', async () => {
     const result = await settleAuthAction(async () => {
       throw 'nope';
+    });
+    expect(result).toEqual({ message: 'nope' });
+  });
+
+  it('uses the default fallback for empty unknown throws', async () => {
+    const result = await settleAuthAction(async () => {
+      throw null;
     });
     expect(result).toEqual({ message: 'Something went wrong' });
   });

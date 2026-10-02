@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import { ApiError, describeError } from '@/lib/api-error';
+import { withApiLog } from '@/lib/with-api-log';
 import {
   assertAudioDurationSeconds,
   assertNoteStatusTransition,
@@ -24,39 +26,45 @@ export type NoteRow = {
 };
 
 export async function listNotes() {
-  const { data, error } = await supabase
-    .from('notes')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as NoteRow[];
+  return withApiLog('api.notes.list', {}, async () => {
+    const { data, error } = await supabase
+      .from('notes')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as NoteRow[];
+  });
 }
 
 export async function getNote(noteId: string) {
-  const { data, error } = await supabase
-    .from('notes')
-    .select('*')
-    .eq('id', noteId)
-    .single();
-  if (error) throw error;
-  return data as NoteRow;
+  return withApiLog('api.notes.get', { noteId }, async () => {
+    const { data, error } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('id', noteId)
+      .single();
+    if (error) throw error;
+    return data as NoteRow;
+  });
 }
 
 export async function createDraftNote() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError) throw userError;
-  if (!user) throw new Error('Not signed in');
+  return withApiLog('api.notes.create_draft', {}, async () => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+    if (userError) throw userError;
+    if (!user) throw new ApiError('not_signed_in', 'Not signed in');
 
-  const { data, error } = await supabase
-    .from('notes')
-    .insert({ user_id: user.id, status: 'draft' })
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data as NoteRow;
+    const { data, error } = await supabase
+      .from('notes')
+      .insert({ user_id: user.id, status: 'draft' })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as NoteRow;
+  });
 }
 
 async function updateNoteStatus(
@@ -78,7 +86,12 @@ async function updateNoteStatus(
     .select('*')
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error(`Could not move note from ${from} to ${to}`);
+  if (!data) {
+    throw new ApiError(
+      'status_transition_lost',
+      `Could not move note from ${from} to ${to}`,
+    );
+  }
   return data as NoteRow;
 }
 
@@ -89,80 +102,152 @@ export async function uploadNoteAudio(params: {
   durationSeconds: number;
   extension?: string;
 }) {
-  const durationSeconds = assertAudioDurationSeconds(params.durationSeconds);
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-  if (userError) throw userError;
-  if (!user) throw new Error('Not signed in');
+  return withApiLog(
+    'api.notes.upload',
+    {
+      noteId: params.note.id,
+      mimeType: params.mimeType,
+      durationSeconds: params.durationSeconds,
+    },
+    async () => {
+      const durationSeconds = assertAudioDurationSeconds(params.durationSeconds);
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new ApiError('not_signed_in', 'Not signed in');
 
-  let note = params.note;
-  if (note.status === 'draft' || note.status === 'upload_failed') {
-    note = await updateNoteStatus(note.id, note.status, 'uploading');
-  } else if (note.status !== 'uploading') {
-    throw new Error(`Cannot upload from status ${note.status}`);
-  }
+      let note = params.note;
+      if (note.status === 'draft' || note.status === 'upload_failed') {
+        note = await updateNoteStatus(note.id, note.status, 'uploading');
+      } else if (note.status !== 'uploading') {
+        throw new ApiError(
+          'invalid_upload_status',
+          `Cannot upload from status ${note.status}`,
+        );
+      }
 
-  const audioPath = buildNoteAudioPath({
-    userId: user.id,
-    noteId: note.id,
-    extension: params.extension,
-  });
+      const audioPath = buildNoteAudioPath({
+        userId: user.id,
+        noteId: note.id,
+        extension: params.extension,
+      });
 
-  const response = await fetch(params.uri);
-  if (!response.ok) {
-    await updateNoteStatus(note.id, 'uploading', 'upload_failed', {
-      last_error_code: 'audio_fetch_failed',
-    });
-    throw new Error('Could not read recording file');
-  }
-  const blob = await response.blob();
+      const response = await fetch(params.uri);
+      if (!response.ok) {
+        await updateNoteStatus(note.id, 'uploading', 'upload_failed', {
+          last_error_code: 'audio_fetch_failed',
+        });
+        throw new ApiError(
+          'audio_fetch_failed',
+          `Could not read recording file (HTTP ${response.status})`,
+        );
+      }
+      const blob = await response.blob();
 
-  const { error: uploadError } = await supabase.storage
-    .from('note-audio')
-    .upload(audioPath, blob, {
-      contentType: params.mimeType,
-      upsert: true,
-    });
+      const { error: uploadError } = await supabase.storage
+        .from('note-audio')
+        .upload(audioPath, blob, {
+          contentType: params.mimeType,
+          upsert: true,
+        });
 
-  if (uploadError) {
-    await updateNoteStatus(note.id, 'uploading', 'upload_failed', {
-      last_error_code: 'storage_upload_failed',
-    });
-    throw uploadError;
-  }
+      if (uploadError) {
+        const described = describeError(uploadError);
+        await updateNoteStatus(note.id, 'uploading', 'upload_failed', {
+          last_error_code: described.code.slice(0, 80),
+        });
+        throw new ApiError(
+          'storage_upload_failed',
+          described.reason,
+          uploadError,
+        );
+      }
 
-  return updateNoteStatus(note.id, 'uploading', 'queued', {
-    audio_path: audioPath,
-    audio_mime_type: params.mimeType,
-    audio_duration_seconds: durationSeconds,
-    last_error_code: null,
-    title: note.title ?? `Voice note`,
-  });
+      return updateNoteStatus(note.id, 'uploading', 'queued', {
+        audio_path: audioPath,
+        audio_mime_type: params.mimeType,
+        audio_duration_seconds: durationSeconds,
+        last_error_code: null,
+        title: note.title ?? `Voice note`,
+      });
+    },
+  );
 }
 
+type ProcessNoteResponse = {
+  ok: boolean;
+  status?: NoteStatus;
+  error?: string;
+  reason?: string;
+  skipped?: boolean;
+  provider?: string;
+  model?: string;
+  textLength?: number;
+};
+
 export async function requestTranscription(noteId: string) {
-  const { data, error } = await supabase.functions.invoke('process-note', {
-    body: { noteId },
+  return withApiLog('api.notes.process', { noteId }, async () => {
+    const { data, error } = await supabase.functions.invoke('process-note', {
+      body: { noteId },
+    });
+
+    const body = (data ?? null) as ProcessNoteResponse | null;
+
+    if (error) {
+      const fromBody = body?.error;
+      const described = describeError(error);
+      throw new ApiError(
+        fromBody ?? described.code,
+        fromBody
+          ? `process-note failed: ${fromBody}`
+          : described.reason,
+        error,
+      );
+    }
+
+    if (!body) {
+      throw new ApiError(
+        'process_note_empty',
+        'process-note returned an empty body',
+      );
+    }
+
+    if (body.ok === false) {
+      throw new ApiError(
+        body.error ?? 'process_note_failed',
+        body.error
+          ? `process-note failed: ${body.error}`
+          : 'process-note returned ok:false',
+      );
+    }
+
+    return body;
   });
-  if (error) throw error;
-  return data as {
-    ok: boolean;
-    status?: NoteStatus;
-    error?: string;
-  };
 }
 
 export async function retryTranscription(note: NoteRow) {
-  if (note.status !== 'transcription_failed' && note.status !== 'queued') {
-    throw new Error('Note is not retryable for transcription');
-  }
-  let current = note;
-  if (note.status === 'transcription_failed') {
-    current = await updateNoteStatus(note.id, 'transcription_failed', 'queued', {
-      last_error_code: null,
-    });
-  }
-  return requestTranscription(current.id);
+  return withApiLog(
+    'api.notes.retry_transcription',
+    { noteId: note.id, fromStatus: note.status },
+    async () => {
+      if (note.status !== 'transcription_failed' && note.status !== 'queued') {
+        throw new ApiError(
+          'not_retryable',
+          'Note is not retryable for transcription',
+        );
+      }
+      let current = note;
+      if (note.status === 'transcription_failed') {
+        current = await updateNoteStatus(
+          note.id,
+          'transcription_failed',
+          'queued',
+          { last_error_code: null },
+        );
+      }
+      return requestTranscription(current.id);
+    },
+  );
 }

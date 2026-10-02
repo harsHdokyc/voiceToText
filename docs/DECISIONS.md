@@ -66,6 +66,12 @@ Format: date · decision · context · alternatives considered · consequence.
 - **Decision:** Single source for agent rules at `.cursor/rules/`. Product blueprint at `docs/`.
 - **Consequence:** Do not recreate `docs/.cursor/`. Update STATUS when phases change.
 
+## 2026-10-02 · Structured `[vtw]` logging with code + real reason
+- **Context:** Metro showed almost no API/backend signal; failures were generic. Need greppable logs without logging secrets/content.
+- **Alternatives:** Rely on Supabase dashboard only; ad-hoc `console.log`; full APM.
+- **Decision:** One-line JSON logs prefixed `[vtw]` from app (`withApiLog` / `logger`) and Edge (`edgeLog`). Every failure includes stable `code` + human `reason` (provider/DB text when available). Catalog in `docs/LOGGING_COMBINED.md`. Rule: `.cursor/rules/08-logging.mdc`.
+- **Consequence:** New API paths and Edge Functions must log start/ok/fail; UI shows reason; `last_error_code` stores code.
+
 ## 2026-10-02 · Unit tests must prove business behavior (not mock theater)
 - **Context:** “Unit test” can be misread as “mock everything.” User wants real unit tests that still encode product rules (validation, status machine, paths, retry policy).
 - **Alternatives:** Screen-level RNTL with mocked services; call-shape-only suites; defer quality until E2E.

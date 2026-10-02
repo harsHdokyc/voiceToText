@@ -1,0 +1,32 @@
+---
+description: Structured API/Edge logging with real error codes and reasons
+alwaysApply: true
+---
+# Logging (structured, useful)
+
+Use `[vtw]` structured logs for app API work and Edge Functions. Full catalog: `docs/LOGGING_COMBINED.md`.
+
+## Required
+- Wrap client API/backend ops with `withApiLog(scope, fields, fn)` (`src/lib/with-api-log.ts`).
+- Edge: `edgeLog(level, scope, fields)` from `supabase/functions/_shared/log.ts`.
+- Failures must include **`code`** (stable machine id) and **`reason`** (real cause — provider/DB/validation message). No generic-only `"Something went wrong"` in logs.
+- Prefer `ApiError(code, reason)` for app-thrown failures (`src/lib/api-error.ts`).
+- UI copy uses `errorMessageForUi` / `authErrorMessage` (the reason).
+
+## Forbidden in logs
+Audio, transcripts, prompts, passwords, OTP, tokens, auth headers, signed URLs, API keys.
+
+## Format
+Pretty JSON block (2-space indent), prefixed with `[vtw]`:
+```
+[vtw]
+{
+  "ts": "...",
+  "src": "app|edge",
+  "level": "...",
+  "scope": "...",
+  "event": "...",
+  "code?": "...",
+  "reason?": "..."
+}
+```

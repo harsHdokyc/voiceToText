@@ -7,7 +7,7 @@
 6. Don't treat hard-to-guess paths as authorization.
 7. Validate JWT, ownership, IDs, payloads, MIME, size, and duration at server boundaries.
 8. Add quotas/rate limits for expensive AI endpoints.
-9. Don't log raw audio, transcripts, prompts, auth headers, signed URLs, or secrets.
+9. Don't log raw audio, transcripts, prompts, auth headers, signed URLs, or secrets. Do log structured `[vtw]` lines with error **code** + **reason** (see [LOGGING_COMBINED.md](./LOGGING_COMBINED.md)).
 10. Validate and bound model-generated text.
 11. Define audio/transcript retention and account deletion before public launch.
 12. Keep original transcript distinct from edited text.

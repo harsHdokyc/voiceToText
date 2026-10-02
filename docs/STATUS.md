@@ -51,11 +51,14 @@ Then re-invoke `openai-spike` from the app (`{ "probe": "config" }` then `{ "pro
 | Edge `process-note` | ACTIVE (v1, verify_jwt) |
 | App `.env` | Hosted URL + publishable key |
 
+## Logging
+Structured `[vtw]` JSON lines in Metro (app) and Edge Function logs. See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md). Auth + notes API paths and `process-note` are instrumented with `code` + real `reason` on failures.
+
 ## Tests
 | Command | Last result |
 |---|---|
 | `npm run typecheck` | Pass |
-| `npm test` | 45 passed (auth helpers, note-status, recording-format, env, query-retry, AI provider-utils) |
+| `npm test` | 52 passed |
 
 **Policy:** Unit tests side-by-side with pure logic; each test must fail if the **business rule** breaks — not if a mock wasn’t called (`.cursor/rules/07-testing.mdc`, [12_TESTING_STRATEGY.md](./12_TESTING_STRATEGY.md)).
 

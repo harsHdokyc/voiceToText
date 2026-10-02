@@ -20,6 +20,7 @@ Living status: **[STATUS.md](./STATUS.md)** · Decisions: **[DECISIONS.md](./DEC
 14. [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md) — vertical slices Phase 0–7
 15. [14_SETUP_AND_SOURCE_LOG.md](./14_SETUP_AND_SOURCE_LOG.md) — env vars and official docs
 16. [15_CURSOR_AGENT_PROMPT.md](./15_CURSOR_AGENT_PROMPT.md) — how agents should work here
+17. [LOGGING_COMBINED.md](./LOGGING_COMBINED.md) — structured `[vtw]` logs, scopes, error codes
 
 ## Stack correction
 Frontend: Expo + React Native + TypeScript. Navigation: Expo Router, not `react-router-dom` in the mobile app. Server state: TanStack Query. Backend: Supabase Auth, PostgreSQL, private Storage, Edge Functions, RLS, Cron (`pg_cron`), optional Queues, Realtime only if needed, Vault for scheduled-job secrets. Push: Expo Notifications/Expo Push Service. Email: Resend from Edge Functions as the practical transactional email default. AI: OpenAI SDK on Edge pointed at Naga for prototype STT + chat extraction (adapters; see `DECISIONS.md`). Auth for private beta: email + password + 8-digit OTP.

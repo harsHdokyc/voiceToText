@@ -15,7 +15,7 @@ Centralize query keys by feature. Query functions must surface errors rather tha
 One initialized client. No secrets in client. RLS mandatory. Migrations small/repeatable. Direct CRUD via RLS where simple; Edge Functions for secrets, external APIs, quotas, privileged operations, and atomic workflows. Handle `{ error }` results explicitly. Avoid triggers unless transaction integrity clearly requires them.
 
 ## Edge Functions and AI
-Validate method/auth/input/ownership/limits. Provider adapters for model APIs. Safe error codes. Bounded timeout/retry. Structured output + runtime Zod validation. Transcript is untrusted content. Never auto-approve tasks. Don't log content/secrets. Don't expose hidden model reasoning; store source quotes or concise rationale only.
+Validate method/auth/input/ownership/limits. Provider adapters for model APIs. Safe error codes **plus real reasons** in structured `[vtw]` logs (see [LOGGING_COMBINED.md](./LOGGING_COMBINED.md)). Bounded timeout/retry. Structured output + runtime Zod validation. Transcript is untrusted content. Never auto-approve tasks. Don't log content/secrets. Don't expose hidden model reasoning; store source quotes or concise rationale only.
 
 ## Abstraction discipline
 Add a dependency only for a real need. Prefer a function over a class without lifecycle/coherent state. Extract helpers when it improves naming, reuse, testing, or separation—not merely to hit line counts. Avoid generic `BaseService`, repository factory, event bus, speculative microservices, and global store.
