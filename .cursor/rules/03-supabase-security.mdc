@@ -1,0 +1,5 @@
+---
+description: Supabase RLS, Storage, Edge Functions security
+alwaysApply: true
+---
+RLS on every exposed user-owned table. Private audio bucket. Never ship service_role or provider secrets to client. Validate auth, ownership, IDs, payloads, MIME, size, and limits at trust boundaries. Use migrations. UI checks are not authorization. Signed URLs are bearer links; keep short-lived and out of logs.

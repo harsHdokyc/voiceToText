@@ -1,0 +1,1 @@
+-- Optional local seed. Phase 0 leaves this empty; profiles are created by auth trigger.

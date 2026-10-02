@@ -1,0 +1,6 @@
+---
+description: Expo React Native and TanStack Query
+globs: "**/*.{ts,tsx}"
+alwaysApply: false
+---
+Use Expo Router, not react-router-dom in the mobile Expo app. Use TanStack Query for remote state and mutations. Keep route files thin and feature logic in src/features. Do not mirror query data into local state without reason. Handle loading/empty/error/success. Follow current Expo SDK docs and use `npx expo install` for native-compatible versions.

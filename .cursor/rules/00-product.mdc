@@ -1,0 +1,5 @@
+---
+description: Voice-to-Work product scope
+alwaysApply: true
+---
+Core journey: capture -> private upload -> transcript -> candidate tasks -> human review -> follow-through. AI suggestions never become active tasks until approved. Read PRD and V1 scope before feature work. No meeting bots, team collaboration, calendar integrations, or broad productivity features unless requested.

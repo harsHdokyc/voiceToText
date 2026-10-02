@@ -1,0 +1,220 @@
+---
+description: Behavior-driven Vitest unit tests (apply when writing/editing tests)
+globs: "**/*.{test,spec}.{ts,tsx,js,jsx}"
+alwaysApply: false
+---
+
+# Vitest Unit Testing Rules — Test Real Behavior, Not Mocks
+
+You are a senior engineer writing Vitest unit tests that prove the code actually behaves correctly — not tests that just prove the code does what the test told it to do.
+
+> A passing test is worthless if it only confirms a mock returned what you configured it to return.
+
+Before writing a single `expect`, understand the real function/module behavior first.
+
+---
+
+## The Core Rule
+
+Do **NOT** write unit tests that merely confirm:
+
+- A function was called (`toHaveBeenCalled`).
+- A function was called with specific args (`toHaveBeenCalledWith`) — unless calling it *with those exact args* is itself the observable contract (e.g. calling an injected boundary correctly).
+- A mocked module returned the value you told it to return.
+- An internal/private helper was invoked.
+- The test re-implements the same logic as the source file, then asserts they match.
+- Every collaborator is `vi.mock()`-ed just to make the test trivially green.
+- `vi.fn()` spies stand in for real computation that the test should actually be exercising.
+
+Instead, for every test, ask:
+
+> "If this function were actually broken — wrong output, wrong state, wrong error — would this test fail?"
+
+If the answer is no, delete the test and write a real one.
+
+---
+
+## 1. Trace the Real Behavior Before Writing Assertions
+
+Don't open the file and start asserting. First understand:
+
+1. What are the actual inputs (including edge cases: empty, null, undefined, boundary values, malformed shapes)?
+2. What is the actual business rule / transformation / decision being made?
+3. What is the real output — return value, thrown error, mutated state, emitted event?
+4. Does it depend on time, randomness, or IDs?
+5. Does it call anything outside its own module (its own code vs. a true external boundary)?
+6. What should happen when inputs are invalid or a dependency fails?
+
+Only after this should you decide what to assert.
+
+---
+
+## 2. Test the Return Value / Thrown Behavior, Not the Internals
+
+Prefer:
+
+```ts
+import { describe, it, expect } from "vitest";
+import { calculateDiscount } from "./pricing";
+
+describe("calculateDiscount", () => {
+  it("applies a 10% coupon to the cart total", () => {
+    const result = calculateDiscount(200, { type: "percent", value: 10 });
+    expect(result).toBe(180);
+  });
+
+  it("never returns a negative total when discount exceeds cart total", () => {
+    const result = calculateDiscount(50, { type: "flat", value: 100 });
+    expect(result).toBe(0);
+  });
+
+  it("throws for a negative cart total", () => {
+    expect(() => calculateDiscount(-10, { type: "flat", value: 5 }))
+      .toThrow(/cart total must be positive/i);
+  });
+});
+```
+
+Over:
+
+```ts
+// BAD — proves nothing about correctness of the discount math
+it("calls applyCoupon internally", () => {
+  const spy = vi.spyOn(couponModule, "applyCoupon");
+  calculateDiscount(200, { type: "percent", value: 10 });
+  expect(spy).toHaveBeenCalledWith(200, { type: "percent", value: 10 });
+});
+```
+
+The first suite fails the moment the discount math is wrong. The second suite stays green even if `calculateDiscount` returns garbage, as long as the internal call shape didn't change.
+
+---
+
+## 3. Unit Tests Still Mean "No Mocking Between Your Own Modules"
+
+Unit-test scope (single function/module, no I/O) is a legitimate reason to isolate — but isolation is not the same as mocking away the thing you're testing.
+
+- **Do** run the real function with real inputs and assert on the real output.
+- **Do** let it call other pure functions from your own codebase for real — don't mock `formatCurrency()` just because `calculateDiscount()` calls it. If both are pure and fast, run both for real.
+- **Don't** mock a sibling module in your own code purely to "isolate" a unit test unless that sibling does real I/O (DB, network, filesystem, clock).
+- If you find yourself mocking three of your own modules to test a fourth, that's a sign either (a) the function under test is doing too much and should be split, or (b) this should partly be an integration-level check instead of a unit test with heavy mocking.
+
+Vitest-specific: prefer **not** using `vi.mock()` at all unless you're crossing a real boundary (see Section 4). Reach for `vi.mock` only when the alternative is non-determinism or real side effects, not as a default habit.
+
+---
+
+## 4. When Mocking IS Appropriate in Vitest
+
+Mock at the boundary of your system, not between your own pure functions.
+
+Appropriate to mock/stub with `vi.mock()`, `vi.spyOn()`, or `vi.fn()`:
+
+- **Third-party SDKs/APIs**: Stripe, SendGrid, Twilio, an LLM provider client, `fetch` calls to external services.
+- **Non-determinism**: `Date.now()` / `new Date()` (use `vi.useFakeTimers()` + `vi.setSystemTime()`), `Math.random()`, UUID generators — inject or freeze them.
+- **Filesystem / network / DB clients** when the unit under test isn't actually about persistence logic (e.g. testing a validator that happens to live in a file that also imports a DB client).
+- **Expensive, irrelevant side operations**: a heavy image/PDF render invoked deep inside a function whose behavior under test is really "did it pick the right template."
+
+Not appropriate to mock in a unit test that claims to test business logic:
+
+- The pure function/module actually under test — don't mock the thing you're testing.
+- Sibling pure functions in your own codebase.
+- A repository/service just so you can assert it "was called correctly" instead of asserting the real computed result.
+
+If mocking a boundary, assert on the **resulting behavior of the unit under test**, not just that the mock was invoked:
+
+```ts
+it("falls back to the default currency formatter when locale is unsupported", () => {
+  const result = formatPrice(1999, "xx-XX"); // unsupported locale, no mocking needed if pure
+  expect(result).toBe("$19.99");
+});
+```
+
+If the boundary is genuinely external (e.g. an injected `clock` or `idGenerator`):
+
+```ts
+it("stamps new invitations with the injected clock time", () => {
+  const fixedNow = new Date("2026-01-01T00:00:00Z");
+  const invitation = createInvitationRecord(validRequest, { now: () => fixedNow });
+  expect(invitation.createdAt).toEqual(fixedNow); // asserts real output, not that now() was called
+});
+```
+
+---
+
+## 5. No Smoke Tests
+
+A smoke test that just checks "it doesn't throw" or "it returns something defined" is not a behavior test. Ban these patterns:
+
+```ts
+// BAD — smoke test, proves almost nothing
+it("works", () => {
+  const result = calculateDiscount(200, { type: "percent", value: 10 });
+  expect(result).toBeDefined();
+});
+```
+
+```ts
+// BAD — reimplements the logic instead of asserting a known expected value
+it("applies the discount", () => {
+  const coupon = { type: "percent", value: 10 };
+  const expected = 200 - 200 * (coupon.value / 100); // mirrors source logic
+  expect(calculateDiscount(200, coupon)).toBe(expected);
+});
+```
+
+Every assertion should compare against a **concrete, independently-known expected value**, not a value derived by re-running the same logic under test.
+
+---
+
+## 6. Cover Failure Modes With the Same Rigor as the Happy Path
+
+For every function under test, also write cases for:
+
+- **Invalid input**: wrong type, missing field, out-of-range value, empty array/string, `null`/`undefined`. Assert the *specific* thrown error or returned error value — not just "it throws something."
+- **Boundary values**: zero, negative numbers where only positive is valid, max/min limits, empty collections, single-element collections.
+- **Boundary/dependency failure simulation** (only where a real boundary is mocked per Section 4): assert the function's real fallback/error behavior, not that the mock was configured to throw.
+
+```ts
+it("throws a typed ValidationError with the offending field name", () => {
+  expect(() => calculateDiscount(200, { type: "percent", value: -5 }))
+    .toThrow(new ValidationError("value must be non-negative"));
+});
+```
+
+---
+
+## 7. Determinism
+
+Every test must produce the same result on every run, on any machine, at any time.
+
+- Freeze time with `vi.useFakeTimers()` / `vi.setSystemTime()` instead of relying on real `Date.now()`.
+- Inject or seed `Math.random()` and ID generators — never assert against "some random-looking value."
+- Never depend on object key ordering, `Set`/`Map` iteration order, or floating point equality without `toBeCloseTo`.
+- Don't let tests depend on system timezone/locale unless timezone/locale handling is explicitly what's under test — set `TZ` explicitly in that case.
+- Reset mocks/spies and fake timers in `afterEach` (`vi.restoreAllMocks()`, `vi.useRealTimers()`) so one test's setup can't leak into the next.
+
+---
+
+## 8. Structure
+
+- One `describe` per function/module under test; nested `describe` blocks for distinct scenarios (e.g. `describe("when coupon is a flat discount")`).
+- Test names state the **behavior and condition**, not the mechanism: `"returns 0 when discount exceeds total"`, not `"test case 3"` or `"calls applyCoupon"`.
+- Arrange–Act–Assert, no hidden setup magic that obscures what's actually being tested.
+- One logical behavior per `it`. Multiple `expect`s are fine if they verify facets of the *same* outcome (e.g. checking both the return value and that it's the right type).
+
+---
+
+## Summary Checklist
+
+Before finalizing a Vitest unit test, confirm:
+
+- [ ] I traced the real inputs/outputs/edge cases before writing assertions.
+- [ ] This test would fail if the real logic were broken.
+- [ ] I'm not just asserting a mock returned what I configured it to return.
+- [ ] I'm not asserting a function/spy "was called" as the primary proof of correctness.
+- [ ] No mocking between my own pure modules — only at true boundaries (external APIs, time, randomness, IDs, I/O).
+- [ ] No smoke tests (`toBeDefined()`, "doesn't throw") standing in for real assertions.
+- [ ] No test re-derives the expected value using the same logic as the source — expected values are known/fixed.
+- [ ] Time, randomness, and IDs are deterministic (frozen/injected).
+- [ ] Failure modes (invalid input, boundary values, thrown errors) are covered with the same rigor as the happy path.
+- [ ] Mocks/timers are restored in `afterEach`; no test leaks state into another.

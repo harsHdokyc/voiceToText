@@ -1,0 +1,6 @@
+---
+description: Migrations and RLS tests
+globs: "supabase/migrations/**/*"
+alwaysApply: false
+---
+Use small repeatable migrations. Include constraints, indexes, grants, and RLS. Test allow and deny cases. Store UTC timestamps. Use foreign keys. Prevent duplicate task creation from repeat approvals with a unique constraint. Do not modify Supabase-managed storage schema tables directly; use Storage API.

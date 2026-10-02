@@ -1,0 +1,5 @@
+---
+description: Definition of done
+alwaysApply: true
+---
+Test happy path, failure path, and authorization boundary. Run available typecheck/lint/tests. Review diff for unrelated edits, secrets, dead code, duplicate logic. Report exact commands/results. If checks could not run, say so. Don't silently skip failing checks.
