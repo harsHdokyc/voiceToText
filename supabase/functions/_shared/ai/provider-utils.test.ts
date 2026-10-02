@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  describeProcessError,
+  failTargetForStage,
+  isRetryableHttpStatus,
   providerLabelFromBaseUrl,
   publicAiConfigView,
   uniqueChatModels,
@@ -59,5 +62,57 @@ describe('publicAiConfigView', () => {
         apiKey: null,
       }).apiKeyConfigured,
     ).toBe(false);
+  });
+});
+
+describe('isRetryableHttpStatus', () => {
+  it('retries flaky upstream statuses only', () => {
+    expect(isRetryableHttpStatus(503)).toBe(true);
+    expect(isRetryableHttpStatus(429)).toBe(true);
+    expect(isRetryableHttpStatus(400)).toBe(false);
+    expect(isRetryableHttpStatus(undefined)).toBe(false);
+  });
+});
+
+describe('failTargetForStage', () => {
+  it('maps stage to the correct note failure status', () => {
+    expect(failTargetForStage('transcribing')).toEqual({
+      failStatus: 'transcription_failed',
+      expectStatus: 'transcribing',
+      fallbackCode: 'transcription_failed',
+    });
+    expect(failTargetForStage('extracting')).toEqual({
+      failStatus: 'extraction_failed',
+      expectStatus: 'extracting',
+      fallbackCode: 'extraction_failed',
+    });
+  });
+});
+
+describe('describeProcessError', () => {
+  it('uses upstream_unavailable for 503 provider errors instead of the message as code', () => {
+    const err = Object.assign(
+      new Error(
+        '503 The upstream provider is temporarily unavailable. Please retry later.',
+      ),
+      { status: 503 },
+    );
+    expect(describeProcessError(err, 'extraction_failed')).toEqual({
+      code: 'upstream_unavailable',
+      reason:
+        '503 The upstream provider is temporarily unavailable. Please retry later.',
+    });
+  });
+
+  it('keeps prefixed machine codes from thrown Error messages', () => {
+    expect(
+      describeProcessError(
+        new Error('audio_download_failed: object not found'),
+        'transcription_failed',
+      ),
+    ).toEqual({
+      code: 'audio_download_failed',
+      reason: 'audio_download_failed: object not found',
+    });
   });
 });

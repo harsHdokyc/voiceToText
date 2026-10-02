@@ -1,3 +1,4 @@
+import { Link, type Href } from 'expo-router';
 import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -8,7 +9,6 @@ import {
   View,
   type TextInputProps,
 } from 'react-native';
-import { Link, type Href } from 'expo-router';
 
 export function AuthScreen({
   title,

@@ -75,8 +75,11 @@ Edge Function logs: Supabase Dashboard → Edge Functions → `process-note` →
 | `api.notes.list` / `get` / `create_draft` | Notes CRUD |
 | `api.notes.upload` | Storage upload |
 | `api.notes.audio_upload_proxy` / `audio_download_proxy` | Client → Edge `note-audio` by noteId |
+| `api.suggestions.list` / `approve` / `reject` | Task suggestions |
 | `edge.note-audio` | Upload/download proxy (no storage key in responses) |
-| `edge.process-note` | Claim → download → Whisper → persist |
+| `edge.process-note` | Claim → download → Whisper → extract → persist |
+| `edge.approve-suggestion` | Approve suggestion + create task |
+| `edge.reject-suggestion` | Reject suggestion |
 
 ---
 
@@ -98,8 +101,23 @@ Prefer these `code` values in DB `last_error_code`, JSON `error`, and logs `code
 | `storage_upload_failed` | Storage upload error (reason = provider message) |
 | `transcript_persist_failed` | Could not write transcript/status |
 | `transcription_failed` | Generic STT failure fallback |
+| `extraction_failed` | Generic extraction failure fallback |
+| `suggestions_insert_failed` | Could not write suggestions to DB |
+| `final_status_update_failed` | Could not update note to review_ready |
 | `process_note_empty` | Invoke returned empty body |
 | `process_note_failed` | Invoke `ok: false` without code |
+| `suggestion_id_required` | Body missing `suggestionId` |
+| `suggestion_not_found` | Suggestion missing or not owned |
+| `suggestion_not_found_or_not_pending` | RPC: suggestion not found or not pending |
+| `not_pending` | Suggestion status is not pending |
+| `already_extracting` | Note already in extracting state (skip) |
+| `rpc_failed` | RPC function call failed |
+| `approval_failed` | Generic approval failure fallback |
+| `approve_suggestion_empty` | approve-suggestion returned empty body |
+| `rejection_failed` | Generic rejection failure fallback |
+| `reject_suggestion_empty` | reject-suggestion returned empty body |
+| `suggestion_load_failed` | Could not load suggestion |
+| `rejection_update_failed` | Could not update suggestion to rejected |
 | `not_signed_in` | No session for a private op |
 | `invalid_upload_status` | Upload attempted from illegal status |
 | `status_transition_lost` | Conditional status update matched 0 rows |

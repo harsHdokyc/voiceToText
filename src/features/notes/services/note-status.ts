@@ -23,7 +23,8 @@ const ALLOWED: Record<NoteStatus, readonly NoteStatus[]> = {
   transcribing: ['extracting', 'review_ready', 'transcription_failed'],
   transcription_failed: ['queued', 'archived'],
   extracting: ['review_ready', 'extraction_failed'],
-  extraction_failed: ['queued', 'archived'],
+  // queued = full reprocess; extracting = re-run extraction only (process-note)
+  extraction_failed: ['queued', 'extracting', 'archived'],
   review_ready: ['archived'],
   archived: [],
 };
@@ -41,6 +42,20 @@ export function assertNoteStatusTransition(from: NoteStatus, to: NoteStatus) {
 /** Statuses that may be claimed by process-note for transcription. */
 export function isClaimableForTranscription(status: NoteStatus) {
   return status === 'queued' || status === 'transcription_failed';
+}
+
+/** Statuses that may be claimed by process-note for extraction-only retry. */
+export function isClaimableForExtraction(status: NoteStatus) {
+  return status === 'extraction_failed' || status === 'extracting';
+}
+
+/** Client retry button — failed or still-queued notes. */
+export function isRetryableProcessing(status: NoteStatus) {
+  return (
+    status === 'queued' ||
+    status === 'transcription_failed' ||
+    status === 'extraction_failed'
+  );
 }
 
 export function noteStatusLabel(status: NoteStatus) {

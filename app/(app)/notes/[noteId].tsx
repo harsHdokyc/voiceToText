@@ -3,6 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,6 +13,13 @@ import {
   getNote,
   retryTranscription,
 } from '@/features/notes/services/notes-service';
+import { isRetryableProcessing } from '@/features/notes/services/note-status';
+import {
+  approveSuggestion,
+  getSuggestions,
+  rejectSuggestion,
+  type TaskSuggestion,
+} from '@/features/notes/services/suggestions-service';
 
 export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
@@ -26,12 +34,19 @@ export default function NoteDetailScreen() {
       if (
         status === 'queued' ||
         status === 'transcribing' ||
+        status === 'extracting' ||
         status === 'uploading'
       ) {
         return 2000;
       }
       return false;
     },
+  });
+
+  const suggestions = useQuery({
+    queryKey: ['suggestions', noteId],
+    queryFn: () => getSuggestions(noteId),
+    enabled: Boolean(noteId) && note.data?.status === 'review_ready',
   });
 
   const retry = useMutation({
@@ -42,6 +57,26 @@ export default function NoteDetailScreen() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['notes', noteId] });
       await queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
+
+  const approve = useMutation({
+    mutationFn: async ({ suggestionId, edits }: { suggestionId: string; edits?: any }) => {
+      await approveSuggestion(suggestionId, edits);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
+      await queryClient.invalidateQueries({ queryKey: ['notes', noteId] });
+      await queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
+
+  const reject = useMutation({
+    mutationFn: async (suggestionId: string) => {
+      await rejectSuggestion(suggestionId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
     },
   });
 
@@ -66,7 +101,7 @@ export default function NoteDetailScreen() {
   const row = note.data;
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <Text style={styles.title}>{row.title ?? 'Voice note'}</Text>
       <Text style={styles.meta}>Status: {row.status.replaceAll('_', ' ')}</Text>
       {row.last_error_code ? (
@@ -74,22 +109,70 @@ export default function NoteDetailScreen() {
       ) : null}
 
       <Text style={styles.section}>Transcript</Text>
-      {row.status === 'queued' || row.status === 'transcribing' ? (
-        <Text style={styles.meta}>Transcribing…</Text>
+      {row.status === 'queued' || row.status === 'transcribing' || row.status === 'extracting' ? (
+        <Text style={styles.meta}>
+          {row.status === 'extracting' ? 'Extracting tasks…' : 'Transcribing…'}
+        </Text>
       ) : row.transcript ? (
         <Text style={styles.transcript}>{row.transcript}</Text>
       ) : (
         <Text style={styles.meta}>No transcript yet.</Text>
       )}
 
-      {(row.status === 'transcription_failed' || row.status === 'queued') && (
+      {row.status === 'review_ready' && (
+        <>
+          <Text style={styles.section}>Task Suggestions</Text>
+          {suggestions.isLoading ? (
+            <Text style={styles.meta}>Loading suggestions…</Text>
+          ) : suggestions.data && suggestions.data.length > 0 ? (
+            suggestions.data.map((suggestion: TaskSuggestion) => (
+              <View key={suggestion.id} style={styles.suggestionCard}>
+                <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
+                {suggestion.details ? (
+                  <Text style={styles.suggestionDetails}>{suggestion.details}</Text>
+                ) : null}
+                <Text style={styles.suggestionMeta}>
+                  Kind: {suggestion.kind} • Confidence: {suggestion.confidence}
+                </Text>
+                {suggestion.due_at ? (
+                  <Text style={styles.suggestionMeta}>Due: {new Date(suggestion.due_at).toLocaleDateString()}</Text>
+                ) : null}
+                {suggestion.priority ? (
+                  <Text style={styles.suggestionMeta}>Priority: {suggestion.priority}</Text>
+                ) : null}
+                <Text style={styles.sourceQuote}>"{suggestion.source_quote}"</Text>
+                <View style={styles.suggestionActions}>
+                  <Pressable
+                    style={[styles.actionButton, styles.approveButton]}
+                    disabled={approve.isPending}
+                    onPress={() => approve.mutate({ suggestionId: suggestion.id })}
+                  >
+                    <Text style={styles.actionButtonText}>Approve</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.actionButton, styles.rejectButton]}
+                    disabled={reject.isPending}
+                    onPress={() => reject.mutate(suggestion.id)}
+                  >
+                    <Text style={styles.actionButtonText}>Reject</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.meta}>No tasks found in this note.</Text>
+          )}
+        </>
+      )}
+
+      {(isRetryableProcessing(row.status)) && (
         <Pressable
           style={styles.button}
           disabled={retry.isPending}
           onPress={() => retry.mutate()}
         >
           <Text style={styles.buttonText}>
-            {retry.isPending ? 'Retrying…' : 'Retry transcription'}
+            {retry.isPending ? 'Retrying…' : 'Retry processing'}
           </Text>
         </Pressable>
       )}
@@ -98,7 +181,7 @@ export default function NoteDetailScreen() {
           {retry.error instanceof Error ? retry.error.message : 'Retry failed'}
         </Text>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -118,4 +201,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: { color: '#fff', fontWeight: '600' },
+  suggestionCard: {
+    marginTop: 12,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    gap: 6,
+  },
+  suggestionTitle: { fontSize: 16, fontWeight: '600', color: '#14241c' },
+  suggestionDetails: { fontSize: 14, color: '#555' },
+  suggestionMeta: { fontSize: 12, color: '#777' },
+  sourceQuote: {
+    marginTop: 8,
+    fontStyle: 'italic',
+    fontSize: 13,
+    color: '#555',
+    paddingLeft: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: '#1f4b3a',
+  },
+  suggestionActions: {
+    marginTop: 12,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  approveButton: { backgroundColor: '#1f4b3a' },
+  rejectButton: { backgroundColor: '#7a2e0b' },
+  actionButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 });

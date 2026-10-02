@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { ApiError } from '@/lib/api-error';
 import { withApiLog } from '@/lib/with-api-log';
+import { isRetryableProcessing } from '@/features/notes/services/note-status';
 import {
   assertAudioDurationSeconds,
   assertNoteStatusTransition,
@@ -194,13 +195,15 @@ export async function retryTranscription(note: NoteRow) {
     'api.notes.retry_transcription',
     { noteId: note.id, fromStatus: note.status },
     async () => {
-      if (note.status !== 'transcription_failed' && note.status !== 'queued') {
+      if (!isRetryableProcessing(note.status)) {
         throw new ApiError(
           'not_retryable',
-          'Note is not retryable for transcription',
+          'Note is not retryable for processing',
         );
       }
       let current = note;
+      // Transcription failures re-queue for a full pass. Extraction failures /
+      // stuck extracting stay put — process-note reclaims without re-STT.
       if (note.status === 'transcription_failed') {
         current = await updateNoteStatus(
           note.id,

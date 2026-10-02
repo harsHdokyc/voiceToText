@@ -5,7 +5,9 @@ import {
   assertNoteStatusTransition,
   buildNoteAudioPath,
   canTransitionNoteStatus,
+  isClaimableForExtraction,
   isClaimableForTranscription,
+  isRetryableProcessing,
   noteStatusLabel,
 } from './note-status';
 
@@ -40,6 +42,35 @@ describe('isClaimableForTranscription', () => {
     expect(isClaimableForTranscription('queued')).toBe(true);
     expect(isClaimableForTranscription('transcription_failed')).toBe(true);
     expect(isClaimableForTranscription('review_ready')).toBe(false);
+  });
+});
+
+describe('isClaimableForExtraction', () => {
+  it('claims extraction_failed and stuck extracting', () => {
+    expect(isClaimableForExtraction('extraction_failed')).toBe(true);
+    expect(isClaimableForExtraction('extracting')).toBe(true);
+    expect(isClaimableForExtraction('queued')).toBe(false);
+  });
+});
+
+describe('isRetryableProcessing', () => {
+  it('allows queued and both failure statuses', () => {
+    expect(isRetryableProcessing('queued')).toBe(true);
+    expect(isRetryableProcessing('transcription_failed')).toBe(true);
+    expect(isRetryableProcessing('extraction_failed')).toBe(true);
+    expect(isRetryableProcessing('extracting')).toBe(false);
+  });
+});
+
+describe('Phase 4 status transitions', () => {
+  it('allows extracting to extraction_failed and retry back to extracting', () => {
+    expect(canTransitionNoteStatus('extracting', 'extraction_failed')).toBe(
+      true,
+    );
+    expect(canTransitionNoteStatus('extraction_failed', 'extracting')).toBe(
+      true,
+    );
+    expect(canTransitionNoteStatus('transcribing', 'extracting')).toBe(true);
   });
 });
 

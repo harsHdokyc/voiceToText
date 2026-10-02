@@ -2,7 +2,7 @@ import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 
 import { getAiConfig, publicAiConfig } from "../_shared/ai/config.ts";
-import { extractSpikeTask } from "../_shared/ai/task-extraction-provider.ts";
+import { extractTasks } from "../_shared/ai/task-extraction-provider.ts";
 import { transcribeAudio } from "../_shared/ai/transcription-provider.ts";
 
 /**
@@ -24,7 +24,7 @@ export default {
     const contentType = req.headers.get("content-type") ?? "";
 
     let probe = "chat";
-    let transcriptText: string | null = null;
+    let transcriptText = "Buy milk tomorrow.";
     let audioFile: File | null = null;
 
     if (contentType.includes("multipart/form-data")) {
@@ -35,13 +35,12 @@ export default {
     } else {
       const body = (await req.json().catch(() => ({}))) as {
         probe?: string;
-        ping?: boolean;
         transcript?: string;
         filename?: string;
         audioBase64?: string;
       };
-      probe = body.probe ?? (body.ping ? "chat" : "chat");
-      transcriptText = body.transcript ?? "Buy milk tomorrow.";
+      probe = body.probe ?? "chat";
+      if (body.transcript) transcriptText = body.transcript;
 
       if (body.audioBase64 && body.filename) {
         const bytes = Uint8Array.from(atob(body.audioBase64), (c) =>
@@ -93,23 +92,20 @@ export default {
           probe: "transcribe",
           provider: result.provider,
           model: result.model,
-          // Length only — never echo transcript content in spike logs/UI analytics.
           textLength: result.text.length,
           hasText: result.text.trim().length > 0,
         });
       }
 
-      const extracted = await extractSpikeTask({
-        transcript: transcriptText ?? "Buy milk tomorrow.",
-      });
-
+      const extracted = await extractTasks({ transcript: transcriptText });
       return Response.json({
         ok: true,
         skipped: false,
         probe: "chat",
         provider: extracted.provider,
         model: extracted.model,
-        sample: extracted.task,
+        suggestionCount: extracted.suggestions.length,
+        sample: extracted.suggestions[0] ?? null,
       });
     } catch (error) {
       const message =
