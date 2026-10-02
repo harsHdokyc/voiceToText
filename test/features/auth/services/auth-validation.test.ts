@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  assertEmail,
-  assertOtp,
-  assertPassword,
-  assertPasswordsMatch,
-  authErrorMessage,
-  normalizeEmail,
-} from './auth-validation';
+    assertEmail,
+    assertOtp,
+    assertPassword,
+    assertPasswordsMatch,
+    authErrorMessage,
+    normalizeEmail,
+} from '@/features/auth/services/auth-validation';
 
 describe('normalizeEmail', () => {
   it('trims and lowercases', () => {

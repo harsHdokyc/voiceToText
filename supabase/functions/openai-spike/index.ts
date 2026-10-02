@@ -6,7 +6,7 @@ import { extractTasks } from "../_shared/ai/task-extraction-provider.ts";
 import { transcribeAudio } from "../_shared/ai/transcription-provider.ts";
 
 /**
- * AI runtime spike (OpenAI SDK → Naga by default).
+ * AI runtime spike (OpenAI SDK → official OpenAI by default).
  *
  * Body JSON:
  * - `{ "probe": "config" }` — provider/models/key presence (no secrets)
@@ -56,9 +56,9 @@ export default {
         skipped: false,
         ...publicAiConfig(config),
         notes: [
-          "Prototype provider is Naga (OpenAI-compatible).",
-          ":free models may use prompts/outputs for training — see DECISIONS.md.",
-          "Free tier rate limits: 10/min and 100/day shared across :free models.",
+          "Default provider is official OpenAI (see DECISIONS.md).",
+          "STT: gpt-4o-mini-transcribe · chat: gpt-4o-mini.",
+          "Never put OPENAI_API_KEY in Expo / EXPO_PUBLIC_*.",
         ],
       });
     }
@@ -68,7 +68,7 @@ export default {
         ok: true,
         skipped: true,
         reason:
-          "OPENAI_API_KEY not set — add Naga API key via Supabase Edge secrets (OPENAI_API_KEY) plus OPENAI_BASE_URL=https://api.naga.ac/v1",
+          "OPENAI_API_KEY not set — add OpenAI API key via Supabase Edge secrets, with OPENAI_BASE_URL=https://api.openai.com/v1",
         ...publicAiConfig(config),
       });
     }
@@ -110,14 +110,14 @@ export default {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "ai_probe_failed";
-      const upstreamUnavailable = /503|temporarily unavailable|rate_limit/i
+      const upstreamUnavailable = /503|temporarily unavailable|rate_limit|429/i
         .test(message);
       return Response.json(
         {
           ok: false,
           error: message,
           hint: upstreamUnavailable
-            ? "Naga free upstream is down or limited — retry, or set AI_CHAT_MODEL to another free/paid model in Edge secrets."
+            ? "Upstream rate-limited or unavailable — retry later, or check OpenAI billing/limits."
             : undefined,
           ...publicAiConfig(config),
         },

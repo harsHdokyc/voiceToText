@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -16,10 +18,13 @@ import {
 import { isRetryableProcessing } from '@/features/notes/services/note-status';
 import {
   approveSuggestion,
+  buildSuggestionEdits,
   getSuggestions,
+  isPendingSuggestion,
   rejectSuggestion,
   type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
+import { errorMessageForUi } from '@/lib/api-error';
 
 export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
@@ -61,8 +66,15 @@ export default function NoteDetailScreen() {
   });
 
   const approve = useMutation({
-    mutationFn: async ({ suggestionId, edits }: { suggestionId: string; edits?: any }) => {
-      await approveSuggestion(suggestionId, edits);
+    mutationFn: async ({
+      suggestion,
+      draft,
+    }: {
+      suggestion: TaskSuggestion;
+      draft: { title: string; details: string };
+    }) => {
+      const edits = buildSuggestionEdits(suggestion, draft);
+      await approveSuggestion(suggestion.id, edits);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
@@ -99,6 +111,7 @@ export default function NoteDetailScreen() {
   }
 
   const row = note.data;
+  const actionBusy = approve.isPending || reject.isPending;
 
   return (
     <ScrollView style={styles.container}>
@@ -109,7 +122,9 @@ export default function NoteDetailScreen() {
       ) : null}
 
       <Text style={styles.section}>Transcript</Text>
-      {row.status === 'queued' || row.status === 'transcribing' || row.status === 'extracting' ? (
+      {row.status === 'queued' ||
+      row.status === 'transcribing' ||
+      row.status === 'extracting' ? (
         <Text style={styles.meta}>
           {row.status === 'extracting' ? 'Extracting tasks…' : 'Transcribing…'}
         </Text>
@@ -125,47 +140,34 @@ export default function NoteDetailScreen() {
           {suggestions.isLoading ? (
             <Text style={styles.meta}>Loading suggestions…</Text>
           ) : suggestions.data && suggestions.data.length > 0 ? (
-            suggestions.data.map((suggestion: TaskSuggestion) => (
-              <View key={suggestion.id} style={styles.suggestionCard}>
-                <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
-                {suggestion.details ? (
-                  <Text style={styles.suggestionDetails}>{suggestion.details}</Text>
-                ) : null}
-                <Text style={styles.suggestionMeta}>
-                  Kind: {suggestion.kind} • Confidence: {suggestion.confidence}
-                </Text>
-                {suggestion.due_at ? (
-                  <Text style={styles.suggestionMeta}>Due: {new Date(suggestion.due_at).toLocaleDateString()}</Text>
-                ) : null}
-                {suggestion.priority ? (
-                  <Text style={styles.suggestionMeta}>Priority: {suggestion.priority}</Text>
-                ) : null}
-                <Text style={styles.sourceQuote}>"{suggestion.source_quote}"</Text>
-                <View style={styles.suggestionActions}>
-                  <Pressable
-                    style={[styles.actionButton, styles.approveButton]}
-                    disabled={approve.isPending}
-                    onPress={() => approve.mutate({ suggestionId: suggestion.id })}
-                  >
-                    <Text style={styles.actionButtonText}>Approve</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.actionButton, styles.rejectButton]}
-                    disabled={reject.isPending}
-                    onPress={() => reject.mutate(suggestion.id)}
-                  >
-                    <Text style={styles.actionButtonText}>Reject</Text>
-                  </Pressable>
-                </View>
-              </View>
+            suggestions.data.map((suggestion) => (
+              <SuggestionCard
+                key={suggestion.id}
+                suggestion={suggestion}
+                busy={actionBusy}
+                onApprove={(draft) =>
+                  approve.mutate({ suggestion, draft })
+                }
+                onReject={() => reject.mutate(suggestion.id)}
+              />
             ))
           ) : (
             <Text style={styles.meta}>No tasks found in this note.</Text>
           )}
+          {approve.error ? (
+            <Text style={styles.error}>
+              {errorMessageForUi(approve.error, 'Approve failed')}
+            </Text>
+          ) : null}
+          {reject.error ? (
+            <Text style={styles.error}>
+              {errorMessageForUi(reject.error, 'Reject failed')}
+            </Text>
+          ) : null}
         </>
       )}
 
-      {(isRetryableProcessing(row.status)) && (
+      {isRetryableProcessing(row.status) && (
         <Pressable
           style={styles.button}
           disabled={retry.isPending}
@@ -182,6 +184,86 @@ export default function NoteDetailScreen() {
         </Text>
       ) : null}
     </ScrollView>
+  );
+}
+
+function SuggestionCard(props: {
+  suggestion: TaskSuggestion;
+  busy: boolean;
+  onApprove: (draft: { title: string; details: string }) => void;
+  onReject: () => void;
+}) {
+  const { suggestion, busy, onApprove, onReject } = props;
+  const pending = isPendingSuggestion(suggestion.status);
+  const [title, setTitle] = useState(suggestion.title);
+  const [details, setDetails] = useState(suggestion.details ?? '');
+
+  return (
+    <View style={styles.suggestionCard}>
+      {pending ? (
+        <>
+          <Text style={styles.fieldLabel}>Title</Text>
+          <TextInput
+            style={styles.input}
+            value={title}
+            onChangeText={setTitle}
+            editable={!busy}
+          />
+          <Text style={styles.fieldLabel}>Details</Text>
+          <TextInput
+            style={[styles.input, styles.inputMultiline]}
+            value={details}
+            onChangeText={setDetails}
+            editable={!busy}
+            multiline
+          />
+        </>
+      ) : (
+        <>
+          <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
+          {suggestion.details ? (
+            <Text style={styles.suggestionDetails}>{suggestion.details}</Text>
+          ) : null}
+          <Text style={styles.suggestionMeta}>
+            Status: {suggestion.status.replaceAll('_', ' ')}
+          </Text>
+        </>
+      )}
+
+      <Text style={styles.suggestionMeta}>
+        Kind: {suggestion.kind} • Confidence: {suggestion.confidence}
+      </Text>
+      {suggestion.due_at ? (
+        <Text style={styles.suggestionMeta}>
+          Due: {new Date(suggestion.due_at).toLocaleDateString()}
+        </Text>
+      ) : null}
+      {suggestion.priority ? (
+        <Text style={styles.suggestionMeta}>
+          Priority: {suggestion.priority}
+        </Text>
+      ) : null}
+      <Text style={styles.sourceQuote}>"{suggestion.source_quote}"</Text>
+
+      {pending ? (
+        <View style={styles.suggestionActions}>
+          <Pressable
+            style={[styles.actionButton, styles.approveButton]}
+            disabled={busy}
+            onPress={() => onApprove({ title, details })}
+          >
+            <Text style={styles.actionButtonText}>Approve</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.actionButton, styles.rejectButton]}
+            disabled={busy}
+            onPress={onReject}
+          >
+            <Text style={styles.actionButtonText}>Reject</Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -210,6 +292,18 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     gap: 6,
   },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 4 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 15,
+    color: '#14241c',
+    backgroundColor: '#fafafa',
+  },
+  inputMultiline: { minHeight: 64, textAlignVertical: 'top' },
   suggestionTitle: { fontSize: 16, fontWeight: '600', color: '#14241c' },
   suggestionDetails: { fontSize: 14, color: '#555' },
   suggestionMeta: { fontSize: 12, color: '#777' },

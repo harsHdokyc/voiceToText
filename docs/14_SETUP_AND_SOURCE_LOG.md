@@ -8,15 +8,15 @@ EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 
 Edge / server secrets (Dashboard → Edge Functions → Secrets, or `supabase/functions/.env` locally):
 ```env
-OPENAI_API_KEY=           # Naga API key for prototype (OpenAI SDK field name)
-OPENAI_BASE_URL=https://api.naga.ac/v1
-AI_TRANSCRIPTION_MODEL=whisper-large-v3:free
-AI_CHAT_MODEL=llama-4-scout-17b-16e-instruct:free
+OPENAI_API_KEY=                    # OpenAI secret key (never commit)
+OPENAI_BASE_URL=https://api.openai.com/v1
+AI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
+AI_CHAT_MODEL=gpt-4o-mini
 # Later: RESEND_API_KEY, EXPO_ACCESS_TOKEN, APP_BASE_URL
 ```
 Never prefix secrets with `EXPO_PUBLIC_`. Don't commit filled `.env` files.
 
-See `DECISIONS.md` for why Naga is prototype-only and when to leave `:free`.
+If older Naga secrets are still set on the project, **replace** them — env overrides code defaults. See `DECISIONS.md`.
 
 ## Official docs to verify
 - Supabase Expo quickstart: https://supabase.com/docs/guides/getting-started/quickstarts/expo-react-native
@@ -32,11 +32,8 @@ See `DECISIONS.md` for why Naga is prototype-only and when to leave `:free`.
 - Expo Audio: https://docs.expo.dev/versions/latest/sdk/audio/
 - Expo Notifications: https://docs.expo.dev/versions/latest/sdk/notifications/
 - OpenAI speech-to-text: https://platform.openai.com/docs/guides/speech-to-text
-- Naga API overview: https://docs.naga.ac/api-reference/overview
-- Naga Whisper free: https://naga.ac/models/whisper-large-v3%3Afree
-- Naga STT: https://docs.naga.ac/api/audio/speech-to-text
-- Naga privacy: https://docs.naga.ac/account/privacy-and-logging
-- Naga rate limits: https://docs.naga.ac/build/rate-limits
+- OpenAI models: https://platform.openai.com/docs/models
+- OpenAI pricing: https://developers.openai.com/api/docs/pricing
 - Resend example: https://supabase.com/docs/guides/functions/examples/send-emails
 - Edge Function limits (idle/wall clock): https://supabase.com/docs/guides/functions/limits
 

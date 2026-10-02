@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildNoteAudioPath } from './note-audio-path';
+import { buildNoteAudioPath } from '@supabaseShared/storage/note-audio-path';
 
 describe('buildNoteAudioPath (edge shared)', () => {
   it('uses uid/notes/noteId ownership layout', () => {

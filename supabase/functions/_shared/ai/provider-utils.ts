@@ -38,7 +38,7 @@ export function publicAiConfigView(config: {
   };
 }
 
-/** Naga free upstreams flap with these statuses — safe to try the next model. */
+/** Retryable upstream HTTP statuses (rate limit / timeout / provider flap). */
 export function isRetryableHttpStatus(status: unknown): boolean {
   return status === 408 || status === 429 || status === 500 || status === 503;
 }

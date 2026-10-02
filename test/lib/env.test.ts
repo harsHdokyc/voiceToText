@@ -10,7 +10,7 @@ describe('getPublicEnv', () => {
     vi.stubEnv('EXPO_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
     vi.stubEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'pub-key');
 
-    const { getPublicEnv } = await import('./env');
+    const { getPublicEnv } = await import('@/lib/env');
     expect(getPublicEnv()).toEqual({
       EXPO_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'pub-key',
@@ -21,7 +21,7 @@ describe('getPublicEnv', () => {
     vi.stubEnv('EXPO_PUBLIC_SUPABASE_URL', 'not-a-url');
     vi.stubEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY', 'pub-key');
 
-    const { getPublicEnv } = await import('./env');
+    const { getPublicEnv } = await import('@/lib/env');
     expect(() => getPublicEnv()).toThrow(/Missing or invalid public env/i);
   });
 
@@ -29,7 +29,7 @@ describe('getPublicEnv', () => {
     vi.stubEnv('EXPO_PUBLIC_SUPABASE_URL', 'https://example.supabase.co');
     vi.stubEnv('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY', '');
 
-    const { getPublicEnv } = await import('./env');
+    const { getPublicEnv } = await import('@/lib/env');
     expect(() => getPublicEnv()).toThrow(/Missing or invalid public env/i);
   });
 });

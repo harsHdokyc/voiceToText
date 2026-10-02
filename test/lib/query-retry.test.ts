@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { shouldRetryQuery } from './query-retry';
+import { shouldRetryQuery } from '@/lib/query-retry';
 
 describe('shouldRetryQuery', () => {
   it('does not retry authz / not-found statuses', () => {

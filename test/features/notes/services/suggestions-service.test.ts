@@ -1,11 +1,13 @@
+import {
+    approveSuggestion,
+    buildSuggestionEdits,
+    getSuggestions,
+    isPendingSuggestion,
+    rejectSuggestion,
+} from '@/features/notes/services/suggestions-service';
 import { ApiError } from '@/lib/api-error';
 import { supabase } from '@/lib/supabase';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  approveSuggestion,
-  getSuggestions,
-  rejectSuggestion,
-} from './suggestions-service';
 
 vi.mock('@/lib/supabase', () => ({
   supabase: {
@@ -15,6 +17,50 @@ vi.mock('@/lib/supabase', () => ({
     },
   },
 }));
+
+describe('isPendingSuggestion', () => {
+  it('is true only for pending', () => {
+    expect(isPendingSuggestion('pending')).toBe(true);
+    expect(isPendingSuggestion('approved')).toBe(false);
+    expect(isPendingSuggestion('rejected')).toBe(false);
+  });
+});
+
+describe('buildSuggestionEdits', () => {
+  it('returns undefined when draft matches original', () => {
+    expect(
+      buildSuggestionEdits(
+        { title: 'Buy milk', details: null },
+        { title: 'Buy milk', details: '' },
+      ),
+    ).toBeUndefined();
+  });
+
+  it('includes only changed fields', () => {
+    expect(
+      buildSuggestionEdits(
+        { title: 'Buy milk', details: '2%' },
+        { title: 'Get milk', details: '2%' },
+      ),
+    ).toEqual({ title: 'Get milk' });
+
+    expect(
+      buildSuggestionEdits(
+        { title: 'Buy milk', details: '2%' },
+        { title: 'Buy milk', details: '' },
+      ),
+    ).toEqual({ details: '' });
+  });
+
+  it('rejects blank titles', () => {
+    expect(() =>
+      buildSuggestionEdits(
+        { title: 'Buy milk', details: null },
+        { title: '   ', details: '' },
+      ),
+    ).toThrow(ApiError);
+  });
+});
 
 describe('suggestions-service', () => {
   beforeEach(() => {

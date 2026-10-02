@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  assertAudioDurationSeconds,
-  assertNoteStatusTransition,
-  buildNoteAudioPath,
-  canTransitionNoteStatus,
-  isClaimableForExtraction,
-  isClaimableForTranscription,
-  isRetryableProcessing,
-  noteStatusLabel,
-} from './note-status';
+    assertAudioDurationSeconds,
+    assertNoteStatusTransition,
+    buildNoteAudioPath,
+    canTransitionNoteStatus,
+    isClaimableForExtraction,
+    isClaimableForTranscription,
+    isRetryableProcessing,
+    noteStatusLabel,
+} from '@/features/notes/services/note-status';
 
 describe('canTransitionNoteStatus', () => {
   it('allows draft to uploading', () => {

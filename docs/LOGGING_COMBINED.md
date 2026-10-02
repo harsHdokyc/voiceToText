@@ -109,6 +109,7 @@ Prefer these `code` values in DB `last_error_code`, JSON `error`, and logs `code
 | `suggestion_id_required` | Body missing `suggestionId` |
 | `suggestion_not_found` | Suggestion missing or not owned |
 | `suggestion_not_found_or_not_pending` | RPC: suggestion not found or not pending |
+| `title_required` | Approve edit/RPC: blank title after trim |
 | `not_pending` | Suggestion status is not pending |
 | `already_extracting` | Note already in extracting state (skip) |
 | `rpc_failed` | RPC function call failed |

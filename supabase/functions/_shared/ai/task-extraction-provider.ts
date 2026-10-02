@@ -28,7 +28,7 @@ function isRetryableUpstream(error: unknown): boolean {
 /**
  * Structured extraction via OpenAI-compatible chat completions + Zod.
  * Transcript is untrusted content, never system instructions.
- * ponytail: one retry chain across free chat models — Naga :free upstreams flap.
+ * ponytail: short retry chain across chat models on 408/429/5xx.
  */
 export async function extractTasks(params: {
   transcript: string;

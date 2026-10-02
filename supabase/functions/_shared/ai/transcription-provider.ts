@@ -13,7 +13,7 @@ export type TranscriptResult = {
 
 /**
  * Server-side transcription via OpenAI-compatible /audio/transcriptions.
- * Default prototype: Naga `whisper-large-v3:free`.
+ * Default: official OpenAI `gpt-4o-mini-transcribe`.
  */
 export async function transcribeAudio(params: {
   file: File;

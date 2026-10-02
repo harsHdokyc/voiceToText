@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { settleAuthAction } from './auth-action';
+import { settleAuthAction } from '@/features/auth/services/auth-action';
 
 describe('settleAuthAction', () => {
   it('returns null message on success when no success copy is given', async () => {

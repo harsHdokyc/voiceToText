@@ -24,6 +24,40 @@ export type TaskSuggestion = {
   updated_at: string;
 };
 
+export type SuggestionEdits = {
+  title?: string;
+  details?: string;
+  kind?: SuggestionKind;
+  due_at?: string;
+  priority?: TaskPriority;
+};
+
+export function isPendingSuggestion(status: SuggestionStatus) {
+  return status === 'pending';
+}
+
+/**
+ * Diff draft fields against the stored suggestion for approve-suggestion edits.
+ * Throws if the draft title is empty after trim.
+ */
+export function buildSuggestionEdits(
+  original: Pick<TaskSuggestion, 'title' | 'details'>,
+  draft: { title: string; details: string },
+): SuggestionEdits | undefined {
+  const title = draft.title.trim();
+  if (!title) {
+    throw new ApiError('title_required', 'Title is required');
+  }
+  const details = draft.details.trim() || null;
+  const edits: SuggestionEdits = {};
+  if (title !== original.title) edits.title = title;
+  if (details !== (original.details ?? null)) {
+    // RPC treats null details as "no change"; send empty string to clear.
+    edits.details = details ?? '';
+  }
+  return Object.keys(edits).length > 0 ? edits : undefined;
+}
+
 const SUGGESTION_PUBLIC_SELECT =
   'id, note_id, title, details, kind, due_at, priority, source_quote, confidence, status, created_task_id, created_at, updated_at';
 
@@ -38,14 +72,6 @@ export async function getSuggestions(noteId: string) {
     return (data ?? []) as TaskSuggestion[];
   });
 }
-
-type SuggestionEdits = {
-  title?: string;
-  details?: string;
-  kind?: SuggestionKind;
-  due_at?: string;
-  priority?: TaskPriority;
-};
 
 type ApproveSuggestionResponse = {
   ok: boolean;

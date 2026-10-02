@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  describeProcessError,
-  failTargetForStage,
-  isRetryableHttpStatus,
-  providerLabelFromBaseUrl,
-  publicAiConfigView,
-  uniqueChatModels,
-} from './provider-utils';
+    describeProcessError,
+    failTargetForStage,
+    isRetryableHttpStatus,
+    providerLabelFromBaseUrl,
+    publicAiConfigView,
+    uniqueChatModels,
+} from '@supabaseShared/ai/provider-utils';
 
 describe('providerLabelFromBaseUrl', () => {
   it('detects naga and openai hosts', () => {

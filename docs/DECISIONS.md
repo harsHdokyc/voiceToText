@@ -5,6 +5,17 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-02 · AI provider = official OpenAI (leave Naga :free)
+- **Context:** Naga `:free` hit shared daily rate limits (429) and flaky 503s during Phase 4 extraction; unsuitable for smooth testing with real private audio.
+- **Alternatives:** Stay on Naga paid; other OpenAI-compatible gateways; self-hosted Whisper.
+- **Decision:** Default Edge AI to **official OpenAI** via the existing OpenAI SDK adapters:
+  - `OPENAI_BASE_URL=https://api.openai.com/v1`
+  - `OPENAI_API_KEY=<OpenAI secret key>` (Edge secrets only — never Expo / `EXPO_PUBLIC_*`)
+  - `AI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe` (~$0.003/min)
+  - `AI_CHAT_MODEL=gpt-4o-mini` (structured extraction)
+- **Consequence:** Hosted Edge secrets must be **replaced** (old Naga URL/key/models override code defaults if left set). Adapters unchanged — swap is config-only. Naga remains a historical prototype option if `OPENAI_BASE_URL` points at it again.
+- **Supersedes:** earlier “Prototype AI provider = Naga” default for new deploys (entry kept below for history).
+
 ## 2026-10-02 · Prototype AI provider = Naga (OpenAI-compatible), not direct OpenAI yet
 - **Context:** Need a low-cost STT + chat path for early spikes. Naga exposes OpenAI SDK-compatible APIs at `https://api.naga.ac/v1` ([overview](https://docs.naga.ac/api-reference/overview), [Whisper free](https://naga.ac/models/whisper-large-v3%3Afree)).
 - **Alternatives:** Official OpenAI only; self-hosted Whisper; other gateways.
@@ -20,6 +31,7 @@ Format: date · decision · context · alternatives considered · consequence.
   - Free chat upstreams can return **503** (“upstream provider temporarily unavailable”). Extraction tries a short fallback list of free chat models; if all fail, retry later or set `AI_CHAT_MODEL` to a healthier free/paid id.
 - **Consequence:** Before broader private beta with real user audio, move to paid Naga (training off) or official OpenAI. Never put the key in Expo/`EXPO_PUBLIC_*`.
 - **Default chat model:** `llama-4-scout-17b-16e-instruct:free` (switched from `llama-3.3-70b-instruct:free` after observed 503s on that id).
+- **Status:** Superseded for defaults by “AI provider = official OpenAI” (same day).
 
 ## 2026-10-02 · Email confirmation + recovery use 8-digit OTP (no magic links in-app)
 - **Context:** User configured Supabase email templates for OTP instead of confirmation links.

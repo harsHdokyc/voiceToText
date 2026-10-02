@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  emailFromRouteParam,
-  emailOtpTypeForPurpose,
-  otpPurposeFromRouteParam,
-} from './auth-route-params';
+    emailFromRouteParam,
+    emailOtpTypeForPurpose,
+    otpPurposeFromRouteParam,
+} from '@/features/auth/services/auth-route-params';
 
 describe('emailFromRouteParam', () => {
   it('normalizes a string param', () => {

@@ -3,17 +3,18 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@supabaseShared/*": ["./supabase/functions/_shared/*"]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "test/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "supabase/functions"
+    "node_modules"
   ]
 }

@@ -1,8 +1,8 @@
 /**
- * Edge AI config — OpenAI-compatible providers (Naga today, official OpenAI later).
+ * Edge AI config — official OpenAI by default (OpenAI-compatible base URL still supported).
  * Secrets stay in Supabase Edge secrets / functions/.env — never EXPO_PUBLIC_*.
  *
- * See docs/DECISIONS.md (Naga prototype provider).
+ * See docs/DECISIONS.md.
  */
 
 import {
@@ -18,20 +18,17 @@ export type AiConfig = {
   providerLabel: string;
 };
 
-const DEFAULT_BASE_URL = "https://api.naga.ac/v1";
-const DEFAULT_TRANSCRIPTION_MODEL = "whisper-large-v3:free";
-/**
- * Prefer a smaller free chat model — large free instruct models often 503 when
- * Naga has no healthy upstream (see docs/DECISIONS.md).
- */
-const DEFAULT_CHAT_MODEL = "llama-4-scout-17b-16e-instruct:free";
+const DEFAULT_BASE_URL = "https://api.openai.com/v1";
+/** Cheap, reliable STT for ≤60s notes (~$0.003/min). */
+const DEFAULT_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe";
+/** Cheap chat model for structured task extraction. */
+const DEFAULT_CHAT_MODEL = "gpt-4o-mini";
 
-/** Tried in order after the configured chat model on retryable upstream failures. */
-export const CHAT_MODEL_FALLBACKS = [
-  "llama-4-scout-17b-16e-instruct:free",
-  "nex-n2.5-mini:free",
-  "llama-3.3-70b-instruct:free",
-] as const;
+/**
+ * Tried in order after the configured chat model on retryable upstream failures.
+ * Keep short — OpenAI paid models rarely need a long free-tier flap chain.
+ */
+export const CHAT_MODEL_FALLBACKS = ["gpt-4o-mini"] as const;
 
 export function getAiConfig(): AiConfig {
   const apiKey = Deno.env.get("OPENAI_API_KEY")?.trim() || null;

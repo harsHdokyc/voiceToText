@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extensionForMime, mimeFromUri } from './recording-format';
+import { extensionForMime, mimeFromUri } from '@/features/recording/services/recording-format';
 
 describe('extensionForMime', () => {
   it('maps common recording MIME types', () => {

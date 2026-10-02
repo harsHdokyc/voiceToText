@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { ApiError, describeError, errorMessageForUi } from './api-error';
-import { formatLogLine, sanitizeLogFields } from './logger';
+import { ApiError, describeError, errorMessageForUi } from '@/lib/api-error';
+import { formatLogLine, sanitizeLogFields } from '@/lib/logger';
 
 describe('sanitizeLogFields', () => {
   it('strips secrets and content fields', () => {

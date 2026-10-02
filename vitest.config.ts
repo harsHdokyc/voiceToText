@@ -5,13 +5,13 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: [
-      'src/**/*.test.ts',
-      'supabase/functions/_shared/**/*.test.ts',
+      'test/**/*.test.ts',
     ],
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      '@supabaseShared': path.resolve(__dirname, 'supabase/functions/_shared'),
     },
   },
 });

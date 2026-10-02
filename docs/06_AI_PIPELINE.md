@@ -5,20 +5,20 @@
 3. Validate output at runtime before DB persistence.
 4. Keep suggestions pending until user approval.
 
-## Current prototype provider (see DECISIONS.md)
+## Current provider (see DECISIONS.md)
 | Setting | Value |
 |---|---|
 | SDK | `openai` (official) on Edge |
-| Base URL | `https://api.naga.ac/v1` (`OPENAI_BASE_URL`) |
-| API key secret | `OPENAI_API_KEY` (Naga key) |
-| Transcription model | `whisper-large-v3:free` (`AI_TRANSCRIPTION_MODEL`) |
-| Chat / extraction model | `llama-4-scout-17b-16e-instruct:free` (`AI_CHAT_MODEL`; fallbacks on 503) |
+| Base URL | `https://api.openai.com/v1` (`OPENAI_BASE_URL`) |
+| API key secret | `OPENAI_API_KEY` (OpenAI secret key — Edge only) |
+| Transcription model | `gpt-4o-mini-transcribe` (`AI_TRANSCRIPTION_MODEL`) |
+| Chat / extraction model | `gpt-4o-mini` (`AI_CHAT_MODEL`) |
 
 Shared modules: `supabase/functions/_shared/ai/{config,openai-client,transcription-provider,task-extraction-provider}.ts`.
 
 Spike function: `openai-spike` probes `config` \| `chat` \| `transcribe`.
 
-**Privacy:** Naga `:free` models may use prompts/outputs for training. Swap off `:free` before trusting real private audio in production.
+**Privacy / cost:** Official OpenAI paid usage — no Naga `:free` training caveat. Keep spend bounded (≤60s audio, short transcripts). Never put the key in Expo/`EXPO_PUBLIC_*`.
 
 ## Provider interfaces
 ```ts
@@ -57,8 +57,8 @@ Pin the OpenAI SDK version that Phase 0 proves on Edge. Prefer structured/JSON r
 Track model/provider, latency, audio seconds, token usage/cost estimates without logging note content. Bound file length, output size, timeout, retries, and per-user spend. V1 audio processing is inline after an atomic DB claim for short clips only (see `DECISIONS.md`).
 
 ## References
-- Naga API overview: https://docs.naga.ac/api-reference/overview
-- Naga Whisper free: https://naga.ac/models/whisper-large-v3%3Afree
-- Naga STT docs: https://docs.naga.ac/api/audio/speech-to-text
-- Naga privacy / free training: https://docs.naga.ac/account/privacy-and-logging
-- Naga rate limits: https://docs.naga.ac/build/rate-limits
+- OpenAI speech-to-text: https://platform.openai.com/docs/guides/speech-to-text
+- OpenAI models / pricing: https://platform.openai.com/docs/models
+- OpenAI API pricing: https://developers.openai.com/api/docs/pricing
+- gpt-4o-mini-transcribe: https://developers.openai.com/api/docs/models/gpt-4o-mini-transcribe
+- gpt-4o-mini: https://developers.openai.com/api/docs/models/gpt-4o-mini
