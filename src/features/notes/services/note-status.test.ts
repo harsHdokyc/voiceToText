@@ -69,7 +69,7 @@ describe('buildNoteAudioPath', () => {
         noteId: 'note-2',
         extension: 'm4a',
       }),
-    ).toBe('user-1/note-2/original.m4a');
+    ).toBe('user-1/notes/note-2/original.m4a');
   });
 
   it('strips a leading dot and defaults extension to m4a', () => {
@@ -79,9 +79,9 @@ describe('buildNoteAudioPath', () => {
         noteId: 'n',
         extension: '.webm',
       }),
-    ).toBe('u/n/original.webm');
+    ).toBe('u/notes/n/original.webm');
     expect(buildNoteAudioPath({ userId: 'u', noteId: 'n' })).toBe(
-      'u/n/original.m4a',
+      'u/notes/n/original.m4a',
     );
   });
 });

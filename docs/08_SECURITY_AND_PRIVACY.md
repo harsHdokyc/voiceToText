@@ -15,6 +15,6 @@
 14. Keep service-role usage isolated to trusted server code; authorize first.
 15. Commit migrations and review grants/RLS together.
 
-Audio path pattern: `{user_id}/{note_id}/original.ext`. Storage policy validates bucket and path ownership; server checks object belongs to authenticated user and expected note. Use allowed MIME types/size limit. For deletion, coordinate DB and object cleanup with retries and orphan cleanup.
+Audio path pattern (server-only): `{user_id}/notes/{note_id}/original.ext`. Client never receives `audio_path` — use Edge `note-audio` proxy with `noteId` for upload/download. Storage policy validates bucket and first-folder ownership (`auth.uid()`); server checks object belongs to authenticated user and expected note. Use allowed MIME types/size limit. For deletion, coordinate DB and object cleanup with retries and orphan cleanup.
 
 RLS checklist: grants correct? RLS enabled? policies per operation? insert `WITH CHECK`? update `USING` and `WITH CHECK`? Can `user_id` change? Can child reference another user's parent? Are policy columns indexed? Are cross-user tests present? Are views/functions safe?

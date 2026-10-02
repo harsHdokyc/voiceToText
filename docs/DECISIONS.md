@@ -66,6 +66,15 @@ Format: date · decision · context · alternatives considered · consequence.
 - **Decision:** Single source for agent rules at `.cursor/rules/`. Product blueprint at `docs/`.
 - **Consequence:** Do not recreate `docs/.cursor/`. Update STATUS when phases change.
 
+## 2026-10-02 · Note audio access is noteId proxy (never expose storage keys to client)
+- **Context:** Dashboard object keys (`userId/…/original.m4a`) are fine server-side; returning them in app API/network makes keys easy to scrape and couples the UI to Storage layout. Email-as-folder was rejected (PII, churn, RLS mismatch).
+- **Alternatives:** Signed URLs from client; email folder prefixes; direct Storage upload from app.
+- **Decision:**
+  - Object key stays `{user_id}/notes/{note_id}/original.ext` (first segment = `auth.uid()` for Storage RLS).
+  - Client talks only in **`noteId`**. Edge Function `note-audio` uploads (multipart) and downloads (raw bytes) after JWT + ownership checks. `audio_path` is selected only on the server; client note queries omit it.
+  - All proxy ops emit structured `[vtw]` logs (`code` + `reason`, noteId, bytes — never the key in client responses).
+- **Consequence:** App uses `note-audio-proxy.ts`; `process-note` still reads `audio_path` from DB. Existing objects at the old `{user_id}/{note_id}/…` path keep working until re-uploaded.
+
 ## 2026-10-02 · Structured `[vtw]` logging with code + real reason
 - **Context:** Metro showed almost no API/backend signal; failures were generic. Need greppable logs without logging secrets/content.
 - **Alternatives:** Rely on Supabase dashboard only; ad-hoc `console.log`; full APM.

@@ -65,5 +65,6 @@ export function buildNoteAudioPath(params: {
   extension?: string;
 }) {
   const ext = (params.extension ?? 'm4a').replace(/^\./, '');
-  return `${params.userId}/${params.noteId}/original.${ext}`;
+  // First segment = auth.uid() for Storage RLS. Never expose to client API.
+  return `${params.userId}/notes/${params.noteId}/original.${ext}`;
 }

@@ -18,10 +18,11 @@ Last updated: 2026-10-02.
 | Piece | Notes |
 |---|---|
 | Home | Lists notes; link to record + settings |
-| Record | `expo-audio` ≤60s → draft note → upload → `process-note` |
+| Record | `expo-audio` ≤60s → draft → **note-audio proxy upload** → `process-note` |
 | Note detail | Polls while queued/transcribing; shows transcript; retry |
+| Audio access | Client uses `noteId` only; Edge `note-audio` proxy; `audio_path` never returned to app |
 | Status helpers | `src/features/notes/services/note-status.ts` |
-| Notes service | create/upload/invoke/retry in `notes-service.ts` |
+| Notes service | create / proxy-upload / invoke / retry |
 
 ## AI (Edge)
 | Piece | Location / notes |
@@ -30,6 +31,7 @@ Last updated: 2026-10-02.
 | Transcription adapter | `transcription-provider.ts` → `whisper-large-v3:free` |
 | Extraction adapter | `task-extraction-provider.ts` → scout + free fallbacks |
 | Spike | `openai-spike` probes: `config` \| `chat` \| `transcribe` |
+| Audio proxy | `note-audio` — upload/download by `noteId` (no storage key to client) |
 | Process | `process-note` — claim queued note → download → Whisper → `review_ready` |
 
 **Manual secret setup (required for live AI):** In Supabase Dashboard → Edge Functions → Secrets set:
@@ -37,9 +39,6 @@ Last updated: 2026-10-02.
 - `OPENAI_BASE_URL` = `https://api.naga.ac/v1`
 - `AI_TRANSCRIPTION_MODEL` = `whisper-large-v3:free` (optional; this is the default)
 - `AI_CHAT_MODEL` = `llama-4-scout-17b-16e-instruct:free` (optional; this is the default)
-  - If chat returns 503 upstream unavailable: retry, or set another free model (`nex-n2.5-mini:free`, etc.)
-
-Then re-invoke `openai-spike` from the app (`{ "probe": "config" }` then `{ "probe": "chat" }` / `transcribe`).
 
 ## Deployed backend
 | Item | Status |
@@ -48,19 +47,20 @@ Then re-invoke `openai-spike` from the app (`{ "probe": "config" }` then `{ "pro
 | Migration `phase2_notes_storage` | Applied (notes, tasks, suggestions, `note-audio` bucket + RLS) |
 | Edge `health` | ACTIVE |
 | Edge `openai-spike` | ACTIVE |
-| Edge `process-note` | ACTIVE (v1, verify_jwt) |
+| Edge `process-note` | ACTIVE |
+| Edge `note-audio` | ACTIVE (v2, verify_jwt) — upload/download by noteId |
 | App `.env` | Hosted URL + publishable key |
 
 ## Logging
-Structured `[vtw]` JSON lines in Metro (app) and Edge Function logs. See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md). Auth + notes API paths and `process-note` are instrumented with `code` + real `reason` on failures.
+Structured `[vtw]` pretty JSON in Metro (app) and Edge Function logs. See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 
 ## Tests
 | Command | Last result |
 |---|---|
 | `npm run typecheck` | Pass |
-| `npm test` | 52 passed |
+| `npm test` | 53 passed |
 
-**Policy:** Unit tests side-by-side with pure logic; each test must fail if the **business rule** breaks — not if a mock wasn’t called (`.cursor/rules/07-testing.mdc`, [12_TESTING_STRATEGY.md](./12_TESTING_STRATEGY.md)).
+**Policy:** Unit tests side-by-side with pure logic; each test must fail if the **business rule** breaks — not if a mock wasn’t called (`.cursor/rules/07-testing.mdc`).
 
 ## Next slice
 Phase 4 — task extraction + review UI (edit/approve/reject suggestions).

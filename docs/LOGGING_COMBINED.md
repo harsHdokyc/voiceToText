@@ -74,12 +74,8 @@ Edge Function logs: Supabase Dashboard → Edge Functions → `process-note` →
 | `api.auth.verify_otp` / `resend_signup_otp` / `request_password_reset` / `update_password` | Auth OTP/password |
 | `api.notes.list` / `get` / `create_draft` | Notes CRUD |
 | `api.notes.upload` | Storage upload |
-| `api.notes.process` | Invoke `process-note` |
-| `api.notes.retry_transcription` | Retry path |
-
-### Edge scopes
-| Scope | When |
-|---|---|
+| `api.notes.audio_upload_proxy` / `audio_download_proxy` | Client → Edge `note-audio` by noteId |
+| `edge.note-audio` | Upload/download proxy (no storage key in responses) |
 | `edge.process-note` | Claim → download → Whisper → persist |
 
 ---
