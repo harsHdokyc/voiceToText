@@ -9,6 +9,7 @@ import {
 } from '@/features/auth/components/auth-ui';
 import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { updatePassword } from '@/features/auth/services/auth-service';
+import { assertPasswordsMatch } from '@/features/auth/services/auth-validation';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function ResetPasswordScreen() {
@@ -50,10 +51,7 @@ export default function ResetPasswordScreen() {
         busy={busy}
         onPress={() =>
           void run(async () => {
-            if (password !== confirm) {
-              throw new Error('Passwords do not match');
-            }
-            await updatePassword(password);
+            await updatePassword(assertPasswordsMatch(password, confirm));
             router.replace('/(app)');
           })
         }

@@ -12,24 +12,20 @@ import {
   requestPasswordReset,
   resendSignupOtp,
   verifyEmailOtp,
-  type OtpPurpose,
 } from '@/features/auth/services/auth-service';
+import {
+  emailFromRouteParam,
+  otpPurposeFromRouteParam,
+} from '@/features/auth/services/auth-route-params';
 import { EMAIL_OTP_LENGTH } from '@/lib/constants';
-
-function asPurpose(value: string | string[] | undefined): OtpPurpose {
-  const raw = Array.isArray(value) ? value[0] : value;
-  return raw === 'recovery' ? 'recovery' : 'signup';
-}
-
-function asEmail(value: string | string[] | undefined) {
-  const raw = Array.isArray(value) ? value[0] : value;
-  return (raw ?? '').trim().toLowerCase();
-}
 
 export default function VerifyOtpScreen() {
   const params = useLocalSearchParams<{ email?: string; purpose?: string }>();
-  const email = useMemo(() => asEmail(params.email), [params.email]);
-  const purpose = useMemo(() => asPurpose(params.purpose), [params.purpose]);
+  const email = useMemo(() => emailFromRouteParam(params.email), [params.email]);
+  const purpose = useMemo(
+    () => otpPurposeFromRouteParam(params.purpose),
+    [params.purpose],
+  );
   const { busy, message, run } = useAuthAction();
   const [token, setToken] = useState('');
 

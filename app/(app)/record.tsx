@@ -72,7 +72,10 @@ export default function RecordScreen() {
         extension: extensionForMime(mimeType),
       });
       await requestTranscription(queued.id);
-      router.replace(`/(app)/notes/${queued.id}`);
+      router.replace({
+        pathname: '/(app)/notes/[noteId]',
+        params: { noteId: queued.id },
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Upload failed');
     } finally {

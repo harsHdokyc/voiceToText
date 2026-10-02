@@ -5,6 +5,11 @@
  * See docs/DECISIONS.md (Naga prototype provider).
  */
 
+import {
+  providerLabelFromBaseUrl,
+  publicAiConfigView,
+} from "./provider-utils.ts";
+
 export type AiConfig = {
   apiKey: string | null;
   baseUrl: string;
@@ -38,31 +43,16 @@ export function getAiConfig(): AiConfig {
   const chatModel =
     Deno.env.get("AI_CHAT_MODEL")?.trim() || DEFAULT_CHAT_MODEL;
 
-  let providerLabel = "openai-compatible";
-  try {
-    const host = new URL(baseUrl).host;
-    if (host.includes("naga.ac")) providerLabel = "naga";
-    else if (host.includes("openai.com")) providerLabel = "openai";
-  } catch {
-    // keep default label
-  }
-
   return {
     apiKey,
     baseUrl,
     transcriptionModel,
     chatModel,
-    providerLabel,
+    providerLabel: providerLabelFromBaseUrl(baseUrl),
   };
 }
 
 /** Safe for client responses — no key material. */
 export function publicAiConfig(config: AiConfig) {
-  return {
-    provider: config.providerLabel,
-    baseUrl: config.baseUrl,
-    transcriptionModel: config.transcriptionModel,
-    chatModel: config.chatModel,
-    apiKeyConfigured: Boolean(config.apiKey),
-  };
+  return publicAiConfigView(config);
 }

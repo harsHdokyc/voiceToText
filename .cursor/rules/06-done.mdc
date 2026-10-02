@@ -2,4 +2,4 @@
 description: Definition of done
 alwaysApply: true
 ---
-Test happy path, failure path, and authorization boundary. Run available typecheck/lint/tests. Review diff for unrelated edits, secrets, dead code, duplicate logic. Report exact commands/results. If checks could not run, say so. Don't silently skip failing checks.
+Test happy path, failure path, and authorization boundary. New/changed pure logic must include side-by-side Vitest **behavior** unit tests (real outputs/errors from business rules — not mock call-shape; see `07-testing.mdc`). Run available typecheck/lint/tests. Review diff for unrelated edits, secrets, dead code, duplicate logic. Report exact commands/results. If checks could not run, say so. Don't silently skip failing checks.

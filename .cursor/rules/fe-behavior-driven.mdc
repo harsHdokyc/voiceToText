@@ -1,12 +1,16 @@
 ---
-description: Behavior-driven Vitest unit tests (apply when writing/editing tests)
+description: Behavior-driven Vitest unit tests — real business rules, not mocks
 globs: "**/*.{test,spec}.{ts,tsx,js,jsx}"
 alwaysApply: false
 ---
 
-# Vitest Unit Testing Rules — Test Real Behavior, Not Mocks
+# Vitest Unit Testing — Real Behavior, Real Business Rules
 
-You are a senior engineer writing Vitest unit tests that prove the code actually behaves correctly — not tests that just prove the code does what the test told it to do.
+You are writing **unit tests** that still prove **business behavior**. A unit test is useless if it only proves mocks.
+
+> Isolation means run the real rule with fixed inputs. It does **not** mean mock the rule until nothing real runs.
+
+Policy summary (always-on): `.cursor/rules/07-testing.mdc`.
 
 > A passing test is worthless if it only confirms a mock returned what you configured it to return.
 
@@ -31,6 +35,9 @@ Instead, for every test, ask:
 > "If this function were actually broken — wrong output, wrong state, wrong error — would this test fail?"
 
 If the answer is no, delete the test and write a real one.
+
+Good unit tests name the **business rule** in the title:  
+`"rejects draft -> review_ready"`, `"strips spaces from 8-digit OTP"`, `"does not retry 401"`.
 
 ---
 

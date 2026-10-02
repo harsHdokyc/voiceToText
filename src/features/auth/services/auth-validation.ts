@@ -19,6 +19,14 @@ export function assertPassword(password: string) {
   return password;
 }
 
+export function assertPasswordsMatch(password: string, confirm: string) {
+  assertPassword(password);
+  if (password !== confirm) {
+    throw new Error('Passwords do not match');
+  }
+  return password;
+}
+
 export function assertOtp(token: string) {
   const value = token.replace(/\s/g, '');
   if (!new RegExp(`^\\d{${EMAIL_OTP_LENGTH}}$`).test(value)) {

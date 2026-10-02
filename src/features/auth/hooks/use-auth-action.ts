@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { authErrorMessage } from '@/features/auth/services/auth-validation';
+import { settleAuthAction } from '@/features/auth/services/auth-action';
 
 /** Shared busy/error wrapper for auth screens. */
 export function useAuthAction() {
@@ -11,10 +11,8 @@ export function useAuthAction() {
     setBusy(true);
     setMessage(null);
     try {
-      await action();
-      if (successMessage) setMessage(successMessage);
-    } catch (error) {
-      setMessage(authErrorMessage(error));
+      const settled = await settleAuthAction(action, successMessage);
+      setMessage(settled.message);
     } finally {
       setBusy(false);
     }

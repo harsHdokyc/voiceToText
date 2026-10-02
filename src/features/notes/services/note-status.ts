@@ -43,6 +43,10 @@ export function isClaimableForTranscription(status: NoteStatus) {
   return status === 'queued' || status === 'transcription_failed';
 }
 
+export function noteStatusLabel(status: NoteStatus) {
+  return status.replaceAll('_', ' ');
+}
+
 export function assertAudioDurationSeconds(durationSeconds: number) {
   if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
     throw new Error('Recording duration is invalid');

@@ -6,6 +6,7 @@ import {
   buildNoteAudioPath,
   canTransitionNoteStatus,
   isClaimableForTranscription,
+  noteStatusLabel,
 } from './note-status';
 
 describe('canTransitionNoteStatus', () => {
@@ -42,6 +43,13 @@ describe('isClaimableForTranscription', () => {
   });
 });
 
+describe('noteStatusLabel', () => {
+  it('replaces underscores for display', () => {
+    expect(noteStatusLabel('transcription_failed')).toBe('transcription failed');
+    expect(noteStatusLabel('queued')).toBe('queued');
+  });
+});
+
 describe('assertAudioDurationSeconds', () => {
   it('accepts a short clip', () => {
     expect(assertAudioDurationSeconds(12)).toBe(12);
@@ -62,5 +70,18 @@ describe('buildNoteAudioPath', () => {
         extension: 'm4a',
       }),
     ).toBe('user-1/note-2/original.m4a');
+  });
+
+  it('strips a leading dot and defaults extension to m4a', () => {
+    expect(
+      buildNoteAudioPath({
+        userId: 'u',
+        noteId: 'n',
+        extension: '.webm',
+      }),
+    ).toBe('u/n/original.webm');
+    expect(buildNoteAudioPath({ userId: 'u', noteId: 'n' })).toBe(
+      'u/n/original.m4a',
+    );
   });
 });

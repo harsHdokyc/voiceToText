@@ -3,6 +3,7 @@ import OpenAI from "npm:openai@4.104.0";
 
 import { CHAT_MODEL_FALLBACKS, getAiConfig } from "./config.ts";
 import { createOpenAiClient } from "./openai-client.ts";
+import { uniqueChatModels } from "./provider-utils.ts";
 
 /** Minimal spike schema — full TaskSuggestion lands in Phase 4. */
 export const SpikeTaskSchema = z.object({
@@ -19,9 +20,7 @@ function isRetryableUpstream(error: unknown) {
 }
 
 function chatModelCandidates(preferred: string) {
-  return [preferred, ...CHAT_MODEL_FALLBACKS].filter(
-    (model, index, all) => all.indexOf(model) === index,
-  );
+  return uniqueChatModels(preferred, CHAT_MODEL_FALLBACKS);
 }
 
 /**

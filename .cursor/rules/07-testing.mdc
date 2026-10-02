@@ -1,0 +1,38 @@
+---
+description: Unit tests must prove real business behavior — not mock theater
+alwaysApply: true
+---
+# Unit tests = real behavior (locked)
+
+We write **unit tests**. They must still prove **real business behavior**. Those are not opposites.
+
+## What “unit test” means here
+- Fast, deterministic, no network/DB/device I/O.
+- One module/function’s contract under known inputs.
+- Isolation by **extracting pure logic** and running it for real — not by mocking away the thing under test.
+
+## What every test must prove
+Assert **observable outcomes of the business rule**: return value, thrown error message/type, or resulting state.
+
+Litmus: *If the rule were wrong (bad output, wrong transition, weak validation), would this test fail?*  
+If no → delete it and write a real one.
+
+## Forbidden (worthless green)
+- `toHaveBeenCalled` / `toHaveBeenCalledWith` as the main proof
+- Configuring a mock, then asserting it returned what you configured
+- Re-implementing the same formula in the test and comparing to the source
+- `vi.mock` of sibling pure helpers “for isolation”
+- Screen tests that only prove a button invoked a mock
+- Smoke-only checks (`toBeDefined`, “doesn’t throw”)
+
+## Allowed mocking (boundary only)
+Mock **true external boundaries** only: Supabase/network, filesystem, clock, randomness, third-party SDKs.  
+Even then, assert the **unit’s behavior** after the boundary fails/succeeds — not that the mock was touched.
+
+## When / where
+- Ship `*.test.ts` **side-by-side** with new/changed non-trivial pure logic (same change). Never defer.
+- Prefer extracting a pure helper from screens/services over testing JSX wiring.
+- Skip Vitest for thin I/O wrappers until a pure helper exists.
+- Full assertion style while editing tests: `.cursor/rules/fe-behavior-driven.mdc`
+- RLS / integration / device checks still required for auth, storage, ownership.
+- Run `npm test` (+ `npm run typecheck` if types changed); report exact results.

@@ -9,13 +9,10 @@ import {
   View,
 } from 'react-native';
 
-import { listNotes, type NoteRow } from '@/features/notes/services/notes-service';
+import { listNotes } from '@/features/notes/services/notes-service';
+import { noteStatusLabel } from '@/features/notes/services/note-status';
 import { signOut } from '@/features/auth/services/auth-service';
 import { useAuth } from '@/providers/auth-provider';
-
-function statusLabel(note: NoteRow) {
-  return note.status.replaceAll('_', ' ');
-}
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -52,12 +49,17 @@ export default function HomeScreen() {
           renderItem={({ item }) => (
             <Pressable
               style={styles.row}
-              onPress={() => router.push(`/(app)/notes/${item.id}`)}
+              onPress={() =>
+                router.push({
+                  pathname: '/(app)/notes/[noteId]',
+                  params: { noteId: item.id },
+                })
+              }
             >
               <Text style={styles.rowTitle}>
                 {item.title ?? 'Voice note'}
               </Text>
-              <Text style={styles.meta}>{statusLabel(item)}</Text>
+              <Text style={styles.meta}>{noteStatusLabel(item.status)}</Text>
             </Pressable>
           )}
         />

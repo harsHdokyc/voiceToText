@@ -1,13 +1,14 @@
 import type { EmailOtpType } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
+import { emailOtpTypeForPurpose, type OtpPurpose } from '@/features/auth/services/auth-route-params';
 import {
   assertEmail,
   assertOtp,
   assertPassword,
 } from '@/features/auth/services/auth-validation';
 
-export type OtpPurpose = 'signup' | 'recovery';
+export type { OtpPurpose };
 
 export async function signInWithPassword(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -37,7 +38,7 @@ export async function verifyEmailOtp(
   token: string,
   purpose: OtpPurpose,
 ) {
-  const type: EmailOtpType = purpose === 'recovery' ? 'recovery' : 'signup';
+  const type: EmailOtpType = emailOtpTypeForPurpose(purpose);
   const { data, error } = await supabase.auth.verifyOtp({
     email: assertEmail(email),
     token: assertOtp(token),

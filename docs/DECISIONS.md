@@ -66,8 +66,25 @@ Format: date · decision · context · alternatives considered · consequence.
 - **Decision:** Single source for agent rules at `.cursor/rules/`. Product blueprint at `docs/`.
 - **Consequence:** Do not recreate `docs/.cursor/`. Update STATUS when phases change.
 
-## 2026-10-02 · Vitest behavior rule is deferred until test files exist
-- **Context:** Behavior-driven Vitest guidance is valuable but heavy for a docs-only / Phase 0–2 repo.
-- **Alternatives:** Always-apply the rule; delete it until later.
-- **Decision:** Keep `.cursor/rules/fe-behavior-driven.mdc` with `alwaysApply: false` and globs on `*.{test,spec}.{ts,tsx}`. Phases 0–2 prioritize RLS + integration acceptance over a large unit suite.
-- **Consequence:** Write Vitest suites when pure logic exists; follow the rule only while editing tests.
+## 2026-10-02 · Unit tests must prove business behavior (not mock theater)
+- **Context:** “Unit test” can be misread as “mock everything.” User wants real unit tests that still encode product rules (validation, status machine, paths, retry policy).
+- **Alternatives:** Screen-level RNTL with mocked services; call-shape-only suites; defer quality until E2E.
+- **Decision:** Keep Vitest unit tests. Isolation = run pure logic for real. Assert outputs/errors that would change if the business rule broke. Mock only true I/O boundaries; never mock the SUT or sibling pure helpers. Screens stay untested in Vitest; their rules are extracted and unit-tested. Locked in `.cursor/rules/07-testing.mdc` + `fe-behavior-driven.mdc`.
+- **Consequence:** PRs that add `toHaveBeenCalled`-only tests or mock-configured echo tests are incomplete — rewrite to behavior assertions.
+
+## 2026-10-02 · Vitest is mandatory side-by-side for pure logic (never “later”)
+- **Context:** Waiting until a dedicated test phase left pure helpers untested and made regressions cheap to ship. User asked to always write tests with new work.
+- **Alternatives:** Defer until Phase 7; only test at release; always-apply the full behavior-driven essay on every chat.
+- **Decision:**
+  - **Always** add/update `*.test.ts` in the same change as non-trivial pure logic.
+  - Agent rule: `.cursor/rules/07-testing.mdc` (`alwaysApply: true`).
+  - Assertion style: `.cursor/rules/fe-behavior-driven.mdc` (glob on test files only).
+  - Skip Vitest for thin I/O wrappers; extract a pure helper if the rule needs a test.
+  - RLS/integration/device checks still required for auth/storage — Vitest does not replace them.
+- **Consequence:** Phase 4+ PRs without tests for new pure helpers are incomplete. Catch up existing pure modules before the next product phase when practical.
+
+## 2026-10-02 · Phase 3 transcription = inline Edge claim (no queue yet)
+- **Context:** Short audio (≤60s) fits Edge request lifetime; need idempotent claim so double-taps don't double-bill STT.
+- **Alternatives:** Always enqueue via DB queue/cron; client-only polling without claim.
+- **Decision:** `process-note` conditional-updates `queued`/`transcription_failed` → `transcribing`, downloads private `note-audio`, calls Whisper adapter, writes `review_ready` (or `transcription_failed`). Skip-extract path until Phase 4.
+- **Consequence:** Extraction is a separate Phase 4 invoke; retry from note detail re-invokes the same function.
