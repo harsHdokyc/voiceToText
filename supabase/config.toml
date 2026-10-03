@@ -433,3 +433,27 @@ entrypoint = "./functions/openai-spike/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/openai-spike/*.html" ]
+
+[functions.register-push-token]
+enabled = true
+verify_jwt = true
+import_map = "./functions/register-push-token/deno.json"
+entrypoint = "./functions/register-push-token/index.ts"
+
+[functions.dispatch-reminders]
+enabled = true
+verify_jwt = false
+import_map = "./functions/dispatch-reminders/deno.json"
+entrypoint = "./functions/dispatch-reminders/index.ts"
+
+[functions.delete-note]
+enabled = true
+verify_jwt = true
+import_map = "./functions/delete-note/deno.json"
+entrypoint = "./functions/delete-note/index.ts"
+
+[functions.delete-account]
+enabled = true
+verify_jwt = true
+import_map = "./functions/delete-account/deno.json"
+entrypoint = "./functions/delete-account/index.ts"

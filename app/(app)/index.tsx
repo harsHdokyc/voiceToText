@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, router } from 'expo-router';
+import { Link, router, type Href } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -31,6 +31,13 @@ export default function HomeScreen() {
         onPress={() => router.push('/(app)/record')}
       >
         <Text style={styles.buttonText}>Record a note</Text>
+      </Pressable>
+
+      <Pressable
+        style={[styles.button, styles.secondary]}
+        onPress={() => router.push('/(app)/tasks' as Href)}
+      >
+        <Text style={styles.buttonText}>My tasks</Text>
       </Pressable>
 
       {notes.isLoading ? (

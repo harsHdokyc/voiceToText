@@ -76,10 +76,18 @@ Edge Function logs: Supabase Dashboard → Edge Functions → `process-note` →
 | `api.notes.upload` | Storage upload |
 | `api.notes.audio_upload_proxy` / `audio_download_proxy` | Client → Edge `note-audio` by noteId |
 | `api.suggestions.list` / `approve` / `reject` | Task suggestions |
+| `api.tasks.list` / `get` / `update` / `complete` / `reopen` | Task management |
+| `api.reminders.list` / `schedule` / `cancel` | Reminders |
+| `api.push.register` | Expo push token registration |
+| `api.notes.delete` / `api.account.delete` | Deletion |
 | `edge.note-audio` | Upload/download proxy (no storage key in responses) |
 | `edge.process-note` | Claim → download → Whisper → extract → persist |
 | `edge.approve-suggestion` | Approve suggestion + create task |
 | `edge.reject-suggestion` | Reject suggestion |
+| `edge.register-push-token` | Upsert device token |
+| `edge.dispatch-reminders` | Claim due reminders + Expo push + ledger |
+| `edge.delete-note` | Delete note + audio |
+| `edge.delete-account` | Wipe app data + auth user |
 
 ---
 
@@ -110,6 +118,18 @@ Prefer these `code` values in DB `last_error_code`, JSON `error`, and logs `code
 | `suggestion_not_found` | Suggestion missing or not owned |
 | `suggestion_not_found_or_not_pending` | RPC: suggestion not found or not pending |
 | `title_required` | Approve edit/RPC: blank title after trim |
+| `task_not_found` | Task missing or not owned |
+| `task_archived` | Edit attempted on archived task |
+| `task_update_lost` | Conditional task update matched no row |
+| `task_status_transition_lost` | Complete/reopen matched no row |
+| `invalid_task_status_transition` | Illegal task status change |
+| `rate_limited` | Daily process-note quota reached |
+| `push_permission_denied` | Notification permission not granted |
+| `push_token_missing` | Expo token empty |
+| `push_register_failed` | register-push-token failed |
+| `reminder_cancel_lost` | Cancel matched no scheduled row |
+| `note_delete_failed` / `account_delete_failed` | Deletion Edge failures |
+| `confirm_required` | delete-account missing confirm=DELETE |
 | `not_pending` | Suggestion status is not pending |
 | `already_extracting` | Note already in extracting state (skip) |
 | `rpc_failed` | RPC function call failed |

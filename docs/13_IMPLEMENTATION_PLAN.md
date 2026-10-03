@@ -24,3 +24,5 @@ UTC reminder data, push-token registration, Cron + protected dispatcher, deliver
 Deletion, privacy disclosure, rate limits, cost/latency metrics without content, RLS tests, physical-device tests, current provider terms/pricing review.
 
 Build one vertical slice at a time. Don't scaffold every future feature. After each slice report files, migrations/functions, tests run, exact results, limitations, next slice.
+
+**Living inventory of what shipped vs what was left intentionally:** [STATUS.md — Phase inventory + intentional leftovers](./STATUS.md#phase-inventory--intentional-leftovers).

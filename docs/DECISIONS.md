@@ -99,6 +99,18 @@ Format: date · decision · context · alternatives considered · consequence.
 - **Decision:** Keep Vitest unit tests. Isolation = run pure logic for real. Assert outputs/errors that would change if the business rule broke. Mock only true I/O boundaries; never mock the SUT or sibling pure helpers. Screens stay untested in Vitest; their rules are extracted and unit-tested. Locked in `.cursor/rules/07-testing.mdc` + `fe-behavior-driven.mdc`.
 - **Consequence:** PRs that add `toHaveBeenCalled`-only tests or mock-configured echo tests are incomplete — rewrite to behavior assertions.
 
+## 2026-10-03 · Phase 6 reminders = durable schedule + best-effort Expo push
+- **Context:** Need follow-through without duplicate delivery rows; push is unreliable.
+- **Decision:** Persist UTC `reminders` with unique `idempotency_key`; atomic `claim_due_reminders` (service_role); Edge `dispatch-reminders` auth via `x-cron-secret`; ledger `notification_deliveries` unique on `(reminder_id, channel, attempt_number)`; tokens in `device_tokens`.
+- **Ops:** Set Edge secret `CRON_SECRET`; schedule invoke every minute via Dashboard Cron / pg_cron+pg_net+Vault (never hardcode secrets in SQL). Optional Resend channel deferred.
+- **Consequence:** In-app reminder rows remain source of truth even if push fails.
+
+## 2026-10-03 · Phase 7 hardening baseline
+- **Context:** Private beta needs deletion, privacy copy, quotas, content-free metrics, RLS proof.
+- **Decision:** Edge `delete-note` / `delete-account`; Settings privacy disclosure; `ai_usage_events` + daily `process-note` cap (40); Vitest policy inventory + `supabase/tests/rls_phase6_phase7.sql` checklist; physical device smoke documented in STATUS (not automated here).
+- **Provider terms:** Official OpenAI + Supabase terms must be re-checked before broader launch (links in 14_SETUP / OpenAI pricing docs).
+- **Consequence:** Phase 7 exit met for code/docs; live cron secret + device smoke remain operator steps.
+
 ## 2026-10-02 · Vitest is mandatory side-by-side for pure logic (never “later”)
 - **Context:** Waiting until a dedicated test phase left pure helpers untested and made regressions cheap to ship. User asked to always write tests with new work.
 - **Alternatives:** Defer until Phase 7; only test at release; always-apply the full behavior-driven essay on every chat.

@@ -1,7 +1,7 @@
 # Voice-to-Work — docs map
 Prepared 2026-10-02. Blueprint for a mobile-first product that turns voice notes into user-approved tasks.
 
-Living status: **[STATUS.md](./STATUS.md)** · Decisions: **[DECISIONS.md](./DECISIONS.md)** · Agent rules: **[../.cursor/rules/](../.cursor/rules/)**
+Living status: **[STATUS.md](./STATUS.md)** (includes **Phase inventory + intentional leftovers**) · Decisions: **[DECISIONS.md](./DECISIONS.md)** · Agent rules: **[../.cursor/rules/](../.cursor/rules/)**
 
 ## Read in order
 1. [00_PRODUCT_CONTEXT.md](./00_PRODUCT_CONTEXT.md) — problem, hypothesis, principles

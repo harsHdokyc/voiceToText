@@ -13,6 +13,8 @@ import { edgeLog } from "../_shared/log.ts";
 const TRANSCRIBE_CLAIMABLE = new Set(["queued", "transcription_failed"]);
 /** Reclaim stuck `extracting` notes (Phase 4 bug left them there after chat 503). */
 const EXTRACT_CLAIMABLE = new Set(["extraction_failed", "extracting"]);
+/** Phase 7: daily process-note cap per user (content-free quota). */
+const DAILY_PROCESS_NOTE_LIMIT = 40;
 
 function parseDueAt(raw: string | null): string | null {
   if (!raw) return null;
@@ -127,6 +129,39 @@ export default {
       return Response.json({ ok: false, error: "audio_missing" }, {
         status: 400,
       });
+    }
+
+    const { data: usageCount, error: usageError } = await ctx.supabase.rpc(
+      "count_ai_usage_today",
+      { p_user_id: userId, p_kind: "process_note" },
+    );
+    if (usageError) {
+      edgeLog("warn", "edge.process-note", {
+        event: "usage_count_failed",
+        code: "usage_count_failed",
+        reason: usageError.message.slice(0, 200),
+        noteId,
+      });
+    } else if (
+      typeof usageCount === "number" &&
+      usageCount >= DAILY_PROCESS_NOTE_LIMIT
+    ) {
+      edgeLog("error", "edge.process-note", {
+        event: "fail",
+        code: "rate_limited",
+        reason: `Daily process-note limit ${DAILY_PROCESS_NOTE_LIMIT} reached`,
+        noteId,
+        usageCount,
+        durationMs: Date.now() - started,
+      });
+      return Response.json(
+        {
+          ok: false,
+          error: "rate_limited",
+          reason: `Daily process-note limit ${DAILY_PROCESS_NOTE_LIMIT} reached`,
+        },
+        { status: 429 },
+      );
     }
 
     let stage: ProcessStage = needsTranscribe ? "transcribing" : "extracting";
@@ -325,6 +360,17 @@ export default {
         textLength: transcriptText.length,
         suggestionCount: insertedCount,
         durationMs: Date.now() - started,
+      });
+
+      // Phase 7: content-free usage metric (no transcript / prompts).
+      await ctx.supabase.from("ai_usage_events").insert({
+        user_id: userId,
+        kind: "process_note",
+        model: extractionResult.model,
+        provider: extractionResult.provider,
+        duration_ms: Date.now() - started,
+        audio_seconds: existing.audio_duration_seconds ?? null,
+        suggestion_count: insertedCount,
       });
 
       return Response.json({

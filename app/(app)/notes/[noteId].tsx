@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -24,6 +24,7 @@ import {
   rejectSuggestion,
   type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
+import { deleteNote } from '@/features/settings/services/account-service';
 import { errorMessageForUi } from '@/lib/api-error';
 
 export default function NoteDetailScreen() {
@@ -80,6 +81,7 @@ export default function NoteDetailScreen() {
       await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
       await queryClient.invalidateQueries({ queryKey: ['notes', noteId] });
       await queryClient.invalidateQueries({ queryKey: ['notes'] });
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
 
@@ -89,6 +91,17 @@ export default function NoteDetailScreen() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
+    },
+  });
+
+  const removeNote = useMutation({
+    mutationFn: async () => {
+      if (!noteId) throw new Error('Note missing');
+      await deleteNote(noteId);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['notes'] });
+      router.replace('/(app)');
     },
   });
 
@@ -181,6 +194,21 @@ export default function NoteDetailScreen() {
       {retry.error ? (
         <Text style={styles.error}>
           {retry.error instanceof Error ? retry.error.message : 'Retry failed'}
+        </Text>
+      ) : null}
+
+      <Pressable
+        style={[styles.button, styles.rejectButton]}
+        disabled={removeNote.isPending}
+        onPress={() => removeNote.mutate()}
+      >
+        <Text style={styles.buttonText}>
+          {removeNote.isPending ? 'Deleting…' : 'Delete note'}
+        </Text>
+      </Pressable>
+      {removeNote.error ? (
+        <Text style={styles.error}>
+          {errorMessageForUi(removeNote.error, 'Delete failed')}
         </Text>
       ) : null}
     </ScrollView>

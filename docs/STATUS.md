@@ -1,9 +1,58 @@
 # Project Status
-Last updated: 2026-10-02 (Phase 4 review/approve hardened).
+Last updated: 2026-10-03 (Phases 0–7 complete).
 
 ## Current phase
-**Phases 2–4 complete** (notes + private audio + transcription + task extraction + review/edit/approve/reject). Hosted backend: [voiceToWork](https://supabase.com/dashboard/project/ubqhyeicmgmdzethtids).
+**Phases 0–7 complete** against plan exit criteria (see inventory below). Hosted backend: [voiceToWork](https://supabase.com/dashboard/project/ubqhyeicmgmdzethtids).
 **AI provider:** official OpenAI via OpenAI SDK (see [DECISIONS.md](./DECISIONS.md)).
+
+Living phase map: [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md). P0/P1/P2: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
+
+## Phase inventory + intentional leftovers
+
+| Phase | Plan exit | Met? |
+|---|---|---|
+| 0 Runtime spike | Auth, migration, Edge function, small OpenAI request | **yes** (live secrets = ops) |
+| 1 Auth shell | Session persists; signed-out blocked from app | **yes** |
+| 2 Notes + storage | Own upload works; cross-user denied | **partial** → RLS inventory + SQL checklist in Phase 7; live two-user deny still manual |
+| 3 Transcription | Recording → transcript; recoverable failure | **yes** |
+| 4 Task extraction | One approved task per suggestion | **yes** |
+| 5 Task mgmt/search | Persisted tasks usable after restart | **yes** |
+| 6 Reminders | Durable reminder + push best-effort; no duplicate delivery rows | **yes** (cron secret + schedule = ops) |
+| 7 Beta hardening | Deletion, privacy, rate limits, metrics, RLS tests, device checks, terms review | **yes** (physical device smoke = checklist) |
+
+### Phase 6 — Reminders
+**Shipped:** `device_tokens`, `reminders`, `notification_deliveries`; `claim_due_reminders` (service_role); Edge `register-push-token`, `dispatch-reminders` (`x-cron-secret`); app schedule/cancel on task detail; Expo push registration (skips web/simulator).
+
+**Intentionally left**
+| Leftover | Lands in / notes |
+|---|---|
+| Dashboard Cron / pg_cron+Vault wiring | Ops — set `CRON_SECRET`, schedule POST every minute (see DECISIONS) |
+| Resend email channel | Optional; schema supports `email` channel |
+| Rich timezone picker | UTC schedule + display local; DST handled at boundary only |
+
+### Phase 7 — Beta hardening
+**Shipped:** Edge `delete-note`, `delete-account`; Settings privacy disclosure + push enable + account delete; note delete; `ai_usage_events` + daily process-note cap (40); Vitest policy inventory; `supabase/tests/rls_phase6_phase7.sql` checklist; provider-terms note in DECISIONS.
+
+**Intentionally left**
+| Leftover | Lands in / notes |
+|---|---|
+| Physical iOS/Android smoke (push, record, delete) | Manual checklist below — cannot automate here |
+| Full two-user RLS CI against live DB | Checklist SQL; run before broader launch |
+| Cost dashboards / billing alerts | Metrics rows exist; no BI UI |
+| Transcript/note title editors, FTS, manual task create | Earlier-phase polish / P1 |
+
+### Physical device smoke (Phase 7)
+- [ ] Sign in / session restore on device
+- [ ] Record ≤60s note → transcript → suggestions → approve → task appears after restart
+- [ ] Enable push; schedule 1h reminder; confirm delivery attempt row (and push if permission granted)
+- [ ] Delete note (audio gone); delete account (cannot sign in)
+
+### Ops still required
+1. Edge secrets: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, **`CRON_SECRET`**
+2. Schedule `dispatch-reminders` every minute with header `x-cron-secret: <CRON_SECRET>`
+3. Re-check OpenAI + Supabase terms before public launch
+
+---
 
 ## Auth (app)
 | Screen | Path |
@@ -14,69 +63,49 @@ Last updated: 2026-10-02 (Phase 4 review/approve hardened).
 | Forgot password | `/(auth)/forgot-password` → OTP |
 | Reset password | `/(auth)/reset-password` (after recovery OTP) |
 
-## Notes / recording (app)
+## Notes / recording / tasks / reminders (app)
 | Piece | Notes |
 |---|---|
-| Home | Lists notes; link to record + settings |
-| Record | `expo-audio` ≤60s → draft → **note-audio proxy upload** → `process-note` |
-| Note detail | Polls while queued/transcribing/extracting; transcript + editable pending suggestions; approve/reject with errors |
-| Suggestions service | list / edit-diff / approve / reject (`buildSuggestionEdits`, pending-only actions) |
-| Audio access | Client uses `noteId` only; Edge `note-audio` proxy; `audio_path` never returned to app |
-| Status helpers | `src/features/notes/services/note-status.ts` |
-| Notes service | create / proxy-upload / invoke / retry |
+| Home | Notes list; record + tasks + settings |
+| Record | ≤60s → note-audio proxy → process-note |
+| Note detail | Transcript, suggestion edit/approve/reject, retry, **delete note** |
+| Tasks | List/search/complete/edit + source note link |
+| Task detail | Edit + **remind in 1h/3h/1d** + cancel |
+| Settings | Privacy disclosure, push enable, account delete, debug probes |
 
-## AI (Edge)
-| Piece | Location / notes |
+## AI / Edge
+| Function | Notes |
 |---|---|
-| Config + client | `supabase/functions/_shared/ai/` |
-| Transcription adapter | `transcription-provider.ts` → `gpt-4o-mini-transcribe` |
-| Extraction adapter | `task-extraction-provider.ts` → full TaskSuggestionSchema, `gpt-4o-mini` |
-| Spike | `openai-spike` probes: `config` \| `chat` \| `transcribe` |
-| Audio proxy | `note-audio` — upload/download by `noteId` (no storage key to client) |
-| Process | `process-note` — claim → download → transcribe → extract → `review_ready` |
-| Approve suggestion | `approve-suggestion` — atomic task creation via RPC (edits persisted) |
-| Reject suggestion | `reject-suggestion` — mark suggestion as rejected |
-
-**Manual secret setup (required for live AI):** In Supabase Dashboard → Edge Functions → Secrets, **replace** any old Naga values with:
-- `OPENAI_API_KEY` = OpenAI secret key
-- `OPENAI_BASE_URL` = `https://api.openai.com/v1`
-- `AI_TRANSCRIPTION_MODEL` = `gpt-4o-mini-transcribe` (optional; this is the default)
-- `AI_CHAT_MODEL` = `gpt-4o-mini` (optional; this is the default)
-
-Code defaults match the above if those secrets are unset — but **existing Naga secrets override defaults** until updated.
+| `process-note` | STT + extract + **rate limit** + **ai_usage_events** |
+| `note-audio` | Upload/download by noteId |
+| `approve-suggestion` / `reject-suggestion` | Review path |
+| `register-push-token` | Upsert Expo token |
+| `dispatch-reminders` | Cron; claim → Expo push → delivery ledger |
+| `delete-note` / `delete-account` | Storage cleanup + DB wipe / auth delete |
+| `openai-spike` / `health` | Debug |
 
 ## Deployed backend
 | Item | Status |
 |---|---|
-| Migration `phase0_profiles` | Applied |
-| Migration `phase2_notes_storage` | Applied (notes, tasks, suggestions, `note-audio` bucket + RLS) |
-| Migration `phase4_approve_rpc` | Applied |
-| Migration `phase4_approve_rpc_harden` | Applied (title validate, persist edits, revoke anon/public execute) |
-| Migration `phase4_suggestion_task_auth` | Applied (reject-only suggestion update; no client task insert; insert suggestions only while extracting) |
-| Edge `health` | ACTIVE |
-| Edge `openai-spike` | ACTIVE |
-| Edge `process-note` | ACTIVE (Phase 4: extraction after transcription) |
-| Edge `note-audio` | ACTIVE — upload/download by noteId |
-| Edge `approve-suggestion` | ACTIVE |
-| Edge `reject-suggestion` | ACTIVE |
-| App `.env` | Hosted URL + publishable key |
+| Migrations through `phase7_hardening` | Applied on hosted |
+| Edge functions above | ACTIVE (register-push-token, dispatch-reminders, delete-note, delete-account, process-note redeployed) |
 
 ## Logging
-Structured `[vtw]` pretty JSON in Metro (app) and Edge Function logs. See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
+See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 
 ## Tests
 | Command | Last result |
 |---|---|
 | `npm run typecheck` | Pass |
-| `npm test` | 85 passed |
+| `npm test` | 108 passed |
 
-**Policy:** Unit tests side-by-side with pure logic; each test must fail if the **business rule** breaks — not if a mock wasn’t called (`.cursor/rules/07-testing.mdc`).
+**Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`).
 
 ## Next slice
-Phase 5 — task management/search (list, edit, complete, basic search, source note link). Will need a controlled task-create path (RPC/edge) since client `tasks` INSERT is revoked.
+V1 private beta ops: set `CRON_SECRET` + schedule dispatcher; run physical device smoke; optional P1 (FTS search, Resend, richer deletion UX).
 
 ## Locked decisions
 See [DECISIONS.md](./DECISIONS.md).
 
 ## Blockers
-Live AI waits on Edge secrets being set to the OpenAI key + base URL (key never committed). After secrets update, verify with `openai-spike` probes `config` → `chat` → then record a note.
+None for code exit. Live reminders need `CRON_SECRET` + cron schedule; live AI needs OpenAI Edge secrets.
