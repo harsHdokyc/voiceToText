@@ -27,37 +27,68 @@ describe('isPendingSuggestion', () => {
 });
 
 describe('buildSuggestionEdits', () => {
+  const base = {
+    title: 'Buy milk',
+    details: null as string | null,
+    kind: 'task' as const,
+    due_at: null as string | null,
+    priority: null as 'low' | 'normal' | 'high' | null,
+  };
+
   it('returns undefined when draft matches original', () => {
     expect(
-      buildSuggestionEdits(
-        { title: 'Buy milk', details: null },
-        { title: 'Buy milk', details: '' },
-      ),
+      buildSuggestionEdits(base, {
+        title: 'Buy milk',
+        details: '',
+        kind: 'task',
+        due_at: null,
+        priority: null,
+      }),
     ).toBeUndefined();
   });
 
   it('includes only changed fields', () => {
     expect(
       buildSuggestionEdits(
-        { title: 'Buy milk', details: '2%' },
-        { title: 'Get milk', details: '2%' },
+        { ...base, details: '2%' },
+        {
+          title: 'Get milk',
+          details: '2%',
+          kind: 'task',
+          due_at: null,
+          priority: null,
+        },
       ),
     ).toEqual({ title: 'Get milk' });
 
     expect(
       buildSuggestionEdits(
-        { title: 'Buy milk', details: '2%' },
-        { title: 'Buy milk', details: '' },
+        { ...base, details: '2%' },
+        {
+          title: 'Buy milk',
+          details: '',
+          kind: 'reminder',
+          due_at: '2026-10-04T00:00:00.000Z',
+          priority: 'high',
+        },
       ),
-    ).toEqual({ details: '' });
+    ).toEqual({
+      details: '',
+      kind: 'reminder',
+      due_at: '2026-10-04T00:00:00.000Z',
+      priority: 'high',
+    });
   });
 
   it('rejects blank titles', () => {
     expect(() =>
-      buildSuggestionEdits(
-        { title: 'Buy milk', details: null },
-        { title: '   ', details: '' },
-      ),
+      buildSuggestionEdits(base, {
+        title: '   ',
+        details: '',
+        kind: 'task',
+        due_at: null,
+        priority: null,
+      }),
     ).toThrow(ApiError);
   });
 });

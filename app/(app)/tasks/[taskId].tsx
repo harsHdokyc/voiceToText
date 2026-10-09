@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useLocalSearchParams } from 'expo-router';
+import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,7 +12,9 @@ import {
 } from 'react-native';
 
 import {
+  archiveTask,
   completeTask,
+  deleteTask,
   getTask,
   reopenTask,
   updateTask,
@@ -49,26 +51,32 @@ export default function TaskDetailScreen() {
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [priority, setPriority] = useState<TaskPriority | null>(null);
+  const [dueLocal, setDueLocal] = useState('');
 
   useEffect(() => {
     if (!task.data) return;
     setTitle(task.data.title);
     setDetails(task.data.details ?? '');
     setPriority(task.data.priority);
+    setDueLocal(task.data.due_at ? task.data.due_at.slice(0, 10) : '');
   }, [task.data]);
 
   const save = useMutation({
     mutationFn: async () => {
       if (!task.data) throw new Error('Task missing');
+      const due_at = dueLocal.trim()
+        ? new Date(`${dueLocal.trim()}T12:00:00.000Z`).toISOString()
+        : null;
       return updateTask(task.data.id, {
         title,
         details,
-        due_at: task.data.due_at,
+        due_at,
         priority,
       });
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      await queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
     },
   });
 
@@ -105,6 +113,28 @@ export default function TaskDetailScreen() {
     },
   });
 
+  const archive = useMutation({
+    mutationFn: async () => {
+      if (!task.data) throw new Error('Task missing');
+      await archiveTask(task.data.id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      router.back();
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      if (!task.data) throw new Error('Task missing');
+      await deleteTask(task.data.id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      router.back();
+    },
+  });
+
   if (task.isLoading) {
     return (
       <View style={styles.center}>
@@ -128,7 +158,9 @@ export default function TaskDetailScreen() {
     save.isPending ||
     toggle.isPending ||
     remind.isPending ||
-    cancelRemind.isPending;
+    cancelRemind.isPending ||
+    archive.isPending ||
+    remove.isPending;
   const editable = row.status !== 'archived';
   const scheduled = (reminders.data ?? []).filter((r) => r.status === 'scheduled');
 
@@ -174,11 +206,15 @@ export default function TaskDetailScreen() {
         ))}
       </View>
 
-      {row.due_at ? (
-        <Text style={styles.meta}>
-          Due: {new Date(row.due_at).toLocaleString()}
-        </Text>
-      ) : null}
+      <Text style={styles.label}>Due (YYYY-MM-DD)</Text>
+      <TextInput
+        style={styles.input}
+        value={dueLocal}
+        onChangeText={setDueLocal}
+        editable={editable && !busy}
+        placeholder="optional"
+        autoCapitalize="none"
+      />
 
       {row.source_note_id ? (
         <Link
@@ -270,6 +306,35 @@ export default function TaskDetailScreen() {
           {errorMessageForUi(cancelRemind.error, 'Cancel failed')}
         </Text>
       ) : null}
+
+      {editable ? (
+        <Pressable
+          style={[styles.button, styles.secondary]}
+          disabled={busy}
+          onPress={() => archive.mutate()}
+        >
+          <Text style={styles.buttonText}>Archive task</Text>
+        </Pressable>
+      ) : null}
+      <Pressable
+        style={[styles.button, styles.danger]}
+        disabled={busy}
+        onPress={() => remove.mutate()}
+      >
+        <Text style={styles.buttonText}>
+          {remove.isPending ? 'Deleting…' : 'Delete task'}
+        </Text>
+      </Pressable>
+      {archive.error ? (
+        <Text style={styles.error}>
+          {errorMessageForUi(archive.error, 'Archive failed')}
+        </Text>
+      ) : null}
+      {remove.error ? (
+        <Text style={styles.error}>
+          {errorMessageForUi(remove.error, 'Delete failed')}
+        </Text>
+      ) : null}
     </ScrollView>
   );
 }
@@ -311,6 +376,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondary: { backgroundColor: '#5a5a5a' },
+  danger: { backgroundColor: '#7a2e0b' },
   buttonText: { color: '#fff', fontWeight: '600' },
   error: { color: '#7a2e0b' },
   reminderRow: {

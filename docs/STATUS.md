@@ -102,7 +102,7 @@ See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 **Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`).
 
 ## Next slice
-V1 private beta ops: set `CRON_SECRET` + schedule dispatcher; run physical device smoke; optional P1 (FTS search, Resend, richer deletion UX).
+**Code leftovers shipped.** Remaining work is **manual** — see **[LEFTOVER.md](./LEFTOVER.md)** §YOU DO THESE (secrets, cron, device smoke, RLS two-user, key rotate/push unblock).
 
 ## Locked decisions
 See [DECISIONS.md](./DECISIONS.md).

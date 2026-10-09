@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -12,20 +12,36 @@ import {
 } from 'react-native';
 
 import {
+  archiveNote,
   getNote,
   retryTranscription,
+  updateNoteContent,
 } from '@/features/notes/services/notes-service';
-import { isRetryableProcessing } from '@/features/notes/services/note-status';
+import {
+  canTransitionNoteStatus,
+  displayTranscript,
+  isRetryableProcessing,
+} from '@/features/notes/services/note-status';
 import {
   approveSuggestion,
   buildSuggestionEdits,
   getSuggestions,
   isPendingSuggestion,
   rejectSuggestion,
+  type SuggestionKind,
+  type TaskPriority,
   type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
 import { deleteNote } from '@/features/settings/services/account-service';
 import { errorMessageForUi } from '@/lib/api-error';
+
+const KINDS: SuggestionKind[] = [
+  'task',
+  'reminder',
+  'idea',
+  'question',
+  'follow_up',
+];
 
 export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
@@ -49,10 +65,44 @@ export default function NoteDetailScreen() {
     },
   });
 
+  const [title, setTitle] = useState('');
+  const [transcriptDraft, setTranscriptDraft] = useState('');
+
+  useEffect(() => {
+    if (!note.data) return;
+    setTitle(note.data.title ?? '');
+    setTranscriptDraft(displayTranscript(note.data) ?? '');
+  }, [note.data]);
+
   const suggestions = useQuery({
     queryKey: ['suggestions', noteId],
     queryFn: () => getSuggestions(noteId),
     enabled: Boolean(noteId) && note.data?.status === 'review_ready',
+  });
+
+  const saveContent = useMutation({
+    mutationFn: async () => {
+      if (!noteId) throw new Error('Note missing');
+      return updateNoteContent(noteId, {
+        title,
+        edited_transcript: transcriptDraft,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['notes', noteId] });
+      await queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+  });
+
+  const archive = useMutation({
+    mutationFn: async () => {
+      if (!note.data) throw new Error('Note missing');
+      await archiveNote(note.data);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['notes'] });
+      router.replace('/(app)');
+    },
   });
 
   const retry = useMutation({
@@ -72,7 +122,13 @@ export default function NoteDetailScreen() {
       draft,
     }: {
       suggestion: TaskSuggestion;
-      draft: { title: string; details: string };
+      draft: {
+        title: string;
+        details: string;
+        kind: SuggestionKind;
+        due_at: string | null;
+        priority: TaskPriority | null;
+      };
     }) => {
       const edits = buildSuggestionEdits(suggestion, draft);
       await approveSuggestion(suggestion.id, edits);
@@ -117,35 +173,72 @@ export default function NoteDetailScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.error}>
-          {note.error instanceof Error ? note.error.message : 'Note not found'}
+          {errorMessageForUi(note.error, 'Note not found')}
         </Text>
       </View>
     );
   }
 
   const row = note.data;
-  const actionBusy = approve.isPending || reject.isPending;
+  const actionBusy =
+    approve.isPending ||
+    reject.isPending ||
+    saveContent.isPending ||
+    archive.isPending;
+  const processing =
+    row.status === 'queued' ||
+    row.status === 'transcribing' ||
+    row.status === 'extracting';
+  const canArchive = canTransitionNoteStatus(row.status, 'archived');
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>{row.title ?? 'Voice note'}</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.meta}>Status: {row.status.replaceAll('_', ' ')}</Text>
       {row.last_error_code ? (
         <Text style={styles.error}>Error: {row.last_error_code}</Text>
       ) : null}
 
+      <Text style={styles.fieldLabel}>Title</Text>
+      <TextInput
+        style={styles.input}
+        value={title}
+        onChangeText={setTitle}
+        editable={!actionBusy && row.status !== 'archived'}
+        placeholder="Voice note"
+      />
+
       <Text style={styles.section}>Transcript</Text>
-      {row.status === 'queued' ||
-      row.status === 'transcribing' ||
-      row.status === 'extracting' ? (
+      {processing ? (
         <Text style={styles.meta}>
           {row.status === 'extracting' ? 'Extracting tasks…' : 'Transcribing…'}
         </Text>
-      ) : row.transcript ? (
-        <Text style={styles.transcript}>{row.transcript}</Text>
       ) : (
-        <Text style={styles.meta}>No transcript yet.</Text>
+        <TextInput
+          style={[styles.input, styles.inputMultiline]}
+          value={transcriptDraft}
+          onChangeText={setTranscriptDraft}
+          editable={!actionBusy && row.status !== 'archived'}
+          multiline
+          placeholder="No transcript yet."
+        />
       )}
+
+      {row.status !== 'archived' ? (
+        <Pressable
+          style={styles.button}
+          disabled={actionBusy}
+          onPress={() => saveContent.mutate()}
+        >
+          <Text style={styles.buttonText}>
+            {saveContent.isPending ? 'Saving…' : 'Save title & transcript'}
+          </Text>
+        </Pressable>
+      ) : null}
+      {saveContent.error ? (
+        <Text style={styles.error}>
+          {errorMessageForUi(saveContent.error, 'Save failed')}
+        </Text>
+      ) : null}
 
       {row.status === 'review_ready' && (
         <>
@@ -158,9 +251,7 @@ export default function NoteDetailScreen() {
                 key={suggestion.id}
                 suggestion={suggestion}
                 busy={actionBusy}
-                onApprove={(draft) =>
-                  approve.mutate({ suggestion, draft })
-                }
+                onApprove={(draft) => approve.mutate({ suggestion, draft })}
                 onReject={() => reject.mutate(suggestion.id)}
               />
             ))
@@ -193,12 +284,22 @@ export default function NoteDetailScreen() {
       )}
       {retry.error ? (
         <Text style={styles.error}>
-          {retry.error instanceof Error ? retry.error.message : 'Retry failed'}
+          {errorMessageForUi(retry.error, 'Retry failed')}
         </Text>
       ) : null}
 
+      {canArchive ? (
+        <Pressable
+          style={[styles.button, styles.secondary]}
+          disabled={actionBusy}
+          onPress={() => archive.mutate()}
+        >
+          <Text style={styles.buttonText}>Archive note</Text>
+        </Pressable>
+      ) : null}
+
       <Pressable
-        style={[styles.button, styles.rejectButton]}
+        style={[styles.button, styles.danger]}
         disabled={removeNote.isPending}
         onPress={() => removeNote.mutate()}
       >
@@ -211,6 +312,11 @@ export default function NoteDetailScreen() {
           {errorMessageForUi(removeNote.error, 'Delete failed')}
         </Text>
       ) : null}
+      {archive.error ? (
+        <Text style={styles.error}>
+          {errorMessageForUi(archive.error, 'Archive failed')}
+        </Text>
+      ) : null}
     </ScrollView>
   );
 }
@@ -218,13 +324,26 @@ export default function NoteDetailScreen() {
 function SuggestionCard(props: {
   suggestion: TaskSuggestion;
   busy: boolean;
-  onApprove: (draft: { title: string; details: string }) => void;
+  onApprove: (draft: {
+    title: string;
+    details: string;
+    kind: SuggestionKind;
+    due_at: string | null;
+    priority: TaskPriority | null;
+  }) => void;
   onReject: () => void;
 }) {
   const { suggestion, busy, onApprove, onReject } = props;
   const pending = isPendingSuggestion(suggestion.status);
   const [title, setTitle] = useState(suggestion.title);
   const [details, setDetails] = useState(suggestion.details ?? '');
+  const [kind, setKind] = useState(suggestion.kind);
+  const [priority, setPriority] = useState<TaskPriority | null>(
+    suggestion.priority,
+  );
+  const [dueLocal, setDueLocal] = useState(
+    suggestion.due_at ? suggestion.due_at.slice(0, 10) : '',
+  );
 
   return (
     <View style={styles.suggestionCard}>
@@ -245,6 +364,55 @@ function SuggestionCard(props: {
             editable={!busy}
             multiline
           />
+          <Text style={styles.fieldLabel}>Kind</Text>
+          <View style={styles.filters}>
+            {KINDS.map((k) => (
+              <Pressable
+                key={k}
+                style={[styles.chip, kind === k && styles.chipActive]}
+                disabled={busy}
+                onPress={() => setKind(k)}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    kind === k && styles.chipTextActive,
+                  ]}
+                >
+                  {k}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.fieldLabel}>Priority</Text>
+          <View style={styles.filters}>
+            {([null, 'low', 'normal', 'high'] as const).map((p) => (
+              <Pressable
+                key={p ?? 'none'}
+                style={[styles.chip, priority === p && styles.chipActive]}
+                disabled={busy}
+                onPress={() => setPriority(p)}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    priority === p && styles.chipTextActive,
+                  ]}
+                >
+                  {p ?? 'none'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.fieldLabel}>Due (YYYY-MM-DD)</Text>
+          <TextInput
+            style={styles.input}
+            value={dueLocal}
+            onChangeText={setDueLocal}
+            editable={!busy}
+            placeholder="optional"
+            autoCapitalize="none"
+          />
         </>
       ) : (
         <>
@@ -261,16 +429,6 @@ function SuggestionCard(props: {
       <Text style={styles.suggestionMeta}>
         Kind: {suggestion.kind} • Confidence: {suggestion.confidence}
       </Text>
-      {suggestion.due_at ? (
-        <Text style={styles.suggestionMeta}>
-          Due: {new Date(suggestion.due_at).toLocaleDateString()}
-        </Text>
-      ) : null}
-      {suggestion.priority ? (
-        <Text style={styles.suggestionMeta}>
-          Priority: {suggestion.priority}
-        </Text>
-      ) : null}
       <Text style={styles.sourceQuote}>"{suggestion.source_quote}"</Text>
 
       {pending ? (
@@ -278,12 +436,22 @@ function SuggestionCard(props: {
           <Pressable
             style={[styles.actionButton, styles.approveButton]}
             disabled={busy}
-            onPress={() => onApprove({ title, details })}
+            onPress={() =>
+              onApprove({
+                title,
+                details,
+                kind,
+                priority,
+                due_at: dueLocal.trim()
+                  ? new Date(`${dueLocal.trim()}T12:00:00.000Z`).toISOString()
+                  : null,
+              })
+            }
           >
             <Text style={styles.actionButtonText}>Approve</Text>
           </Pressable>
           <Pressable
-            style={[styles.actionButton, styles.rejectButton]}
+            style={[styles.actionButton, styles.danger]}
             disabled={busy}
             onPress={onReject}
           >
@@ -296,20 +464,33 @@ function SuggestionCard(props: {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 10, backgroundColor: '#f7f7f5' },
+  container: { flex: 1, backgroundColor: '#f7f7f5' },
+  content: { padding: 24, gap: 10 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: '700' },
   meta: { color: '#555' },
   section: { marginTop: 12, fontWeight: '600' },
-  transcript: { fontSize: 16, lineHeight: 22, color: '#14241c' },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 4 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 15,
+    color: '#14241c',
+    backgroundColor: '#fff',
+  },
+  inputMultiline: { minHeight: 100, textAlignVertical: 'top' },
   error: { color: '#7a2e0b' },
   button: {
-    marginTop: 12,
+    marginTop: 8,
     backgroundColor: '#1f4b3a',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
   },
+  secondary: { backgroundColor: '#5a5a5a' },
+  danger: { backgroundColor: '#7a2e0b' },
   buttonText: { color: '#fff', fontWeight: '600' },
   suggestionCard: {
     marginTop: 12,
@@ -320,18 +501,17 @@ const styles = StyleSheet.create({
     borderColor: '#e0e0e0',
     gap: 6,
   },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 4 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    borderRadius: 6,
+  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: {
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 15,
-    color: '#14241c',
-    backgroundColor: '#fafafa',
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ccc',
   },
-  inputMultiline: { minHeight: 64, textAlignVertical: 'top' },
+  chipActive: { backgroundColor: '#1f4b3a', borderColor: '#1f4b3a' },
+  chipText: { color: '#555', fontSize: 12, fontWeight: '600' },
+  chipTextActive: { color: '#fff' },
   suggestionTitle: { fontSize: 16, fontWeight: '600', color: '#14241c' },
   suggestionDetails: { fontSize: 14, color: '#555' },
   suggestionMeta: { fontSize: 12, color: '#777' },
@@ -344,11 +524,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 2,
     borderLeftColor: '#1f4b3a',
   },
-  suggestionActions: {
-    marginTop: 12,
-    flexDirection: 'row',
-    gap: 8,
-  },
+  suggestionActions: { marginTop: 12, flexDirection: 'row', gap: 8 },
   actionButton: {
     flex: 1,
     paddingVertical: 10,
@@ -356,6 +532,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   approveButton: { backgroundColor: '#1f4b3a' },
-  rejectButton: { backgroundColor: '#7a2e0b' },
   actionButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 });

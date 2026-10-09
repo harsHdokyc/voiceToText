@@ -5,9 +5,11 @@ import {
     assertNoteStatusTransition,
     buildNoteAudioPath,
     canTransitionNoteStatus,
+    displayTranscript,
     isClaimableForExtraction,
     isClaimableForTranscription,
     isRetryableProcessing,
+    noteMatchesSearch,
     noteStatusLabel,
 } from '@/features/notes/services/note-status';
 
@@ -114,5 +116,26 @@ describe('buildNoteAudioPath', () => {
     expect(buildNoteAudioPath({ userId: 'u', noteId: 'n' })).toBe(
       'u/notes/n/original.m4a',
     );
+  });
+});
+
+describe('displayTranscript / noteMatchesSearch', () => {
+  it('prefers edited transcript', () => {
+    expect(
+      displayTranscript({
+        transcript: 'original',
+        edited_transcript: ' edited ',
+      }),
+    ).toBe('edited');
+  });
+
+  it('matches title or transcript text', () => {
+    const note = {
+      title: 'Grocery list',
+      transcript: 'Buy milk tomorrow',
+      edited_transcript: null,
+    };
+    expect(noteMatchesSearch(note, 'milk')).toBe(true);
+    expect(noteMatchesSearch(note, 'eggs')).toBe(false);
   });
 });

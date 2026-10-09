@@ -1,11 +1,13 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, router, type Href } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -13,12 +15,15 @@ import { listNotes } from '@/features/notes/services/notes-service';
 import { noteStatusLabel } from '@/features/notes/services/note-status';
 import { signOut } from '@/features/auth/services/auth-service';
 import { useAuth } from '@/providers/auth-provider';
+import { errorMessageForUi } from '@/lib/api-error';
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const [query, setQuery] = useState('');
+
   const notes = useQuery({
-    queryKey: ['notes'],
-    queryFn: listNotes,
+    queryKey: ['notes', query],
+    queryFn: () => listNotes({ query }),
   });
 
   return (
@@ -40,18 +45,31 @@ export default function HomeScreen() {
         <Text style={styles.buttonText}>My tasks</Text>
       </Pressable>
 
+      <TextInput
+        style={styles.search}
+        placeholder="Search notes"
+        value={query}
+        onChangeText={setQuery}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+
       {notes.isLoading ? (
         <ActivityIndicator />
       ) : notes.isError ? (
         <Text style={styles.error}>
-          {notes.error instanceof Error ? notes.error.message : 'Failed to load'}
+          {errorMessageForUi(notes.error, 'Failed to load')}
         </Text>
       ) : (
         <FlatList
           data={notes.data ?? []}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
-            <Text style={styles.meta}>No notes yet. Record your first thought.</Text>
+            <Text style={styles.meta}>
+              {query.trim()
+                ? 'No matching notes.'
+                : 'No notes yet. Record your first thought.'}
+            </Text>
           }
           renderItem={({ item }) => (
             <Pressable
@@ -73,9 +91,12 @@ export default function HomeScreen() {
       )}
 
       <Link href="/(app)/settings" style={styles.link}>
-        Settings / debug
+        Settings
       </Link>
-      <Pressable style={[styles.button, styles.secondary]} onPress={() => void signOut()}>
+      <Pressable
+        style={[styles.button, styles.secondary]}
+        onPress={() => void signOut()}
+      >
         <Text style={styles.buttonText}>Sign out</Text>
       </Pressable>
     </View>
@@ -87,6 +108,15 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '700' },
   meta: { color: '#555' },
   error: { color: '#7a2e0b' },
+  search: {
+    borderWidth: 1,
+    borderColor: '#d0d0d0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+    fontSize: 16,
+  },
   button: {
     backgroundColor: '#1f4b3a',
     borderRadius: 8,

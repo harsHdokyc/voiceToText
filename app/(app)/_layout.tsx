@@ -30,6 +30,7 @@ export default function AppLayout() {
       <Stack.Screen name="record" options={{ title: 'Record' }} />
       <Stack.Screen name="notes/[noteId]" options={{ title: 'Note' }} />
       <Stack.Screen name="tasks/index" options={{ title: 'Tasks' }} />
+      <Stack.Screen name="tasks/new" options={{ title: 'New task' }} />
       <Stack.Screen name="tasks/[taskId]" options={{ title: 'Task' }} />
       <Stack.Screen name="settings" options={{ title: 'Settings' }} />
     </Stack>

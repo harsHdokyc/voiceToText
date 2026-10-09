@@ -5,6 +5,7 @@ import {
   assertReminderSchedule,
   buildReminderIdempotencyKey,
 } from '@/features/reminders/services/reminder-schedule';
+import { trackProductEvent } from '@/lib/product-analytics';
 
 export type ReminderStatus =
   | 'scheduled'
@@ -92,6 +93,7 @@ export async function scheduleReminder(params: {
         .select(REMINDER_SELECT)
         .single();
       if (error) throw error;
+      trackProductEvent('reminder_created', { taskId: params.taskId });
       return data as ReminderRow;
     },
   );

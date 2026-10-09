@@ -12,6 +12,7 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from '@/features/tasks/services/task-status';
+import { trackProductEvent } from '@/lib/product-analytics';
 
 export type TaskRow = {
   id: string;
@@ -32,9 +33,10 @@ const TASK_PUBLIC_SELECT =
   'id, source_note_id, source_suggestion_id, title, details, status, due_at, priority, completed_at, created_at, updated_at';
 
 export type ListTasksParams = {
-  /** When set, only that status. When omitted, open + completed (hide archived). */
+  /** When set, only that status. When omitted, open + completed unless includeArchived. */
   status?: TaskStatus;
   query?: string;
+  includeArchived?: boolean;
 };
 
 async function loadTask(taskId: string) {
@@ -66,7 +68,7 @@ export async function listTasks(params: ListTasksParams = {}) {
 
       if (params.status) {
         q = q.eq('status', params.status);
-      } else {
+      } else if (!params.includeArchived) {
         q = q.in('status', ['open', 'completed']);
       }
 
@@ -140,6 +142,7 @@ export async function completeTask(taskId: string) {
         `Could not complete task from ${current.status}`,
       );
     }
+    trackProductEvent('task_completed', { taskId });
     return data as TaskRow;
   });
 }
@@ -167,5 +170,66 @@ export async function reopenTask(taskId: string) {
       );
     }
     return data as TaskRow;
+  });
+}
+
+export async function archiveTask(taskId: string) {
+  return withApiLog('api.tasks.archive', { taskId }, async () => {
+    const current = await loadTask(taskId);
+    assertTaskStatusTransition(current.status, 'archived');
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({
+        status: 'archived',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', taskId)
+      .eq('status', current.status)
+      .select(TASK_PUBLIC_SELECT)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      throw new ApiError(
+        'task_status_transition_lost',
+        `Could not archive task from ${current.status}`,
+      );
+    }
+    return data as TaskRow;
+  });
+}
+
+export async function deleteTask(taskId: string) {
+  return withApiLog('api.tasks.delete', { taskId }, async () => {
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+    if (error) throw error;
+  });
+}
+
+export async function createManualTask(draft: {
+  title: string;
+  details?: string;
+  due_at?: string | null;
+  priority?: TaskPriority | null;
+}) {
+  return withApiLog('api.tasks.create_manual', {}, async () => {
+    const title = draft.title.trim();
+    if (!title) {
+      throw new ApiError('title_required', 'Title is required');
+    }
+    const { data, error } = await supabase.rpc('create_manual_task', {
+      p_title: title,
+      p_details: draft.details?.trim() || null,
+      p_due_at: draft.due_at ?? null,
+      p_priority: draft.priority ?? null,
+    });
+    if (error) throw error;
+    const body = data as { ok?: boolean; task_id?: string; error?: string };
+    if (!body?.ok || !body.task_id) {
+      throw new ApiError(
+        body?.error ?? 'task_create_failed',
+        body?.error ?? 'Could not create task',
+      );
+    }
+    return loadTask(body.task_id);
   });
 }

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, router } from 'expo-router';
+import { Link, router, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -23,13 +23,16 @@ import { errorMessageForUi } from '@/lib/api-error';
 export default function TasksScreen() {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'open' | 'completed'>('open');
+  const [filter, setFilter] = useState<
+    'all' | 'open' | 'completed' | 'archived'
+  >('open');
 
   const tasks = useQuery({
     queryKey: ['tasks', filter, query],
     queryFn: () =>
       listTasks({
         status: filter === 'all' ? undefined : filter,
+        includeArchived: filter === 'all',
         query,
       }),
   });
@@ -46,6 +49,13 @@ export default function TasksScreen() {
 
   return (
     <View style={styles.container}>
+      <Pressable
+        style={styles.newButton}
+        onPress={() => router.push('/(app)/tasks/new' as Href)}
+      >
+        <Text style={styles.newButtonText}>New task</Text>
+      </Pressable>
+
       <TextInput
         style={styles.search}
         placeholder="Search tasks"
@@ -56,7 +66,7 @@ export default function TasksScreen() {
       />
 
       <View style={styles.filters}>
-        {(['open', 'completed', 'all'] as const).map((key) => (
+        {(['open', 'completed', 'archived', 'all'] as const).map((key) => (
           <Pressable
             key={key}
             style={[styles.chip, filter === key && styles.chipActive]}
@@ -187,4 +197,11 @@ const styles = StyleSheet.create({
   rowTitle: { fontWeight: '600', fontSize: 16, color: '#14241c' },
   rowTitleDone: { textDecorationLine: 'line-through', color: '#777' },
   noteLink: { color: '#1f4b3a', marginTop: 4, fontSize: 13 },
+  newButton: {
+    backgroundColor: '#1f4b3a',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  newButtonText: { color: '#fff', fontWeight: '600' },
 });

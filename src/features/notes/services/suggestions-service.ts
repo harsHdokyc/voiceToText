@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { ApiError } from '@/lib/api-error';
 import { withApiLog } from '@/lib/with-api-log';
+import { trackProductEvent } from '@/lib/product-analytics';
 
 export type SuggestionKind = 'task' | 'reminder' | 'idea' | 'question' | 'follow_up';
 export type TaskPriority = 'low' | 'normal' | 'high';
@@ -41,8 +42,17 @@ export function isPendingSuggestion(status: SuggestionStatus) {
  * Throws if the draft title is empty after trim.
  */
 export function buildSuggestionEdits(
-  original: Pick<TaskSuggestion, 'title' | 'details'>,
-  draft: { title: string; details: string },
+  original: Pick<
+    TaskSuggestion,
+    'title' | 'details' | 'kind' | 'due_at' | 'priority'
+  >,
+  draft: {
+    title: string;
+    details: string;
+    kind: SuggestionKind;
+    due_at: string | null;
+    priority: TaskPriority | null;
+  },
 ): SuggestionEdits | undefined {
   const title = draft.title.trim();
   if (!title) {
@@ -52,8 +62,14 @@ export function buildSuggestionEdits(
   const edits: SuggestionEdits = {};
   if (title !== original.title) edits.title = title;
   if (details !== (original.details ?? null)) {
-    // RPC treats null details as "no change"; send empty string to clear.
     edits.details = details ?? '';
+  }
+  if (draft.kind !== original.kind) edits.kind = draft.kind;
+  if ((draft.due_at ?? null) !== (original.due_at ?? null)) {
+    edits.due_at = draft.due_at ?? undefined;
+  }
+  if ((draft.priority ?? null) !== (original.priority ?? null)) {
+    edits.priority = draft.priority ?? undefined;
   }
   return Object.keys(edits).length > 0 ? edits : undefined;
 }
@@ -129,6 +145,7 @@ export async function approveSuggestion(
         );
       }
 
+      trackProductEvent('suggestion_approved', { suggestionId });
       return body;
     },
   );

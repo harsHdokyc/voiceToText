@@ -62,6 +62,41 @@ export function noteStatusLabel(status: NoteStatus) {
   return status.replaceAll('_', ' ');
 }
 
+/** Prefer user-edited transcript when present. */
+export function displayTranscript(note: {
+  transcript: string | null;
+  edited_transcript: string | null;
+}) {
+  const edited = note.edited_transcript?.trim();
+  if (edited) return edited;
+  return note.transcript?.trim() || null;
+}
+
+export function normalizeNoteSearchQuery(query: string): string | undefined {
+  const trimmed = query
+    .trim()
+    .replaceAll('%', '')
+    .replaceAll('_', '')
+    .replace(/[(),.*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+export function noteMatchesSearch(
+  note: {
+    title: string | null;
+    transcript: string | null;
+    edited_transcript: string | null;
+  },
+  query: string,
+): boolean {
+  const needle = normalizeNoteSearchQuery(query)?.toLowerCase();
+  if (!needle) return true;
+  const hay = `${note.title ?? ''}\n${displayTranscript(note) ?? ''}`.toLowerCase();
+  return hay.includes(needle);
+}
+
 export function assertAudioDurationSeconds(durationSeconds: number) {
   if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
     throw new Error('Recording duration is invalid');
