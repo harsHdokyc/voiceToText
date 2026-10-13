@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -8,22 +9,26 @@ import {
   View,
 } from 'react-native';
 
+import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { SuggestionReviewRow } from '@/components/work-row';
 import { Button, EmptyState, Eyebrow } from '@/components/ui';
 import {
   pendingSuggestionIds,
   suggestionKindLabel,
 } from '@/features/notes/services/pending-suggestions';
+import { approveSuggestionWithEdit } from '@/features/notes/services/suggestion-edit-save';
 import {
   approveSuggestion,
   listPendingSuggestions,
   rejectSuggestion,
+  type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
 import { errorMessageForUi } from '@/lib/api-error';
 import { colors, fonts, space } from '@/theme';
 
 export default function SuggestionsScreen() {
   const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<TaskSuggestion | null>(null);
 
   const pending = useQuery({
     queryKey: ['suggestions', 'pending'],
@@ -34,6 +39,7 @@ export default function SuggestionsScreen() {
     await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
     await queryClient.invalidateQueries({ queryKey: ['tasks'] });
     await queryClient.invalidateQueries({ queryKey: ['notes'] });
+    await queryClient.invalidateQueries({ queryKey: ['reminders'] });
   };
 
   const approve = useMutation({
@@ -55,10 +61,21 @@ export default function SuggestionsScreen() {
     onSuccess: invalidate,
   });
 
+  const saveEdit = useMutation({
+    mutationFn: approveSuggestionWithEdit,
+    onSuccess: async () => {
+      setEditing(null);
+      await invalidate();
+    },
+  });
+
   const rows = pending.data ?? [];
   const ids = pendingSuggestionIds(rows);
   const busy =
-    approve.isPending || reject.isPending || approveAll.isPending;
+    approve.isPending ||
+    reject.isPending ||
+    approveAll.isPending ||
+    saveEdit.isPending;
 
   return (
     <ScrollView
@@ -105,12 +122,7 @@ export default function SuggestionsScreen() {
               busy={busy}
               onApprove={() => approve.mutate(s.id)}
               onDismiss={() => reject.mutate(s.id)}
-              onEdit={() =>
-                router.push({
-                  pathname: '/(app)/notes/[noteId]',
-                  params: { noteId: s.note_id },
-                })
-              }
+              onEdit={() => setEditing(s)}
             />
           ))}
         </View>
@@ -137,6 +149,31 @@ export default function SuggestionsScreen() {
           )}
         </Text>
       ) : null}
+
+      <EditNextStepSheet
+        open={editing !== null}
+        onClose={() => {
+          if (!saveEdit.isPending) setEditing(null);
+        }}
+        initialTitle={editing?.title ?? ''}
+        initialDueAt={editing?.due_at ?? null}
+        mode="suggestion"
+        busy={saveEdit.isPending}
+        error={
+          saveEdit.error
+            ? errorMessageForUi(saveEdit.error, 'Save failed')
+            : null
+        }
+        onSave={(draft) => {
+          if (!editing) return;
+          saveEdit.mutate({
+            suggestion: editing,
+            title: draft.title,
+            dueAt: draft.dueAt,
+            reminderHours: draft.reminderHours,
+          });
+        }}
+      />
     </ScrollView>
   );
 }

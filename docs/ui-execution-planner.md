@@ -430,6 +430,8 @@ Each step: **goal → do → do not → exit**.
 - Happy path: record → note → transcript/suggestions.
 - Failure path: permission denied / upload fail shows reason; note recoverable per existing retry.
 
+**Status: done (2026-10-13).** Transparent modal `record` screen matching Dialog copy/layout; Speak/Stop + `formatCaptureTimer` + VoiceRibbon; Turn into next steps → upload → process → note detail. No Web Speech / sample / just-save.
+
 ---
 
 ### Step 10 — Edit suggestion / task + reminders
@@ -447,6 +449,8 @@ Each step: **goal → do → do not → exit**.
 
 **Exit**
 - Edit + reminder schedule/cancel works on device; UI matches dialog structure.
+
+**Status: done (2026-10-13).** `EditNextStepSheet` (title / Today·Tomorrow·Next week / 1h·3h·1d); tasks save via `updateTask`+`scheduleReminder`; suggestions via `approveSuggestion` edits (RLS); wired on Overview / Suggestions / Tasks / task detail.
 
 ---
 

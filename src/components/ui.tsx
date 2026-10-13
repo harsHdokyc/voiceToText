@@ -282,13 +282,15 @@ export function Sheet({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.sheetBackdrop} onPress={onClose} />
-      <View style={styles.sheetCard} accessibilityViewIsModal>
-        <Text style={styles.sheetTitle}>{title}</Text>
-        {description ? (
-          <Text style={styles.sheetDesc}>{description}</Text>
-        ) : null}
-        {children}
+      <View style={styles.sheetRoot}>
+        <Pressable style={styles.sheetBackdrop} onPress={onClose} />
+        <View style={styles.sheetCard} accessibilityViewIsModal>
+          <Text style={styles.sheetTitle}>{title}</Text>
+          {description ? (
+            <Text style={styles.sheetDesc}>{description}</Text>
+          ) : null}
+          {children}
+        </View>
       </View>
     </Modal>
   );
@@ -353,14 +355,16 @@ const styles = StyleSheet.create({
   ribbonBar: {
     borderRadius: 999,
   },
+  sheetRoot: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: space[4],
+  },
   sheetBackdrop: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(23, 23, 23, 0.45)',
   },
   sheetCard: {
-    marginTop: 'auto',
-    marginHorizontal: space[4],
-    marginBottom: space[8],
     maxHeight: '90%',
     borderRadius: radius.lg,
     backgroundColor: colors.card,

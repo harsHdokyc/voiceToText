@@ -1,40 +1,38 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
+import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
+import { Button, Eyebrow } from '@/components/ui';
 import {
   archiveTask,
   completeTask,
   deleteTask,
   getTask,
   reopenTask,
-  updateTask,
 } from '@/features/tasks/services/tasks-service';
-import {
-  taskStatusLabel,
-  type TaskPriority,
-} from '@/features/tasks/services/task-status';
+import { saveTaskFromEditSheet } from '@/features/tasks/services/task-edit-save';
+import { taskStatusLabel } from '@/features/tasks/services/task-status';
+import { dueLabel } from '@/features/tasks/services/task-due-label';
 import {
   cancelReminder,
   listRemindersForTask,
-  scheduleReminder,
 } from '@/features/reminders/services/reminders-service';
-import { reminderAtHoursFromNow } from '@/features/reminders/services/reminder-schedule';
-import { registerForPushNotifications } from '@/features/reminders/services/push-registration';
 import { errorMessageForUi } from '@/lib/api-error';
+import { colors, fonts, space } from '@/theme';
 
 export default function TaskDetailScreen() {
   const { taskId } = useLocalSearchParams<{ taskId: string }>();
   const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
 
   const task = useQuery({
     queryKey: ['tasks', taskId],
@@ -48,35 +46,17 @@ export default function TaskDetailScreen() {
     enabled: Boolean(taskId),
   });
 
-  const [title, setTitle] = useState('');
-  const [details, setDetails] = useState('');
-  const [priority, setPriority] = useState<TaskPriority | null>(null);
-  const [dueLocal, setDueLocal] = useState('');
+  const invalidate = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    await queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
+    await queryClient.invalidateQueries({ queryKey: ['reminders', taskId] });
+  };
 
-  useEffect(() => {
-    if (!task.data) return;
-    setTitle(task.data.title);
-    setDetails(task.data.details ?? '');
-    setPriority(task.data.priority);
-    setDueLocal(task.data.due_at ? task.data.due_at.slice(0, 10) : '');
-  }, [task.data]);
-
-  const save = useMutation({
-    mutationFn: async () => {
-      if (!task.data) throw new Error('Task missing');
-      const due_at = dueLocal.trim()
-        ? new Date(`${dueLocal.trim()}T12:00:00.000Z`).toISOString()
-        : null;
-      return updateTask(task.data.id, {
-        title,
-        details,
-        due_at,
-        priority,
-      });
-    },
+  const saveEdit = useMutation({
+    mutationFn: saveTaskFromEditSheet,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      await queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
+      setEditOpen(false);
+      await invalidate();
     },
   });
 
@@ -86,31 +66,12 @@ export default function TaskDetailScreen() {
       if (task.data.status === 'completed') return reopenTask(task.data.id);
       return completeTask(task.data.id);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      await queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
-    },
-  });
-
-  const remind = useMutation({
-    mutationFn: async (hours: number) => {
-      if (!task.data) throw new Error('Task missing');
-      await registerForPushNotifications().catch(() => undefined);
-      return scheduleReminder({
-        taskId: task.data.id,
-        scheduledFor: reminderAtHoursFromNow(hours),
-      });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['reminders', taskId] });
-    },
+    onSuccess: invalidate,
   });
 
   const cancelRemind = useMutation({
     mutationFn: (reminderId: string) => cancelReminder(reminderId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['reminders', taskId] });
-    },
+    onSuccess: invalidate,
   });
 
   const archive = useMutation({
@@ -138,7 +99,7 @@ export default function TaskDetailScreen() {
   if (task.isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.cobalt} />
       </View>
     );
   }
@@ -155,66 +116,31 @@ export default function TaskDetailScreen() {
 
   const row = task.data;
   const busy =
-    save.isPending ||
+    saveEdit.isPending ||
     toggle.isPending ||
-    remind.isPending ||
     cancelRemind.isPending ||
     archive.isPending ||
     remove.isPending;
   const editable = row.status !== 'archived';
-  const scheduled = (reminders.data ?? []).filter((r) => r.status === 'scheduled');
+  const scheduled = (reminders.data ?? []).filter(
+    (r) => r.status === 'scheduled',
+  );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.meta}>Status: {taskStatusLabel(row.status)}</Text>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Eyebrow>The things you chose</Eyebrow>
+      <Text style={styles.title}>{row.title}</Text>
+      <Text style={styles.meta}>
+        {taskStatusLabel(row.status)} · {dueLabel(row.due_at)}
+      </Text>
 
-      <Text style={styles.label}>Title</Text>
-      <TextInput
-        style={styles.input}
-        value={title}
-        onChangeText={setTitle}
-        editable={editable && !busy}
-      />
-
-      <Text style={styles.label}>Details</Text>
-      <TextInput
-        style={[styles.input, styles.inputMultiline]}
-        value={details}
-        onChangeText={setDetails}
-        editable={editable && !busy}
-        multiline
-      />
-
-      <Text style={styles.label}>Priority</Text>
-      <View style={styles.filters}>
-        {([null, 'low', 'normal', 'high'] as const).map((key) => (
-          <Pressable
-            key={key ?? 'none'}
-            style={[styles.chip, priority === key && styles.chipActive]}
-            disabled={!editable || busy}
-            onPress={() => setPriority(key)}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                priority === key && styles.chipTextActive,
-              ]}
-            >
-              {key ?? 'none'}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Text style={styles.label}>Due (YYYY-MM-DD)</Text>
-      <TextInput
-        style={styles.input}
-        value={dueLocal}
-        onChangeText={setDueLocal}
-        editable={editable && !busy}
-        placeholder="optional"
-        autoCapitalize="none"
-      />
+      {row.details ? (
+        <Text style={styles.details}>{row.details}</Text>
+      ) : null}
 
       {row.source_note_id ? (
         <Link
@@ -224,165 +150,159 @@ export default function TaskDetailScreen() {
           }}
           style={styles.noteLink}
         >
-          Open source note
+          Source note →
         </Link>
       ) : (
         <Text style={styles.meta}>No source note linked.</Text>
       )}
 
-      {editable && row.status === 'open' ? (
-        <>
-          <Text style={styles.label}>Remind me</Text>
-          <View style={styles.filters}>
-            {([1, 3, 24] as const).map((hours) => (
-              <Pressable
-                key={hours}
-                style={styles.chip}
-                disabled={busy}
-                onPress={() => remind.mutate(hours)}
-              >
-                <Text style={styles.chipText}>
-                  {hours === 24 ? '1 day' : `${hours}h`}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+      {scheduled.length ? (
+        <View style={styles.remindBlock}>
+          <Text style={styles.label}>Scheduled reminders</Text>
           {scheduled.map((r) => (
             <View key={r.id} style={styles.reminderRow}>
               <Text style={styles.meta}>
-                Scheduled {new Date(r.scheduled_for).toLocaleString()}
+                <Ionicons name="notifications-outline" size={12} />{' '}
+                {new Date(r.scheduled_for).toLocaleString(undefined, {
+                  weekday: 'short',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
               </Text>
-              <Pressable
+              <Button
+                variant="ghost"
+                size="sm"
                 disabled={busy}
                 onPress={() => cancelRemind.mutate(r.id)}
               >
-                <Text style={styles.noteLink}>Cancel</Text>
-              </Pressable>
+                Cancel
+              </Button>
             </View>
           ))}
-        </>
+        </View>
       ) : null}
 
       {editable ? (
         <>
-          <Pressable
-            style={styles.button}
+          <Button
+            variant="cta"
             disabled={busy}
-            onPress={() => save.mutate()}
+            onPress={() => setEditOpen(true)}
           >
-            <Text style={styles.buttonText}>
-              {save.isPending ? 'Saving…' : 'Save changes'}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.button, styles.secondary]}
+            <Ionicons name="pencil" size={16} color={colors.card} />
+            <Text style={styles.ctaLabel}>Edit your next step</Text>
+          </Button>
+          <Button
+            variant="quiet"
             disabled={busy}
             onPress={() => toggle.mutate()}
           >
-            <Text style={styles.buttonText}>
-              {row.status === 'completed' ? 'Reopen task' : 'Mark complete'}
-            </Text>
-          </Pressable>
+            {row.status === 'completed' ? 'Reopen task' : 'Mark complete'}
+          </Button>
+          <Button
+            variant="quiet"
+            disabled={busy}
+            onPress={() => archive.mutate()}
+          >
+            Archive task
+          </Button>
         </>
       ) : null}
 
-      {save.error ? (
-        <Text style={styles.error}>
-          {errorMessageForUi(save.error, 'Save failed')}
-        </Text>
-      ) : null}
-      {toggle.error ? (
-        <Text style={styles.error}>
-          {errorMessageForUi(toggle.error, 'Update failed')}
-        </Text>
-      ) : null}
-      {remind.error ? (
-        <Text style={styles.error}>
-          {errorMessageForUi(remind.error, 'Reminder failed')}
-        </Text>
-      ) : null}
-      {cancelRemind.error ? (
-        <Text style={styles.error}>
-          {errorMessageForUi(cancelRemind.error, 'Cancel failed')}
-        </Text>
-      ) : null}
-
-      {editable ? (
-        <Pressable
-          style={[styles.button, styles.secondary]}
-          disabled={busy}
-          onPress={() => archive.mutate()}
-        >
-          <Text style={styles.buttonText}>Archive task</Text>
-        </Pressable>
-      ) : null}
-      <Pressable
-        style={[styles.button, styles.danger]}
+      <Button
+        variant="destructive"
         disabled={busy}
         onPress={() => remove.mutate()}
       >
-        <Text style={styles.buttonText}>
-          {remove.isPending ? 'Deleting…' : 'Delete task'}
-        </Text>
-      </Pressable>
-      {archive.error ? (
+        {remove.isPending ? 'Deleting…' : 'Delete task'}
+      </Button>
+
+      {toggle.error || archive.error || remove.error || cancelRemind.error ? (
         <Text style={styles.error}>
-          {errorMessageForUi(archive.error, 'Archive failed')}
+          {errorMessageForUi(
+            toggle.error ??
+              archive.error ??
+              remove.error ??
+              cancelRemind.error,
+            'Update failed',
+          )}
         </Text>
       ) : null}
-      {remove.error ? (
-        <Text style={styles.error}>
-          {errorMessageForUi(remove.error, 'Delete failed')}
-        </Text>
-      ) : null}
+
+      <EditNextStepSheet
+        open={editOpen}
+        onClose={() => {
+          if (!saveEdit.isPending) setEditOpen(false);
+        }}
+        initialTitle={row.title}
+        initialDueAt={row.due_at}
+        mode="task"
+        busy={saveEdit.isPending}
+        error={
+          saveEdit.error
+            ? errorMessageForUi(saveEdit.error, 'Save failed')
+            : null
+        }
+        onSave={(draft) => {
+          saveEdit.mutate({
+            task: row,
+            title: draft.title,
+            dueAt: draft.dueAt,
+            reminderHours: draft.reminderHours,
+          });
+        }}
+      />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f5' },
-  content: { padding: 24, gap: 10 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  meta: { color: '#555' },
-  label: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 4 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 15,
-    color: '#14241c',
-    backgroundColor: '#fff',
+  scroll: { flex: 1, backgroundColor: colors.paper },
+  content: {
+    padding: space[5],
+    gap: space[3],
+    paddingBottom: space[10],
   },
-  inputMultiline: { minHeight: 88, textAlignVertical: 'top' },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  chipActive: { backgroundColor: '#1f4b3a', borderColor: '#1f4b3a' },
-  chipText: { color: '#555', fontSize: 13, fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
-  noteLink: { color: '#1f4b3a', fontWeight: '600', paddingVertical: 4 },
-  button: {
-    marginTop: 8,
-    backgroundColor: '#1f4b3a',
-    borderRadius: 8,
-    paddingVertical: 12,
+  center: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.paper,
   },
-  secondary: { backgroundColor: '#5a5a5a' },
-  danger: { backgroundColor: '#7a2e0b' },
-  buttonText: { color: '#fff', fontWeight: '600' },
-  error: { color: '#7a2e0b' },
+  title: {
+    fontFamily: fonts.display,
+    fontSize: 32,
+    color: colors.ink,
+  },
+  meta: { fontFamily: fonts.sans, fontSize: 13, color: colors.stone },
+  details: {
+    fontFamily: fonts.sans,
+    fontSize: 15,
+    color: colors.ink,
+    lineHeight: 22,
+  },
+  label: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 13,
+    color: colors.ink,
+  },
+  noteLink: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 14,
+    color: colors.cobalt,
+    paddingVertical: 4,
+  },
+  remindBlock: { gap: space[2], marginTop: space[2] },
   reminderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,
   },
+  ctaLabel: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 15,
+    color: colors.card,
+  },
+  error: { fontFamily: fonts.sans, color: colors.destructive },
 });

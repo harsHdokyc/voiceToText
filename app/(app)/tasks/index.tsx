@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { TaskProgressRow } from '@/components/work-row';
 import { Button, EmptyState, Eyebrow } from '@/components/ui';
 import {
@@ -18,6 +19,7 @@ import {
   reopenTask,
   type TaskRow,
 } from '@/features/tasks/services/tasks-service';
+import { saveTaskFromEditSheet } from '@/features/tasks/services/task-edit-save';
 import {
   TASK_LIST_FILTERS,
   taskListQueryForFilter,
@@ -29,6 +31,7 @@ import { colors, fonts, space } from '@/theme';
 export default function TasksScreen() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<TaskListFilter>('Open');
+  const [editing, setEditing] = useState<TaskRow | null>(null);
 
   const params = taskListQueryForFilter(filter);
   const tasks = useQuery({
@@ -38,6 +41,7 @@ export default function TasksScreen() {
 
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    await queryClient.invalidateQueries({ queryKey: ['reminders'] });
   };
 
   const toggleComplete = useMutation({
@@ -53,8 +57,17 @@ export default function TasksScreen() {
     onSuccess: invalidate,
   });
 
+  const saveEdit = useMutation({
+    mutationFn: saveTaskFromEditSheet,
+    onSuccess: async () => {
+      setEditing(null);
+      await invalidate();
+    },
+  });
+
   const rows = tasks.data ?? [];
-  const busy = toggleComplete.isPending || remove.isPending;
+  const busy =
+    toggleComplete.isPending || remove.isPending || saveEdit.isPending;
 
   return (
     <ScrollView
@@ -106,12 +119,7 @@ export default function TasksScreen() {
               done={task.status === 'completed'}
               busy={busy}
               onToggleDone={() => toggleComplete.mutate(task)}
-              onEdit={() =>
-                router.push({
-                  pathname: '/(app)/tasks/[taskId]',
-                  params: { taskId: task.id },
-                })
-              }
+              onEdit={() => setEditing(task)}
               onRemove={() => remove.mutate(task.id)}
             />
           ))}
@@ -139,6 +147,31 @@ export default function TasksScreen() {
           )}
         </Text>
       ) : null}
+
+      <EditNextStepSheet
+        open={editing !== null}
+        onClose={() => {
+          if (!saveEdit.isPending) setEditing(null);
+        }}
+        initialTitle={editing?.title ?? ''}
+        initialDueAt={editing?.due_at ?? null}
+        mode="task"
+        busy={saveEdit.isPending}
+        error={
+          saveEdit.error
+            ? errorMessageForUi(saveEdit.error, 'Save failed')
+            : null
+        }
+        onSave={(draft) => {
+          if (!editing) return;
+          saveEdit.mutate({
+            task: editing,
+            title: draft.title,
+            dueAt: draft.dueAt,
+            reminderHours: draft.reminderHours,
+          });
+        }}
+      />
     </ScrollView>
   );
 }

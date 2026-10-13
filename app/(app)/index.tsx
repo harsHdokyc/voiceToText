@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,6 +12,8 @@ import {
   View,
 } from 'react-native';
 
+import { useCapture } from '@/components/capture-sheet';
+import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { NoteCardGrid } from '@/components/note-card';
 import { Button, EmptyState, Eyebrow, VoiceRibbon } from '@/components/ui';
 import {
@@ -19,14 +22,17 @@ import {
 } from '@/components/work-row';
 import { listNotes } from '@/features/notes/services/notes-service';
 import { suggestionKindLabel } from '@/features/notes/services/pending-suggestions';
+import { approveSuggestionWithEdit } from '@/features/notes/services/suggestion-edit-save';
 import {
   approveSuggestion,
   listPendingSuggestions,
   rejectSuggestion,
+  type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
 import { deleteNote } from '@/features/settings/services/account-service';
 import { greetingName } from '@/features/settings/services/greeting-name';
 import { getOwnProfile } from '@/features/settings/services/profile-service';
+import { saveTaskFromEditSheet } from '@/features/tasks/services/task-edit-save';
 import {
   archiveTask,
   completeTask,
@@ -44,10 +50,14 @@ import { colors, fonts, radius, space } from '@/theme';
  */
 export default function OverviewScreen() {
   const { user } = useAuth();
+  const { openCapture } = useCapture();
   const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
   const desktop = width >= 768;
   const wide = width >= 1024;
+  const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
+  const [editingSuggestion, setEditingSuggestion] =
+    useState<TaskSuggestion | null>(null);
 
   const profile = useQuery({ queryKey: ['profile'], queryFn: getOwnProfile });
   const notes = useQuery({
@@ -67,6 +77,7 @@ export default function OverviewScreen() {
     await queryClient.invalidateQueries({ queryKey: ['notes'] });
     await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
     await queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    await queryClient.invalidateQueries({ queryKey: ['reminders'] });
   };
 
   const removeNote = useMutation({
@@ -98,6 +109,20 @@ export default function OverviewScreen() {
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });
+  const saveTaskEdit = useMutation({
+    mutationFn: saveTaskFromEditSheet,
+    onSuccess: async () => {
+      setEditingTask(null);
+      await invalidateAll();
+    },
+  });
+  const saveSuggestionEdit = useMutation({
+    mutationFn: approveSuggestionWithEdit,
+    onSuccess: async () => {
+      setEditingSuggestion(null);
+      await invalidateAll();
+    },
+  });
 
   const name = greetingName(profile.data?.display_name, user?.email);
   const pendingRows = pending.data ?? [];
@@ -107,9 +132,9 @@ export default function OverviewScreen() {
     approve.isPending ||
     reject.isPending ||
     toggleTask.isPending ||
-    removeTask.isPending;
-  const openCapture = () => router.push('/(app)/record' as Href);
-
+    removeTask.isPending ||
+    saveTaskEdit.isPending ||
+    saveSuggestionEdit.isPending;
   return (
     <ScrollView
       style={styles.scroll}
@@ -234,12 +259,7 @@ export default function OverviewScreen() {
                 busy={busy}
                 onApprove={() => approve.mutate(s.id)}
                 onDismiss={() => reject.mutate(s.id)}
-                onEdit={() =>
-                  router.push({
-                    pathname: '/(app)/notes/[noteId]',
-                    params: { noteId: s.note_id },
-                  })
-                }
+                onEdit={() => setEditingSuggestion(s)}
               />
             ))
           ) : (
@@ -278,12 +298,7 @@ export default function OverviewScreen() {
                 done={t.status === 'completed'}
                 busy={busy}
                 onToggleDone={() => toggleTask.mutate(t)}
-                onEdit={() =>
-                  router.push({
-                    pathname: '/(app)/tasks/[taskId]',
-                    params: { taskId: t.id },
-                  })
-                }
+                onEdit={() => setEditingTask(t)}
                 onRemove={() => removeTask.mutate(t.id)}
               />
             ))
@@ -295,6 +310,55 @@ export default function OverviewScreen() {
           )}
         </View>
       </View>
+
+      <EditNextStepSheet
+        open={editingTask !== null}
+        onClose={() => {
+          if (!saveTaskEdit.isPending) setEditingTask(null);
+        }}
+        initialTitle={editingTask?.title ?? ''}
+        initialDueAt={editingTask?.due_at ?? null}
+        mode="task"
+        busy={saveTaskEdit.isPending}
+        error={
+          saveTaskEdit.error
+            ? errorMessageForUi(saveTaskEdit.error, 'Save failed')
+            : null
+        }
+        onSave={(draft) => {
+          if (!editingTask) return;
+          saveTaskEdit.mutate({
+            task: editingTask,
+            title: draft.title,
+            dueAt: draft.dueAt,
+            reminderHours: draft.reminderHours,
+          });
+        }}
+      />
+      <EditNextStepSheet
+        open={editingSuggestion !== null}
+        onClose={() => {
+          if (!saveSuggestionEdit.isPending) setEditingSuggestion(null);
+        }}
+        initialTitle={editingSuggestion?.title ?? ''}
+        initialDueAt={editingSuggestion?.due_at ?? null}
+        mode="suggestion"
+        busy={saveSuggestionEdit.isPending}
+        error={
+          saveSuggestionEdit.error
+            ? errorMessageForUi(saveSuggestionEdit.error, 'Save failed')
+            : null
+        }
+        onSave={(draft) => {
+          if (!editingSuggestion) return;
+          saveSuggestionEdit.mutate({
+            suggestion: editingSuggestion,
+            title: draft.title,
+            dueAt: draft.dueAt,
+            reminderHours: draft.reminderHours,
+          });
+        }}
+      />
     </ScrollView>
   );
 }

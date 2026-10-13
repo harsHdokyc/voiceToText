@@ -60,14 +60,7 @@ export default function AppLayout() {
           options={{ ...detailHeader, title: 'Task' }}
         />
         <Stack.Screen name="settings" />
-        <Stack.Screen
-          name="record"
-          options={{
-            ...detailHeader,
-            presentation: 'modal',
-            title: 'Capture',
-          }}
-        />
+        <Stack.Screen name="record" options={{ headerShown: false }} />
       </Stack>
     </WorkspaceShell>
   );

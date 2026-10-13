@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CaptureProvider, useCapture } from '@/components/capture-sheet';
 import { Button } from '@/components/ui';
 import {
   hrefForWorkspaceNav,
@@ -36,6 +37,14 @@ const NAV_ICONS: Record<
 };
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
+  return (
+    <CaptureProvider>
+      <WorkspaceShellInner>{children}</WorkspaceShellInner>
+    </CaptureProvider>
+  );
+}
+
+function WorkspaceShellInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const section = workspaceSectionFromPath(pathname);
   const { width } = useWindowDimensions();
@@ -43,6 +52,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const desktop = width >= DESKTOP_MIN;
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
+  const { openCapture } = useCapture();
   const display =
     (user?.user_metadata?.display_name as string | undefined)?.trim() ||
     user?.email?.split('@')[0] ||
@@ -58,10 +68,6 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
 
   const go = (item: WorkspaceNavItem) => {
     router.push(hrefForWorkspaceNav(item) as Href);
-  };
-
-  const openCapture = () => {
-    router.push('/(app)/record' as Href);
   };
 
   return (
