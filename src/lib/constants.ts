@@ -1,7 +1,7 @@
 /** V1 short-audio cap (seconds). Enforced in app + Edge; raise only after measuring Edge idle timeout. */
 export const MAX_AUDIO_DURATION_SECONDS = 60;
 
-export const APP_NAME = 'Voice-to-Work';
+export const APP_NAME = 'Saydo';
 
 /** Email OTP length configured in Supabase Auth (dashboard + local config). */
 export const EMAIL_OTP_LENGTH = 8;

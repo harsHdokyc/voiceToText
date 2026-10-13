@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Voice-to-Work",
+    "name": "Saydo",
     "slug": "voice-to-work",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Voice-to-Work needs the microphone to record voice notes."
+        "NSMicrophoneUsageDescription": "Saydo needs the microphone to record voice notes."
       }
     },
     "android": {
@@ -36,7 +36,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow Voice-to-Work to record voice notes."
+          "microphonePermission": "Allow Saydo to record voice notes."
         }
       ],
       [
@@ -44,7 +44,7 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#f6f4ef"
         }
       ]
     ],

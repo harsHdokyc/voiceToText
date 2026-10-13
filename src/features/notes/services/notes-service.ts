@@ -12,12 +12,20 @@ import {
 } from '@/features/notes/services/note-status';
 import { proxyUploadNoteAudio } from '@/features/notes/services/note-audio-proxy';
 import { trackProductEvent } from '@/lib/product-analytics';
+import {
+  DEFAULT_NOTE_CATEGORY,
+  normalizeNoteCategory,
+  noteMatchesCategoryFilter,
+  type NoteCategory,
+  type NoteCategoryFilter,
+} from '@/features/notes/services/note-category';
 
 /** Client-facing note — never includes `audio_path` / storage keys. */
 export type NoteRow = {
   id: string;
   user_id?: string;
   title: string | null;
+  category: NoteCategory;
   audio_mime_type: string | null;
   audio_duration_seconds: number | null;
   transcript: string | null;
@@ -31,10 +39,15 @@ export type NoteRow = {
 };
 
 const NOTE_PUBLIC_SELECT =
-  'id, title, audio_mime_type, audio_duration_seconds, transcript, edited_transcript, language, status, processing_attempts, last_error_code, created_at, updated_at';
+  'id, title, category, audio_mime_type, audio_duration_seconds, transcript, edited_transcript, language, status, processing_attempts, last_error_code, created_at, updated_at';
+
+function asNoteRow(row: NoteRow): NoteRow {
+  return { ...row, category: normalizeNoteCategory(row.category) };
+}
 
 export type ListNotesParams = {
   query?: string;
+  category?: NoteCategoryFilter;
   /** When false, include archived. Default hides archived. */
   includeArchived?: boolean;
 };
@@ -46,7 +59,11 @@ export async function listNotes(params: ListNotesParams = {}) {
 
   return withApiLog(
     'api.notes.list',
-    { hasQuery: !!search, includeArchived: !!params.includeArchived },
+    {
+      hasQuery: !!search,
+      category: params.category ?? 'All notes',
+      includeArchived: !!params.includeArchived,
+    },
     async () => {
       let q = supabase
         .from('notes')
@@ -59,7 +76,12 @@ export async function listNotes(params: ListNotesParams = {}) {
 
       const { data, error } = await q;
       if (error) throw error;
-      const rows = (data ?? []) as NoteRow[];
+      let rows = ((data ?? []) as NoteRow[]).map(asNoteRow);
+      if (params.category && params.category !== 'All notes') {
+        rows = rows.filter((row) =>
+          noteMatchesCategoryFilter(row, params.category!),
+        );
+      }
       if (!search) return rows;
       return rows.filter((row) => noteMatchesSearch(row, search));
     },
@@ -74,7 +96,7 @@ export async function getNote(noteId: string) {
       .eq('id', noteId)
       .single();
     if (error) throw error;
-    return data as NoteRow;
+    return asNoteRow(data as NoteRow);
   });
 }
 
@@ -89,11 +111,15 @@ export async function createDraftNote() {
 
     const { data, error } = await supabase
       .from('notes')
-      .insert({ user_id: user.id, status: 'draft' })
+      .insert({
+        user_id: user.id,
+        status: 'draft',
+        category: DEFAULT_NOTE_CATEGORY,
+      })
       .select(NOTE_PUBLIC_SELECT)
       .single();
     if (error) throw error;
-    return data as NoteRow;
+    return asNoteRow(data as NoteRow);
   });
 }
 
@@ -122,7 +148,7 @@ async function updateNoteStatus(
       `Could not move note from ${from} to ${to}`,
     );
   }
-  return data as NoteRow;
+  return asNoteRow(data as NoteRow);
 }
 
 export async function uploadNoteAudio(params: {
@@ -160,7 +186,7 @@ export async function uploadNoteAudio(params: {
         filename: `original.${ext}`,
       });
 
-      return note as NoteRow;
+      return asNoteRow(note as NoteRow);
     },
   );
 }
@@ -221,7 +247,11 @@ export async function requestTranscription(noteId: string) {
 
 export async function updateNoteContent(
   noteId: string,
-  patch: { title?: string; edited_transcript?: string | null },
+  patch: {
+    title?: string;
+    edited_transcript?: string | null;
+    category?: NoteCategory;
+  },
 ) {
   return withApiLog('api.notes.update_content', { noteId }, async () => {
     const body: Record<string, unknown> = {
@@ -235,6 +265,9 @@ export async function updateNoteContent(
       const t = patch.edited_transcript?.trim() ?? '';
       body.edited_transcript = t.length > 0 ? t : null;
     }
+    if (patch.category !== undefined) {
+      body.category = normalizeNoteCategory(patch.category);
+    }
     const { data, error } = await supabase
       .from('notes')
       .update(body)
@@ -245,7 +278,7 @@ export async function updateNoteContent(
     if (!data) {
       throw new ApiError('note_update_lost', 'Note update matched no row');
     }
-    return data as NoteRow;
+    return asNoteRow(data as NoteRow);
   });
 }
 

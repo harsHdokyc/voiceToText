@@ -10,6 +10,7 @@ import {
 } from '@/features/auth/components/auth-ui';
 import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { signInWithPassword } from '@/features/auth/services/auth-service';
+import { APP_NAME } from '@/lib/constants';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function SignInScreen() {
@@ -23,7 +24,7 @@ export default function SignInScreen() {
   }
 
   return (
-    <AuthScreen title="Voice-to-Work" subtitle="Sign in with email and password">
+    <AuthScreen title={APP_NAME} subtitle="Sign in with email and password">
       <AuthField
         autoCapitalize="none"
         autoComplete="email"

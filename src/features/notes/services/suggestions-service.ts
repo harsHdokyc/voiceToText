@@ -201,3 +201,29 @@ export async function rejectSuggestion(suggestionId: string) {
     return body;
   });
 }
+
+/** Pending suggestion count for workspace nav badge (RLS scopes to current user). */
+export async function countPendingSuggestions() {
+  return withApiLog('api.suggestions.countPending', {}, async () => {
+    const { count, error } = await supabase
+      .from('task_suggestions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    if (error) throw error;
+    return count ?? 0;
+  });
+}
+
+/** Pending suggestions across notes (newest first) for Overview / inbox. */
+export async function listPendingSuggestions(limit = 50) {
+  return withApiLog('api.suggestions.listPending', { limit }, async () => {
+    const { data, error } = await supabase
+      .from('task_suggestions')
+      .select(SUGGESTION_PUBLIC_SELECT)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []) as TaskSuggestion[];
+  });
+}
