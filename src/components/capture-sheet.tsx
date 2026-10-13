@@ -12,7 +12,6 @@ import {
 import {
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -20,6 +19,10 @@ import {
 
 import { Button, TextField, VoiceRibbon } from '@/components/ui';
 import { formatCaptureTimer } from '@/features/recording/services/capture-timer';
+import {
+  startLiveDictation,
+  type LiveDictationSession,
+} from '@/features/recording/services/live-dictation';
 import {
   ensureRecordingPermission,
   extensionForMime,
@@ -53,7 +56,6 @@ export function useCapture() {
   return ctx;
 }
 
-/** Optional for screens that may render outside the provider (shouldn’t happen in app shell). */
 export function useCaptureOptional() {
   return useContext(CaptureContext);
 }
@@ -72,8 +74,8 @@ export function CaptureProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * In-place Dialog overlay (prototype Workspace capture) — not a separate route.
- * Engine stays expo-audio → upload → process-note.
+ * Prototype Dialog: live “Your thought” preview + optional title + dual CTAs.
+ * Product engine: expo-audio upload; Web Speech is preview-only when available.
  */
 function CaptureSheet({
   open,
@@ -87,23 +89,36 @@ function CaptureSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
+  const [draftThought, setDraftThought] = useState('');
   const [readyUri, setReadyUri] = useState<string | null>(null);
   const [readyDuration, setReadyDuration] = useState(0);
   const autoStopped = useRef(false);
+  const dictationRef = useRef<LiveDictationSession | null>(null);
+  const thoughtRef = useRef('');
 
   const isRecording = state.isRecording;
   const durationSeconds = Math.floor((state.durationMillis ?? 0) / 1000);
   const displaySeconds = isRecording ? durationSeconds : readyDuration;
-  const canSubmit = Boolean(readyUri) && !isRecording && !busy;
+  const hasClip = Boolean(readyUri) && !isRecording;
+  const canProcess = hasClip && !busy;
+  const canJustSave = hasClip && !busy;
+
+  const stopDictation = useCallback(() => {
+    dictationRef.current?.stop();
+    dictationRef.current = null;
+  }, []);
 
   const reset = useCallback(() => {
+    stopDictation();
     setBusy(false);
     setError(null);
     setDraftTitle('');
+    setDraftThought('');
+    thoughtRef.current = '';
     setReadyUri(null);
     setReadyDuration(0);
     autoStopped.current = false;
-  }, []);
+  }, [stopDictation]);
 
   useEffect(() => {
     if (!open) {
@@ -135,12 +150,24 @@ function CaptureSheet({
       await ensureRecordingPermission();
       await recorder.prepareToRecordAsync();
       recorder.record();
+      // Live preview into “Your thought” (web). Audio file remains the product path.
+      stopDictation();
+      dictationRef.current = startLiveDictation({
+        baseText: thoughtRef.current,
+        onUpdate: (full) => {
+          thoughtRef.current = full;
+          setDraftThought(full);
+        },
+        onError: (msg) => setError(msg),
+      });
     } catch (e) {
+      stopDictation();
       setError(errorMessageForUi(e, 'Could not start recording'));
     }
   }
 
   async function stopListening() {
+    stopDictation();
     try {
       await recorder.stop();
       const uri = recorder.uri;
@@ -168,7 +195,7 @@ function CaptureSheet({
     await startListening();
   }
 
-  async function turnIntoNextSteps() {
+  async function uploadClip(process: boolean) {
     if (!readyUri || busy || isRecording) return;
     setBusy(true);
     setError(null);
@@ -176,8 +203,12 @@ function CaptureSheet({
       const mimeType = mimeFromUri(readyUri);
       const note = await createDraftNote();
       const title = draftTitle.trim();
-      if (title) {
-        await updateNoteContent(note.id, { title });
+      const thought = draftThought.trim();
+      if (title || thought) {
+        await updateNoteContent(note.id, {
+          ...(title ? { title } : {}),
+          ...(thought ? { edited_transcript: thought } : {}),
+        });
       }
       const queued = await uploadNoteAudio({
         note,
@@ -186,7 +217,9 @@ function CaptureSheet({
         durationSeconds: readyDuration,
         extension: extensionForMime(mimeType),
       });
-      await requestTranscription(queued.id);
+      if (process) {
+        await requestTranscription(queued.id);
+      }
       onClose();
       router.push({
         pathname: '/(app)/notes/[noteId]',
@@ -201,10 +234,16 @@ function CaptureSheet({
 
   function handleClose() {
     if (busy) return;
+    stopDictation();
     if (isRecording) {
       void recorder.stop().catch(() => undefined);
     }
     onClose();
+  }
+
+  function onThoughtChange(text: string) {
+    thoughtRef.current = text;
+    setDraftThought(text);
   }
 
   return (
@@ -221,11 +260,7 @@ function CaptureSheet({
           accessibilityLabel="Close capture"
         />
         <View style={styles.card} accessibilityViewIsModal>
-          <ScrollView
-            contentContainerStyle={styles.inner}
-            keyboardShouldPersistTaps="handled"
-            bounces={false}
-          >
+          <View style={styles.inner}>
             <View style={styles.header}>
               <Text style={styles.title}>Catch that thought.</Text>
               <Pressable
@@ -273,7 +308,7 @@ function CaptureSheet({
 
             <Text style={styles.maxHint}>
               Max {MAX_AUDIO_DURATION_SECONDS}s
-              {readyUri && !isRecording ? ' · Ready to process' : ''}
+              {hasClip ? ' · Ready to save' : ''}
             </Text>
 
             <Text style={styles.fieldLabel}>
@@ -286,29 +321,52 @@ function CaptureSheet({
               editable={!busy}
             />
 
+            <Text style={styles.fieldLabel}>Your thought</Text>
+            <TextField
+              style={styles.thought}
+              placeholder="What’s on your mind?"
+              value={draftThought}
+              onChangeText={onThoughtChange}
+              editable={!busy}
+              multiline
+              scrollEnabled
+              textAlignVertical="top"
+            />
+
             {error ? (
               <Text style={styles.error} accessibilityRole="alert">
                 {error}
               </Text>
             ) : null}
 
-            <Button
-              variant="cta"
-              size="xl"
-              disabled={!canSubmit}
-              onPress={() => void turnIntoNextSteps()}
-              style={styles.primary}
-            >
-              <Ionicons
-                name={busy ? 'hourglass-outline' : 'sparkles'}
-                size={18}
-                color={colors.card}
-              />
-              <Text style={styles.primaryLabel}>
-                {busy ? 'Thinking…' : 'Turn into next steps'}
-              </Text>
-            </Button>
-          </ScrollView>
+            <View style={styles.actions}>
+              <Button
+                variant="cta"
+                size="xl"
+                disabled={!canProcess}
+                onPress={() => void uploadClip(true)}
+                style={styles.actionBtn}
+              >
+                <Ionicons
+                  name={busy ? 'hourglass-outline' : 'sparkles'}
+                  size={18}
+                  color={colors.card}
+                />
+                <Text style={styles.primaryLabel}>
+                  {busy ? 'Thinking…' : 'Turn into next steps'}
+                </Text>
+              </Button>
+              <Button
+                variant="quiet"
+                size="xl"
+                disabled={!canJustSave || isRecording}
+                onPress={() => void uploadClip(false)}
+                style={styles.actionBtn}
+              >
+                Just save note
+              </Button>
+            </View>
+          </View>
         </View>
       </View>
     </Modal>
@@ -329,7 +387,6 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 520,
-    maxHeight: '90%',
     borderRadius: radius.lg,
     backgroundColor: colors.card,
     overflow: 'hidden',
@@ -392,12 +449,24 @@ const styles = StyleSheet.create({
     marginTop: space[2],
   },
   optional: { color: colors.stone },
+  // Fixed box (prototype ~4 rows) — overflow scrolls inside the field only.
+  thought: {
+    height: 112,
+    maxHeight: 112,
+    paddingVertical: space[3],
+  },
   error: {
     fontFamily: fonts.sans,
     fontSize: 14,
     color: colors.destructive,
   },
-  primary: { marginTop: space[2] },
+  actions: {
+    marginTop: space[2],
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space[2],
+  },
+  actionBtn: { flexGrow: 1, flexBasis: 160, minWidth: 140 },
   primaryLabel: {
     fontFamily: fonts.sansMedium,
     fontSize: 15,
