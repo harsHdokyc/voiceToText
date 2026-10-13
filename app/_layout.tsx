@@ -6,6 +6,8 @@ import { useEffect } from 'react';
 import { AppProviders } from '@/providers/app-providers';
 import { colors, useSaydoFonts } from '@/theme';
 
+import '@/styles/saydo-web.css';
+
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* already prevented or unavailable in tests */
 });

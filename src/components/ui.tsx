@@ -146,12 +146,19 @@ export function Eyebrow({
 
 export function TextField({
   style,
+  className,
   ...props
-}: TextInputProps & { style?: StyleProp<TextStyle> }) {
+}: TextInputProps & {
+  style?: StyleProp<TextStyle>;
+  /** Web: Saydo scrollbar / chrome (see saydo-web.css). */
+  className?: string;
+}) {
   return (
     <TextInput
       placeholderTextColor={colors.stone}
       {...props}
+      // RN Web forwards className to the DOM node.
+      {...(className ? ({ className } as object) : null)}
       style={[styles.field, style]}
     />
   );
@@ -181,16 +188,19 @@ const RIBBON_BAR_W = 2;
 export function VoiceRibbon({
   live = true,
   color = colors.cobalt,
+  compact = false,
 }: {
   live?: boolean;
   color?: string;
+  /** Shorter bars for tight surfaces (capture dialog on phone). */
+  compact?: boolean;
 }) {
   const reduced = useReducedMotion();
   const { width } = useWindowDimensions();
   const desktop = width >= 768;
-  // Prototype: h-16 / md:h-24 wrap; h-14 / md:h-20 bars; gap-1 / md:gap-1.5
-  const barH = desktop ? 80 : 56;
-  const wrapH = desktop ? 96 : 64;
+  // Prototype: h-16 / md:h-24 wrap; h-14 / md:h-20 bars
+  const barH = compact ? 40 : desktop ? 80 : 56;
+  const wrapH = compact ? 48 : desktop ? 96 : 64;
 
   return (
     <View

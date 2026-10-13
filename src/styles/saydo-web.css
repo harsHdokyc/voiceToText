@@ -1,0 +1,47 @@
+/**
+ * Web-only Saydo chrome. Native ignores this import.
+ * Scrollbars: stone thumb on muted track — every scrollable surface.
+ */
+
+*,
+*::before,
+*::after {
+  scrollbar-width: thin;
+  scrollbar-color: #535df2 #e9e8e2; /* cobalt on muted */
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #e9e8e2;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #535df2; /* cobalt */
+  border-radius: 999px;
+  border: 2px solid #e9e8e2;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #3c3acf; /* cobaltDeep */
+}
+
+*::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Explicit opt-in still works (same tokens). */
+.saydo-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #535df2 #e9e8e2;
+}

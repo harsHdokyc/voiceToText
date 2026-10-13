@@ -12,10 +12,13 @@ import {
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, TextField, VoiceRibbon } from '@/components/ui';
 import { formatCaptureTimer } from '@/features/recording/services/capture-timer';
@@ -86,6 +89,10 @@ function CaptureSheet({
 }) {
   const recorder = useAudioRecorder(NOTE_RECORDING_PRESET);
   const state = useAudioRecorderState(recorder, 200);
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  // Prototype DialogContent: w-[calc(100%-2rem)] max-w-lg max-h-[90dvh]
+  const phone = width < 640;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
@@ -100,8 +107,15 @@ function CaptureSheet({
   const durationSeconds = Math.floor((state.durationMillis ?? 0) / 1000);
   const displaySeconds = isRecording ? durationSeconds : readyDuration;
   const hasClip = Boolean(readyUri) && !isRecording;
-  const canProcess = hasClip && !busy;
-  const canJustSave = hasClip && !busy;
+  // Prototype Workspace.tsx: disabled={!draft.trim() || thinking}
+  const hasDraft = draftThought.trim().length > 0;
+  const canProcess = hasDraft && !busy;
+  // Prototype: disabled={!draft.trim() || recording || thinking}
+  const canJustSave = hasDraft && !isRecording && !busy;
+  const maxCardH = Math.min(
+    height * 0.9,
+    height - insets.top - insets.bottom - (phone ? 16 : 32),
+  );
 
   const stopDictation = useCallback(() => {
     dictationRef.current?.stop();
@@ -166,7 +180,10 @@ function CaptureSheet({
     }
   }
 
-  async function stopListening() {
+  async function stopListening(): Promise<{
+    uri: string;
+    durationSeconds: number;
+  } | null> {
     stopDictation();
     try {
       await recorder.stop();
@@ -177,12 +194,14 @@ function CaptureSheet({
       );
       if (!uri) {
         setError('No recording file produced');
-        return;
+        return null;
       }
       setReadyUri(uri);
       setReadyDuration(secs);
+      return { uri, durationSeconds: secs };
     } catch (e) {
       setError(errorMessageForUi(e, 'Could not stop recording'));
+      return null;
     }
   }
 
@@ -195,12 +214,29 @@ function CaptureSheet({
     await startListening();
   }
 
-  async function uploadClip(process: boolean) {
-    if (!readyUri || busy || isRecording) return;
+  async function resolveClip(): Promise<{
+    uri: string;
+    durationSeconds: number;
+  } | null> {
+    if (isRecording) return stopListening();
+    if (readyUri) {
+      return { uri: readyUri, durationSeconds: readyDuration };
+    }
+    return null;
+  }
+
+  /** Prototype “Turn into next steps” — stop listening, then upload + process. */
+  async function turnIntoNextSteps() {
+    if (!hasDraft || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const mimeType = mimeFromUri(readyUri);
+      const clip = await resolveClip();
+      if (!clip) {
+        setError('Speak a voice note first');
+        return;
+      }
+      const mimeType = mimeFromUri(clip.uri);
       const note = await createDraftNote();
       const title = draftTitle.trim();
       const thought = draftThought.trim();
@@ -212,14 +248,12 @@ function CaptureSheet({
       }
       const queued = await uploadNoteAudio({
         note,
-        uri: readyUri,
+        uri: clip.uri,
         mimeType,
-        durationSeconds: readyDuration,
+        durationSeconds: clip.durationSeconds,
         extension: extensionForMime(mimeType),
       });
-      if (process) {
-        await requestTranscription(queued.id);
-      }
+      await requestTranscription(queued.id);
       onClose();
       router.push({
         pathname: '/(app)/notes/[noteId]',
@@ -227,6 +261,43 @@ function CaptureSheet({
       });
     } catch (e) {
       setError(errorMessageForUi(e, 'Upload failed'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Prototype “Just save note” — audio when present, else text-only draft. */
+  async function justSaveNote() {
+    if (!hasDraft || busy || isRecording) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const note = await createDraftNote();
+      const title = draftTitle.trim();
+      const thought = draftThought.trim();
+      if (title || thought) {
+        await updateNoteContent(note.id, {
+          ...(title ? { title } : {}),
+          ...(thought ? { edited_transcript: thought } : {}),
+        });
+      }
+      if (readyUri) {
+        const mimeType = mimeFromUri(readyUri);
+        await uploadNoteAudio({
+          note,
+          uri: readyUri,
+          mimeType,
+          durationSeconds: readyDuration,
+          extension: extensionForMime(mimeType),
+        });
+      }
+      onClose();
+      router.push({
+        pathname: '/(app)/notes/[noteId]',
+        params: { noteId: note.id },
+      });
+    } catch (e) {
+      setError(errorMessageForUi(e, 'Save failed'));
     } finally {
       setBusy(false);
     }
@@ -253,33 +324,59 @@ function CaptureSheet({
       animationType="fade"
       onRequestClose={handleClose}
     >
-      <View style={styles.root}>
+      <View
+        style={[
+          styles.root,
+          {
+            paddingTop: Math.max(insets.top, phone ? 8 : 16),
+            paddingBottom: Math.max(insets.bottom, phone ? 8 : 16),
+            paddingHorizontal: phone ? 16 : space[4],
+          },
+        ]}
+      >
         <Pressable
           style={styles.backdrop}
           onPress={handleClose}
           accessibilityLabel="Close capture"
         />
-        <View style={styles.card} accessibilityViewIsModal>
-          <View style={styles.inner}>
-            <View style={styles.header}>
-              <Text style={styles.title}>Catch that thought.</Text>
-              <Pressable
-                onPress={handleClose}
-                disabled={busy}
-                accessibilityLabel="Close"
-                hitSlop={12}
-                style={styles.closeBtn}
-              >
-                <Ionicons name="close" size={22} color={colors.ink} />
-              </Pressable>
-            </View>
+        <View
+          style={[styles.card, { maxHeight: maxCardH }]}
+          accessibilityViewIsModal
+        >
+          {/* Prototype DialogContent: max-h-[90dvh] overflow-y-auto — fine on phone */}
+          <ScrollView
+            {...({ className: 'saydo-scroll' } as object)}
+            style={styles.cardScroll}
+            contentContainerStyle={[styles.inner, phone && styles.innerPhone]}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+          >
+            <Pressable
+              onPress={handleClose}
+              disabled={busy}
+              accessibilityLabel="Close"
+              hitSlop={12}
+              style={styles.closeBtn}
+            >
+              <Ionicons name="close" size={18} color={colors.ink} />
+            </Pressable>
+
+            <Text style={[styles.title, phone && styles.titlePhone]}>
+              Catch that thought.
+            </Text>
             <Text style={styles.desc}>
               Speak or type it messy. Saydo’s AI turns it into next steps you
               review.
             </Text>
 
             <View style={styles.ribbon}>
-              <VoiceRibbon live={isRecording} color={colors.cobalt} />
+              <VoiceRibbon
+                live={isRecording}
+                color={colors.cobalt}
+                compact={phone}
+              />
             </View>
 
             <View style={styles.speakRow}>
@@ -303,15 +400,15 @@ function CaptureSheet({
               </Button>
               <Text style={styles.timer} accessibilityLiveRegion="polite">
                 {formatCaptureTimer(displaySeconds)}
+                <Text style={styles.timerHint}>
+                  {' '}
+                  · {MAX_AUDIO_DURATION_SECONDS}s
+                  {hasClip ? ' · ready' : ''}
+                </Text>
               </Text>
             </View>
 
-            <Text style={styles.maxHint}>
-              Max {MAX_AUDIO_DURATION_SECONDS}s
-              {hasClip ? ' · Ready to save' : ''}
-            </Text>
-
-            <Text style={styles.fieldLabel}>
+            <Text style={[styles.fieldLabel, phone && styles.fieldLabelPhone]}>
               Note title <Text style={styles.optional}>(optional)</Text>
             </Text>
             <TextField
@@ -321,9 +418,12 @@ function CaptureSheet({
               editable={!busy}
             />
 
-            <Text style={styles.fieldLabel}>Your thought</Text>
+            <Text style={[styles.fieldLabel, phone && styles.fieldLabelPhone]}>
+              Your thought
+            </Text>
             <TextField
-              style={styles.thought}
+              className="saydo-scroll"
+              style={[styles.thought, phone && styles.thoughtPhone]}
               placeholder="What’s on your mind?"
               value={draftThought}
               onChangeText={onThoughtChange}
@@ -339,34 +439,35 @@ function CaptureSheet({
               </Text>
             ) : null}
 
-            <View style={styles.actions}>
+            {/* Prototype: grid gap-2 sm:grid-cols-2 — cta xl + quiet xl */}
+            <View style={[styles.actions, !phone && styles.actionsDesktop]}>
               <Button
                 variant="cta"
                 size="xl"
                 disabled={!canProcess}
-                onPress={() => void uploadClip(true)}
+                onPress={() => void turnIntoNextSteps()}
                 style={styles.actionBtn}
               >
                 <Ionicons
                   name={busy ? 'hourglass-outline' : 'sparkles'}
-                  size={18}
+                  size={16}
                   color={colors.card}
                 />
-                <Text style={styles.primaryLabel}>
+                <Text style={styles.ctaLabel}>
                   {busy ? 'Thinking…' : 'Turn into next steps'}
                 </Text>
               </Button>
               <Button
                 variant="quiet"
                 size="xl"
-                disabled={!canJustSave || isRecording}
-                onPress={() => void uploadClip(false)}
+                disabled={!canJustSave}
+                onPress={() => void justSaveNote()}
                 style={styles.actionBtn}
               >
                 Just save note
               </Button>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -378,47 +479,63 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: space[4],
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(23, 23, 23, 0.45)',
   },
+  // Prototype: max-w-lg, w-[calc(100%-2rem)], max-h-[90dvh], rounded-lg, p-6
   card: {
     width: '100%',
-    maxWidth: 520,
+    maxWidth: 512,
     borderRadius: radius.lg,
     backgroundColor: colors.card,
     overflow: 'hidden',
     zIndex: 1,
   },
-  inner: {
-    padding: space[6],
-    gap: space[3],
+  cardScroll: {
+    flexGrow: 0,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+  inner: {
+    position: 'relative',
+    padding: space[6],
+    paddingTop: space[8],
     gap: space[3],
+    paddingBottom: space[6],
+  },
+  innerPhone: {
+    padding: space[5],
+    paddingTop: 28,
+    paddingBottom: space[5],
+    gap: space[2],
   },
   title: {
-    flex: 1,
     fontFamily: fonts.display,
-    fontSize: 28,
+    fontSize: 30,
+    lineHeight: 36,
     color: colors.ink,
+    paddingRight: space[6],
   },
+  titlePhone: {
+    fontSize: 26,
+    lineHeight: 32,
+  },
+  // Prototype Dialog close: absolute right-4 top-4
   closeBtn: {
+    position: 'absolute',
+    top: space[4],
+    right: space[4],
+    zIndex: 2,
     padding: 4,
-    marginTop: 2,
+    opacity: 0.7,
   },
   desc: {
     fontFamily: fonts.sans,
     fontSize: 14,
+    lineHeight: 20,
     color: colors.stone,
-    marginBottom: space[1],
   },
-  ribbon: { marginVertical: space[1] },
+  ribbon: { marginVertical: 0 },
   speakRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -436,38 +553,55 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.ink,
   },
-  maxHint: {
-    fontFamily: fonts.sans,
-    fontSize: 12,
+  timerHint: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
     color: colors.stone,
-    textAlign: 'center',
   },
   fieldLabel: {
     fontFamily: fonts.sans,
     fontSize: 14,
     color: colors.ink,
-    marginTop: space[2],
+    marginTop: space[1],
+  },
+  fieldLabelPhone: {
+    marginTop: 0,
+    fontSize: 13,
   },
   optional: { color: colors.stone },
-  // Fixed box (prototype ~4 rows) — overflow scrolls inside the field only.
+  // Fixed box — overflow scrolls inside the field only (not the modal).
   thought: {
     height: 112,
     maxHeight: 112,
     paddingVertical: space[3],
+  },
+  thoughtPhone: {
+    height: 88,
+    maxHeight: 88,
   },
   error: {
     fontFamily: fonts.sans,
     fontSize: 14,
     color: colors.destructive,
   },
+  // Prototype: grid gap-2; 1 col mobile, 2 cols from sm
   actions: {
-    marginTop: space[2],
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    marginTop: space[1],
+    flexDirection: 'column',
     gap: space[2],
+    width: '100%',
   },
-  actionBtn: { flexGrow: 1, flexBasis: 160, minWidth: 140 },
-  primaryLabel: {
+  actionsDesktop: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  actionBtn: {
+    width: '100%',
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+  },
+  ctaLabel: {
     fontFamily: fonts.sansMedium,
     fontSize: 15,
     color: colors.card,
