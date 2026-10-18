@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Check, Mic, Pencil, RotateCcw, Sparkles, X } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -46,28 +46,315 @@ const journey = [
 ];
 
 export function InteractiveJourney() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState(0);
   const [kept, setKept] = useState<number[]>([]);
   const [dismissed, setDismissed] = useState<number[]>([]);
   const [edited, setEdited] = useState<Record<number, string>>({});
   const [editing, setEditing] = useState<number | null>(null);
   const current = journey[step];
-  return <section id="journey" className="scroll-mt-20 bg-lavender">
-    <div className="container-site py-8 md:py-20">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">{journey.map((item, i) => <Button key={item.name} onClick={() => setStep(i)} variant="ghost" aria-pressed={step === i} className={cn("h-14 min-w-0 justify-start gap-2 px-3 md:h-16 md:gap-4 rounded-none border-t border-ink/20 text-base", step === i ? "border-ink bg-ink text-paper hover:bg-ink hover:text-paper" : "text-ink/60")}><span className="font-mono text-xs">0{i + 1}</span>{item.name}<ArrowRight className="ml-auto" /></Button>)}</div>
-      <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center">
-        <AnimatePresence mode="wait"><motion.div key={step} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}><span className="eyebrow text-ink/60">{current?.label}</span><h2 className="mt-4 text-3xl font-medium leading-tight md:text-5xl">{current?.title}</h2><p className="mt-4 max-w-md text-base md:text-lg leading-relaxed text-ink/65">{current?.copy}</p><div className="mt-5 flex gap-3"><Button variant="ink" size="xl" onClick={() => setStep((step + 1) % 4)}>{step === 3 ? "Start again" : "Next moment"}{step === 3 ? <RotateCcw /> : <ArrowRight />}</Button></div></motion.div></AnimatePresence>
-        <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-4 shadow-card md:p-9">
-          <div className="flex items-center justify-between border-b border-border pb-5"><span className="eyebrow text-muted-foreground">Voice note / 01</span><span className="font-mono text-xs">0:14</span></div>
-          <div className="min-h-64 py-5 md:min-h-80"><AnimatePresence mode="wait"><motion.div key={step} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-            {step === 0 && <div className="py-7 text-center"><span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-primary text-primary-foreground"><Mic className="h-6 w-6" /></span><div className="mt-5 text-primary"><VoiceRibbon /></div><p className="mt-5 text-xl">“Need to send the revised proposal…”</p><p className="mt-2 text-sm text-muted-foreground">Sample capture</p></div>}
-            {step === 1 && <><p className="text-xl leading-relaxed md:text-2xl">“{SAMPLE_TRANSCRIPT.map((part, i) => <span key={i} className={part.taskId ? "bg-lime" : ""}>{part.text}</span>)}”</p><p className="mt-9 flex items-center gap-2 text-sm text-primary"><Sparkles className="h-4 w-4" /> 3 possible next steps</p></>}
-            {step === 2 && <div className="divide-y divide-border">{SAMPLE_SUGGESTIONS.map((item) => <div key={item.id} className="py-4"><div className="min-w-0">{editing === item.id ? <input aria-label="Edit suggestion" className="input-field" autoFocus value={edited[item.id] ?? item.title} onChange={(e) => setEdited({...edited, [item.id]: e.target.value})} onBlur={() => setEditing(null)} onKeyDown={(e) => {if (e.key === "Enter") setEditing(null);}} /> : <p className={cn("text-base font-medium", dismissed.includes(item.id) && "text-muted-foreground line-through")}>{edited[item.id] ?? item.title}</p>}<p className="mt-1 text-xs text-muted-foreground">{item.kind} · {item.due ?? "No date"}</p></div><div className="mt-3 flex items-center gap-2"><Button variant={kept.includes(item.id) ? "secondary" : "cta"} size="sm" onClick={() => {setKept([...new Set([...kept, item.id])]); setDismissed(dismissed.filter(id => id !== item.id));}}><Check />{kept.includes(item.id) ? "Approved" : "Approve"}</Button><Button variant="ghost" size="icon" title="Edit suggestion" aria-label={`Edit ${item.title}`} onClick={() => setEditing(item.id)}><Pencil /></Button><Button variant="ghost" size="icon" title="Dismiss suggestion" aria-label={`Dismiss ${item.title}`} onClick={() => {setDismissed([...new Set([...dismissed, item.id])]);setKept(kept.filter(id => id !== item.id));}}><X /></Button></div></div>)}</div>}
-            {step === 3 && <><span className="eyebrow text-primary">Your next steps / {kept.length}</span>{kept.length ? SAMPLE_SUGGESTIONS.filter(item => kept.includes(item.id)).map(item => <div key={item.id} className="flex gap-4 border-b border-border py-6"><Check className="h-5 w-5 shrink-0 text-primary" /><div><p className="font-medium">{edited[item.id] ?? item.title}</p><p className="mt-2 text-xs text-muted-foreground">{item.due ?? "Anytime"} · From voice note 01</p></div></div>) : <div className="py-12"><h3 className="text-2xl">Nothing added without you.</h3><p className="mt-3 text-muted-foreground">Your approved suggestions will appear here.</p><Button variant="quiet" className="mt-6" onClick={() => setStep(2)}>Review suggestions <ArrowRight /></Button></div>}</>}
-          </motion.div></AnimatePresence></div>
-          <div className="flex items-center gap-2 border-t border-border pt-5 text-xs text-muted-foreground"><span className="h-2 w-2 rounded-full bg-primary" /> AI proposes. You decide.</div>
+  const total = journey.length;
+
+  function scrollToStep(index: number) {
+    const section = sectionRef.current;
+    if (!section) return;
+    const max = section.offsetHeight - window.innerHeight;
+    if (max <= 0) return;
+    const top =
+      section.getBoundingClientRect().top +
+      window.scrollY +
+      (max * (index + 0.5)) / total;
+    window.scrollTo({ top, behavior: "smooth" });
+  }
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const sync = () => {
+      const max = section.offsetHeight - window.innerHeight;
+      if (max <= 0) return;
+      const progressed = Math.min(
+        Math.max(-(section.getBoundingClientRect().top), 0),
+        max,
+      );
+      const next = Math.min(total - 1, Math.floor((progressed / max) * total));
+      setStep((prev) => (prev === next ? prev : next));
+    };
+
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    return () => {
+      window.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+    };
+  }, [total]);
+
+  useEffect(() => {
+    const active = tabsRef.current?.querySelector<HTMLElement>(
+      `[data-step="${step}"]`,
+    );
+    active?.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  }, [step]);
+
+  return (
+    <section
+      ref={sectionRef}
+      id="journey"
+      className="scroll-mt-20 bg-lavender"
+      style={{ height: `${total * 100}vh` }}
+    >
+      <div className="sticky top-0 flex min-h-dvh items-center">
+        <div className="container-site w-full py-8 md:py-16">
+          <div
+            ref={tabsRef}
+            className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {journey.map((item, i) => (
+              <Button
+                key={item.name}
+                data-step={i}
+                type="button"
+                onClick={() => scrollToStep(i)}
+                variant="ghost"
+                aria-pressed={step === i}
+                className={cn(
+                  "h-14 min-w-[10.5rem] shrink-0 justify-start gap-2 rounded-none border-t border-ink/20 px-3 text-base md:h-16 md:min-w-0 md:flex-1 md:gap-4",
+                  step === i
+                    ? "border-ink bg-ink text-paper hover:bg-ink hover:text-paper"
+                    : "text-ink/60",
+                )}
+              >
+                <span className="font-mono text-xs">0{i + 1}</span>
+                {item.name}
+                <ArrowRight className="ml-auto" />
+              </Button>
+            ))}
+          </div>
+          <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:items-center">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                <span className="eyebrow text-ink/60">{current?.label}</span>
+                <h2 className="mt-4 text-3xl font-medium leading-tight md:text-5xl">
+                  {current?.title}
+                </h2>
+                <p className="mt-4 max-w-md text-base leading-relaxed text-ink/65 md:text-lg">
+                  {current?.copy}
+                </p>
+                <div className="mt-5 flex gap-3">
+                  <Button
+                    variant="ink"
+                    size="xl"
+                    onClick={() =>
+                      scrollToStep(step === total - 1 ? 0 : step + 1)
+                    }
+                  >
+                    {step === total - 1 ? "Start again" : "Next moment"}
+                    {step === total - 1 ? <RotateCcw /> : <ArrowRight />}
+                  </Button>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+            <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-4 shadow-card md:p-9">
+              <div className="flex items-center justify-between border-b border-border pb-5">
+                <span className="eyebrow text-muted-foreground">Voice note / 01</span>
+                <span className="font-mono text-xs">0:14</span>
+              </div>
+              <div className="min-h-64 py-5 md:min-h-80">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={step}
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    {step === 0 && (
+                      <div className="py-7 text-center">
+                        <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-primary text-primary-foreground">
+                          <Mic className="h-6 w-6" />
+                        </span>
+                        <div className="mt-5 text-primary">
+                          <VoiceRibbon />
+                        </div>
+                        <p className="mt-5 text-xl">
+                          “Need to send the revised proposal…”
+                        </p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          Sample capture
+                        </p>
+                      </div>
+                    )}
+                    {step === 1 && (
+                      <>
+                        <p className="text-xl leading-relaxed md:text-2xl">
+                          “
+                          {SAMPLE_TRANSCRIPT.map((part, i) => (
+                            <span
+                              key={i}
+                              className={part.taskId ? "bg-lime" : ""}
+                            >
+                              {part.text}
+                            </span>
+                          ))}
+                          ”
+                        </p>
+                        <p className="mt-9 flex items-center gap-2 text-sm text-primary">
+                          <Sparkles className="h-4 w-4" /> 3 possible next steps
+                        </p>
+                      </>
+                    )}
+                    {step === 2 && (
+                      <div className="divide-y divide-border">
+                        {SAMPLE_SUGGESTIONS.map((item) => (
+                          <div key={item.id} className="py-4">
+                            <div className="min-w-0">
+                              {editing === item.id ? (
+                                <input
+                                  aria-label="Edit suggestion"
+                                  className="input-field"
+                                  autoFocus
+                                  value={edited[item.id] ?? item.title}
+                                  onChange={(e) =>
+                                    setEdited({
+                                      ...edited,
+                                      [item.id]: e.target.value,
+                                    })
+                                  }
+                                  onBlur={() => setEditing(null)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") setEditing(null);
+                                  }}
+                                />
+                              ) : (
+                                <p
+                                  className={cn(
+                                    "text-base font-medium",
+                                    dismissed.includes(item.id) &&
+                                      "text-muted-foreground line-through",
+                                  )}
+                                >
+                                  {edited[item.id] ?? item.title}
+                                </p>
+                              )}
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {item.kind} · {item.due ?? "No date"}
+                              </p>
+                            </div>
+                            <div className="mt-3 flex items-center gap-2">
+                              <Button
+                                variant={
+                                  kept.includes(item.id) ? "secondary" : "cta"
+                                }
+                                size="sm"
+                                onClick={() => {
+                                  setKept([
+                                    ...new Set([...kept, item.id]),
+                                  ]);
+                                  setDismissed(
+                                    dismissed.filter((id) => id !== item.id),
+                                  );
+                                }}
+                              >
+                                <Check />
+                                {kept.includes(item.id)
+                                  ? "Approved"
+                                  : "Approve"}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Edit suggestion"
+                                aria-label={`Edit ${item.title}`}
+                                onClick={() => setEditing(item.id)}
+                              >
+                                <Pencil />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Dismiss suggestion"
+                                aria-label={`Dismiss ${item.title}`}
+                                onClick={() => {
+                                  setDismissed([
+                                    ...new Set([...dismissed, item.id]),
+                                  ]);
+                                  setKept(kept.filter((id) => id !== item.id));
+                                }}
+                              >
+                                <X />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {step === 3 && (
+                      <>
+                        <span className="eyebrow text-primary">
+                          Your next steps / {kept.length}
+                        </span>
+                        {kept.length ? (
+                          SAMPLE_SUGGESTIONS.filter((item) =>
+                            kept.includes(item.id),
+                          ).map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex gap-4 border-b border-border py-6"
+                            >
+                              <Check className="h-5 w-5 shrink-0 text-primary" />
+                              <div>
+                                <p className="font-medium">
+                                  {edited[item.id] ?? item.title}
+                                </p>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  {item.due ?? "Anytime"} · From voice note 01
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="py-12">
+                            <h3 className="text-2xl">
+                              Nothing added without you.
+                            </h3>
+                            <p className="mt-3 text-muted-foreground">
+                              Your approved suggestions will appear here.
+                            </p>
+                            <Button
+                              variant="quiet"
+                              className="mt-6"
+                              onClick={() => scrollToStep(2)}
+                            >
+                              Review suggestions <ArrowRight />
+                            </Button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+              <div className="flex items-center gap-2 border-t border-border pt-5 text-xs text-muted-foreground">
+                <span className="h-2 w-2 rounded-full bg-primary" /> AI
+                proposes. You decide.
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </section>;
+    </section>
+  );
 }

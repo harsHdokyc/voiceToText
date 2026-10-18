@@ -35,17 +35,6 @@ export function HomePage() {
                     Get early access <ArrowUpRight />
                   </Link>
                 </Button>
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="icon"
-                  className="hidden lg:inline-flex"
-                  title="See how it works"
-                >
-                  <a href="#how" aria-label="See how it works">
-                    <ArrowDown />
-                  </a>
-                </Button>
               </div>
             </div>
           </div>
