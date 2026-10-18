@@ -13,6 +13,7 @@ import {
   type TextInputProps,
 } from 'react-native';
 
+import { SaydoMark } from '@/components/saydo-mark';
 import { Eyebrow, TextField, VoiceRibbon } from '@/components/ui';
 import { colors, fonts, radius, space } from '@/theme';
 
@@ -58,7 +59,10 @@ export function AuthBrandPanel() {
   return (
     <View style={styles.inkPanel} accessibilityElementsHidden>
       <View style={styles.inkTop}>
-        <Text style={styles.inkEyebrow}>Said → sorted</Text>
+        <View style={styles.inkBrand}>
+          <SaydoMark size={34} />
+          <Text style={styles.inkEyebrow}>Said → sorted</Text>
+        </View>
         <Text style={styles.inkArrow} accessibilityElementsHidden>
           ↗
         </Text>
@@ -274,6 +278,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  inkBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space[3],
   },
   inkEyebrow: {
     fontFamily: fonts.mono,

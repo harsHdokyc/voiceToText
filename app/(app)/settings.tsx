@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 
+import { SaydoWordmark } from '@/components/saydo-mark';
 import { Button, Eyebrow, TextField } from '@/components/ui';
 import { signOut } from '@/features/auth/services/auth-service';
 import { registerForPushNotifications } from '@/features/reminders/services/push-registration';
@@ -112,6 +113,7 @@ export default function SettingsScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
+      <SaydoWordmark markSize={40} style={styles.brand} />
       <Eyebrow>Make yourself at home</Eyebrow>
       <Text style={styles.title}>Your workspace.</Text>
 
@@ -264,6 +266,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  brand: { marginBottom: space[2] },
   title: {
     fontFamily: fonts.display,
     fontSize: 36,

@@ -23,7 +23,7 @@ import {
 import { countPendingSuggestions } from '@/features/notes/services/suggestions-service';
 import { greetingName } from '@/features/settings/services/greeting-name';
 import { getOwnProfile } from '@/features/settings/services/profile-service';
-import { APP_NAME } from '@/lib/constants';
+import { SaydoWordmark } from '@/components/saydo-mark';
 import { useAuth } from '@/providers/auth-provider';
 import { colors, fonts, radius, space } from '@/theme';
 
@@ -83,12 +83,15 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
     <View style={[styles.root, { paddingTop: desktop ? 0 : insets.top }]}>
       {desktop ? (
         <View style={[styles.sidebar, collapsed && styles.sidebarCollapsed]}>
-          <View style={styles.brandRow}>
-            {collapsed ? (
-              <Ionicons name="musical-notes" size={22} color={colors.lime} />
-            ) : (
-              <Text style={styles.wordmark}>{APP_NAME}</Text>
-            )}
+          <View
+            style={[styles.brandRow, collapsed && styles.brandRowCollapsed]}
+          >
+            <SaydoWordmark
+              markSize={collapsed ? 32 : 34}
+              showName={!collapsed}
+              color={colors.paper}
+              nameStyle={styles.wordmark}
+            />
           </View>
           <Button
             variant="lime"
@@ -302,7 +305,9 @@ const styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     paddingHorizontal: space[2],
+    alignItems: 'flex-start',
   },
+  brandRowCollapsed: { alignItems: 'center', paddingHorizontal: 0 },
   wordmark: {
     fontFamily: fonts.displaySemibold,
     fontSize: 24,

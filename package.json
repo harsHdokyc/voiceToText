@@ -15,7 +15,8 @@
     "supabase:reset": "npx supabase db reset",
     "supabase:functions": "npx supabase functions serve --env-file supabase/functions/.env",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "brand:render": "node scripts/render-saydo-mark.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/geist": "^0.4.2",
@@ -48,6 +49,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@types/react": "~19.2.2",
     "supabase": "^2.119.0",
     "typescript": "~6.0.3",

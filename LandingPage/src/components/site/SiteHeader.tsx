@@ -1,5 +1,6 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import { ArrowUpRight, Menu, X } from "lucide-react";
 import { Wordmark } from "./Wordmark";
 import { Button } from "@/components/ui/button";
@@ -73,67 +74,69 @@ export function SiteHeader() {
   return (
     <header
       className={cn(
-        "site-header sticky top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-500",
-        scrolled || open
-          ? "border-b border-border bg-background/85 backdrop-blur-md"
-          : "border-b border-border bg-background",
+        "site-header sticky top-0 z-50 pt-3 transition-[padding] duration-300 md:pt-4",
+        open && "bg-background",
       )}
     >
-      <div className="container-site grid h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 lg:flex lg:h-20 lg:justify-between">
-        <Wordmark />
-        <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
-          {NAV.map((n) => (
-            <NavLink
-              key={n.to}
-              to={n.to}
-              className={({ isActive }) =>
-                cn(
-                  "relative rounded-md px-4 py-2.5 text-sm text-foreground/70 transition-colors hover:bg-muted hover:text-foreground",
-                  isActive && "bg-muted text-foreground",
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {n.label}
-                  <span
-                    className={cn(
-                      "absolute bottom-0 left-4 h-[2px] w-[calc(100%_-_2rem)] origin-left bg-primary transition-transform duration-500",
-                      isActive ? "scale-x-100" : "scale-x-0",
-                    )}
-                  />
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="hidden items-center gap-5 lg:flex">
-          <Button asChild variant="ghost">
-            <a href={appUrl()}>Sign in</a>
-          </Button>
-          <Button asChild variant="ink" className="h-11 px-5">
-            <Link to="/early-access">
-              Get early access <ArrowUpRight />
-            </Link>
-          </Button>
-        </div>
-        <Button
-          ref={triggerRef}
-          variant="ghost"
-          size="icon"
-          className="-mr-2 h-11 w-11 shrink-0 lg:hidden"
-          aria-label={open ? "Close menu" : "Open menu"}
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
+      <div className="container-site">
+        <motion.div
+          initial={{ y: -18, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className={cn(
+            "site-nav-pill relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-2 lg:flex lg:justify-between lg:gap-4 lg:px-3 lg:py-2",
+            scrolled && "site-nav-pill-scrolled",
+          )}
         >
-          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+          <Wordmark className="pl-1" />
+
+          <nav
+            aria-label="Main"
+            className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-0.5 lg:flex"
+          >
+            {NAV.map((n) => (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                className={({ isActive }) =>
+                  cn("site-nav-link", isActive && "site-nav-link-active")
+                }
+              >
+                {n.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="hidden items-center gap-2 pr-0.5 lg:flex">
+            <a href={appUrl()} className="site-nav-signin">
+              Sign in
+            </a>
+            <Link to="/early-access" className="site-nav-cta group">
+              Get early access
+              <span className="site-nav-cta-arrow" aria-hidden>
+                <ArrowUpRight className="h-4 w-4" />
+              </span>
+            </Link>
+          </div>
+
+          <Button
+            ref={triggerRef}
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11 shrink-0 rounded-full border border-ink/15 lg:hidden"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+          >
+            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </motion.div>
       </div>
 
       {open && (
         <div
           ref={menuRef}
-          className="container-site flex h-[calc(100dvh-4rem)] flex-col justify-between gap-6 overflow-y-auto pb-6 pt-4 lg:hidden"
+          className="container-site flex h-[calc(100dvh-5.5rem)] flex-col justify-between gap-6 overflow-y-auto pb-6 pt-6 lg:hidden"
         >
           <nav aria-label="Mobile" className="flex flex-col">
             {NAV.map((n, i) => (
@@ -148,12 +151,16 @@ export function SiteHeader() {
             ))}
           </nav>
           <div className="flex flex-col gap-3">
-            <Button asChild variant="cta" size="xl">
-              <Link to="/early-access">
-                Get early access <span className="arrow">→</span>
-              </Link>
-            </Button>
-            <a href={appUrl()} className="py-2 text-center text-sm text-muted-foreground">
+            <Link to="/early-access" className="site-nav-cta site-nav-cta-mobile group">
+              Get early access
+              <span className="site-nav-cta-arrow" aria-hidden>
+                <ArrowUpRight className="h-4 w-4" />
+              </span>
+            </Link>
+            <a
+              href={appUrl()}
+              className="py-2 text-center text-sm text-muted-foreground"
+            >
               Sign in
             </a>
           </div>
