@@ -26,4 +26,17 @@ export function reminderAtHoursFromNow(hours: number, now = new Date()) {
   return new Date(now.getTime() + hours * 3600_000).toISOString();
 }
 
+/**
+ * Edit-sheet reminder chips → existing scheduleReminder hours API.
+ * Prototype also had evening / tomorrow-9am; those need a custom picker (deferred).
+ * ponytail: custom datetime-local deferred until schema/UI picker ships; presets only.
+ */
+export const REMINDER_HOUR_PRESETS = [
+  { label: 'In 1 hour', hours: 1 },
+  { label: 'In 3 hours', hours: 3 },
+  { label: 'In 1 day', hours: 24 },
+] as const;
+
+export type ReminderHourPreset = (typeof REMINDER_HOUR_PRESETS)[number]['hours'];
+
 export const MAX_REMINDER_ATTEMPTS = 5;

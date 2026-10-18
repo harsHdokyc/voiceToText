@@ -1,9 +1,11 @@
 # Project Status
-Last updated: 2026-10-03 (Phases 0–7 complete).
+Last updated: 2026-10-18 (Phases 0–7 complete + Saydo workspace UI).
 
 ## Current phase
 **Phases 0–7 complete** against plan exit criteria (see inventory below). Hosted backend: [voiceToWork](https://supabase.com/dashboard/project/ubqhyeicmgmdzethtids).
 **AI provider:** official OpenAI via OpenAI SDK (see [DECISIONS.md](./DECISIONS.md)).
+**Product UI:** Saydo workspace/dashboard (+ auth) from `ui/goals-in-motion-55` reference — see [ui-execution-planner.md](./ui-execution-planner.md) (Steps 1–13).
+**Marketing:** Vite app in `LandingPage/` + `waitlist` table on the same hosted project — see [LANDING_ARCHITECTURE.md](./LANDING_ARCHITECTURE.md).
 
 Living phase map: [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md). P0/P1/P2: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 
@@ -66,12 +68,13 @@ Living phase map: [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md). P0/P
 ## Notes / recording / tasks / reminders (app)
 | Piece | Notes |
 |---|---|
-| Home | Notes list; record + tasks + settings |
-| Record | ≤60s → note-audio proxy → process-note |
-| Note detail | Transcript, suggestion edit/approve/reject, retry, **delete note** |
-| Tasks | List/search/complete/edit + source note link |
-| Task detail | Edit + **remind in 1h/3h/1d** + cancel |
-| Settings | Privacy disclosure, push enable, account delete, debug probes |
+| Overview | Greeting from `profiles.display_name`; cobalt capture band; recent notes + review/task previews |
+| Voice notes | Category chips Work/Ideas/Personal; search; card grid; detail + suggestions |
+| Capture | In-shell modal ≤60s `expo-audio` → upload → process-note (optional web live preview) |
+| Note detail | Transcript, suggestion approve/dismiss, retry, **delete note**, category |
+| Suggestions | Global pending inbox; Approve / Approve all / Edit (approve-with-edits) / Dismiss |
+| Tasks | Open/Completed/All; complete; edit sheet (due + 1h/3h/1d reminder); archive; source note |
+| Settings | Display name persist; privacy; push; sign out; delete account; Developer collapsed |
 
 ## AI / Edge
 | Function | Notes |
@@ -96,13 +99,13 @@ See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 ## Tests
 | Command | Last result |
 |---|---|
-| `npm run typecheck` | Pass |
-| `npm test` | 108 passed |
+| `npm run typecheck` | Pass (2026-10-18) |
+| `npm test` | 139 passed / 25 files (2026-10-18) |
 
-**Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`).
+**Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`). Behavior tests for pure helpers (greeting/display name, due presets, capture timer, live-dictation concat, dueLabel, etc.).
 
 ## Next slice
-**Code leftovers shipped.** Remaining work is **manual** — see **[LEFTOVER.md](./LEFTOVER.md)** §YOU DO THESE (secrets, cron, device smoke, RLS two-user, key rotate/push unblock).
+**Saydo workspace UI (planner Steps 1–13) shipped in Expo.** Remaining work is mostly **manual / ops** — see **[LEFTOVER.md](./LEFTOVER.md)** §YOU DO THESE (secrets, cron, device smoke, RLS two-user). Optional later: marketing site port from `ui/`; custom reminder datetime picker.
 
 ## Locked decisions
 See [DECISIONS.md](./DECISIONS.md).

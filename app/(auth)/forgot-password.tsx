@@ -1,9 +1,10 @@
-import { useState } from 'react';
 import { Redirect, router } from 'expo-router';
+import { useState } from 'react';
+import { Text } from 'react-native';
 
 import {
   AuthButton,
-  AuthField,
+  AuthLabeledField,
   AuthLink,
   AuthMessage,
   AuthScreen,
@@ -12,6 +13,7 @@ import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { requestPasswordReset } from '@/features/auth/services/auth-service';
 import { normalizeEmail } from '@/features/auth/services/auth-validation';
 import { useAuth } from '@/providers/auth-provider';
+import { colors, fonts } from '@/theme';
 
 export default function ForgotPasswordScreen() {
   const { session, isLoading } = useAuth();
@@ -24,21 +26,29 @@ export default function ForgotPasswordScreen() {
 
   return (
     <AuthScreen
-      title="Forgot password"
-      subtitle="We'll email an 8-digit code so you can set a new password"
+      title={
+        <>
+          A fresh{' '}
+          <Text style={{ fontFamily: fonts.sansItalic, color: colors.cobalt }}>
+            start.
+          </Text>
+        </>
+      }
+      subtitle="Get back to what matters. We'll email an 8-digit code."
     >
-      <AuthField
+      <AuthLabeledField
+        label="Email"
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
-        placeholder="Email"
+        placeholder="you@example.com"
         textContentType="emailAddress"
         value={email}
         onChangeText={setEmail}
       />
       <AuthMessage>{message}</AuthMessage>
       <AuthButton
-        label="Send reset code"
+        label="Send reset code →"
         busy={busy}
         onPress={() =>
           void run(async () => {

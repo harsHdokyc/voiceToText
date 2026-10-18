@@ -5,6 +5,27 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-18 · Marketing landing = Vite app + shared Supabase waitlist
+- **Context:** Marketing site was deferred from Expo; `LandingPage/` needed a real waitlist without a second backend. Reference UI already inserts into `waitlist` (table was missing on hosted).
+- **Alternatives:** Separate waitlist DB/SaaS; create Auth users from the form; host marketing inside Expo.
+- **Decision:**
+  - One hosted project (`voiceToWork`). Add `public.waitlist` (email unique case-insensitive, optional `first_name`, RLS insert-only for anon/authenticated).
+  - Ship marketing as Vite + React in `LandingPage/` pointing at the same publishable key.
+  - Waitlist ≠ account; product sign-up stays in the Expo app (web + future store builds).
+- **Consequence:** Details in [LANDING_ARCHITECTURE.md](./LANDING_ARCHITECTURE.md). Do not invent a second database for early access.
+
+## 2026-10-18 · Product UI = Saydo workspace from `ui/goals-in-motion-55`
+- **Context:** Visual/interaction reference landed in `ui/goals-in-motion-55` (TanStack + Tailwind demo). Expo app needed the same **Workspace / dashboard (+ auth)** chrome without becoming a second demo runtime.
+- **Alternatives:** Paste prototype wholesale; keep green “Voice-to-Work” chrome; port marketing site now.
+- **Decision:**
+  - **Brand:** user-facing product name is **Saydo** (`APP_NAME`, Expo `name`). Package slug `voice-to-work` may remain internal.
+  - **Scope now:** Workspace shell + Overview / notes / suggestions / tasks / settings + auth restyle. **Marketing site deferred** (`ui/` stays reference only).
+  - **Display name:** real `profiles.display_name` (Settings save + Overview greeting; signup metadata seeds via trigger).
+  - **Note category:** `Work | Ideas | Personal` (+ All notes chip); default **Ideas** on create.
+  - **Capture:** `expo-audio` → private upload → `process-note` (Web Speech only as optional live **preview** on web). No Lovable / demo seeds / “Continue to demo”.
+  - **Reminders:** durable schedule APIs (1h / 3h / 1d), not in-tab toast polling.
+- **Consequence:** UI work tracks `docs/ui-execution-planner.md`. Do not import `ui/` into the Expo runtime or ship demo footers (“changes are not saved”).
+
 ## 2026-10-02 · AI provider = official OpenAI (leave Naga :free)
 - **Context:** Naga `:free` hit shared daily rate limits (429) and flaky 503s during Phase 4 extraction; unsuitable for smooth testing with real private audio.
 - **Alternatives:** Stay on Naga paid; other OpenAI-compatible gateways; self-hosted Whisper.

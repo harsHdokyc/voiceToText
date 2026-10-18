@@ -1,5 +1,5 @@
 /** Short in-app privacy disclosure for private beta (Phase 7). */
-export const PRIVACY_DISCLOSURE = `Voice-to-Work stores your account email, voice notes, transcripts, task suggestions, and tasks in a private Supabase project.
+export const PRIVACY_DISCLOSURE = `Saydo stores your account email, voice notes, transcripts, task suggestions, and tasks in a private Supabase project.
 
 Audio is kept in a private storage bucket. Processing (transcription and task extraction) runs on trusted Edge Functions and sends audio/transcript text to the configured AI provider (official OpenAI by default). API keys never ship in the mobile app.
 

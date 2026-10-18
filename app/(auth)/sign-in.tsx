@@ -1,16 +1,20 @@
+import { Link, Redirect } from 'expo-router';
 import { useState } from 'react';
-import { Redirect } from 'expo-router';
+import { Text } from 'react-native';
 
 import {
   AuthButton,
-  AuthField,
-  AuthLink,
+  AuthLabeledField,
   AuthMessage,
+  AuthPasswordField,
   AuthScreen,
+  AuthTabs,
+  authInlineLinkStyle,
 } from '@/features/auth/components/auth-ui';
 import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { signInWithPassword } from '@/features/auth/services/auth-service';
 import { useAuth } from '@/providers/auth-provider';
+import { colors, fonts } from '@/theme';
 
 export default function SignInScreen() {
   const { session, isLoading } = useAuth();
@@ -23,28 +27,42 @@ export default function SignInScreen() {
   }
 
   return (
-    <AuthScreen title="Voice-to-Work" subtitle="Sign in with email and password">
-      <AuthField
+    <AuthScreen
+      title={
+        <>
+          Welcome <Text style={styles.accent}>back.</Text>
+        </>
+      }
+      subtitle="Pick up where your thoughts left off."
+      tabs={<AuthTabs active="signin" />}
+    >
+      <AuthLabeledField
+        label="Email"
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
-        placeholder="Email"
+        placeholder="you@example.com"
         textContentType="emailAddress"
         value={email}
         onChangeText={setEmail}
       />
-      <AuthField
+      <AuthPasswordField
+        label="Password"
+        trailing={
+          <Link href="/(auth)/forgot-password" style={authInlineLinkStyle}>
+            Forgot password?
+          </Link>
+        }
         autoCapitalize="none"
         autoComplete="password"
-        placeholder="Password"
-        secureTextEntry
+        placeholder="At least 8 characters"
         textContentType="password"
         value={password}
         onChangeText={setPassword}
       />
       <AuthMessage>{message}</AuthMessage>
       <AuthButton
-        label="Sign in"
+        label="Continue →"
         busy={busy}
         onPress={() =>
           void run(async () => {
@@ -52,8 +70,13 @@ export default function SignInScreen() {
           })
         }
       />
-      <AuthLink href="/(auth)/forgot-password" label="Forgot password?" />
-      <AuthLink href="/(auth)/sign-up" label="Create an account" />
     </AuthScreen>
   );
 }
+
+const styles = {
+  accent: {
+    fontFamily: fonts.sansItalic,
+    color: colors.cobalt,
+  },
+};

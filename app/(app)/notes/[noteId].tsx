@@ -1,16 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
+import { Button, EmptyState, Eyebrow, TextField, VoiceRibbon } from '@/components/ui';
+import {
+  NOTE_CATEGORIES,
+  formatNoteTime,
+  normalizeNoteCategory,
+  type NoteCategory,
+} from '@/features/notes/services/note-category';
 import {
   archiveNote,
   getNote,
@@ -21,6 +26,7 @@ import {
   canTransitionNoteStatus,
   displayTranscript,
   isRetryableProcessing,
+  noteStatusLabel,
 } from '@/features/notes/services/note-status';
 import {
   approveSuggestion,
@@ -34,6 +40,7 @@ import {
 } from '@/features/notes/services/suggestions-service';
 import { deleteNote } from '@/features/settings/services/account-service';
 import { errorMessageForUi } from '@/lib/api-error';
+import { colors, fonts, radius, space } from '@/theme';
 
 const KINDS: SuggestionKind[] = [
   'task',
@@ -67,11 +74,13 @@ export default function NoteDetailScreen() {
 
   const [title, setTitle] = useState('');
   const [transcriptDraft, setTranscriptDraft] = useState('');
+  const [category, setCategory] = useState<NoteCategory>('Ideas');
 
   useEffect(() => {
     if (!note.data) return;
     setTitle(note.data.title ?? '');
     setTranscriptDraft(displayTranscript(note.data) ?? '');
+    setCategory(normalizeNoteCategory(note.data.category));
   }, [note.data]);
 
   const suggestions = useQuery({
@@ -86,6 +95,7 @@ export default function NoteDetailScreen() {
       return updateNoteContent(noteId, {
         title,
         edited_transcript: transcriptDraft,
+        category,
       });
     },
     onSuccess: async () => {
@@ -101,7 +111,7 @@ export default function NoteDetailScreen() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['notes'] });
-      router.replace('/(app)');
+      router.replace('/(app)/notes' as Href);
     },
   });
 
@@ -135,6 +145,7 @@ export default function NoteDetailScreen() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
+      await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
       await queryClient.invalidateQueries({ queryKey: ['notes', noteId] });
       await queryClient.invalidateQueries({ queryKey: ['notes'] });
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -147,6 +158,7 @@ export default function NoteDetailScreen() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
+      await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
     },
   });
 
@@ -157,14 +169,15 @@ export default function NoteDetailScreen() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['notes'] });
-      router.replace('/(app)');
+      await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
+      router.replace('/(app)/notes' as Href);
     },
   });
 
   if (note.isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={colors.cobalt} />
       </View>
     );
   }
@@ -188,51 +201,91 @@ export default function NoteDetailScreen() {
   const processing =
     row.status === 'queued' ||
     row.status === 'transcribing' ||
-    row.status === 'extracting';
+    row.status === 'extracting' ||
+    row.status === 'uploading';
   const canArchive = canTransitionNoteStatus(row.status, 'archived');
+  const pendingSuggestions = (suggestions.data ?? []).filter((s) =>
+    isPendingSuggestion(s.status),
+  );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.meta}>Status: {row.status.replaceAll('_', ' ')}</Text>
-      {row.last_error_code ? (
-        <Text style={styles.error}>Error: {row.last_error_code}</Text>
-      ) : null}
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        style={styles.back}
+        onPress={() => router.replace('/(app)/notes' as Href)}
+      >
+        ← All notes
+      </Button>
+
+      <Eyebrow color={colors.cobalt}>
+        {normalizeNoteCategory(row.category)} / {formatNoteTime(row.created_at)}
+      </Eyebrow>
+      <Text style={styles.title}>{row.title?.trim() || 'A new thought'}</Text>
+      <Text style={styles.status}>
+        {noteStatusLabel(row.status)}
+        {row.last_error_code ? ` · ${row.last_error_code}` : ''}
+      </Text>
+
+      <Text style={styles.fieldLabel}>Category</Text>
+      <View style={styles.filters}>
+        {NOTE_CATEGORIES.map((c) => (
+          <Button
+            key={c}
+            variant={category === c ? 'ink' : 'quiet'}
+            size="sm"
+            disabled={actionBusy || row.status === 'archived'}
+            onPress={() => setCategory(c)}
+          >
+            {c}
+          </Button>
+        ))}
+      </View>
 
       <Text style={styles.fieldLabel}>Title</Text>
-      <TextInput
-        style={styles.input}
+      <TextField
         value={title}
         onChangeText={setTitle}
         editable={!actionBusy && row.status !== 'archived'}
         placeholder="Voice note"
       />
 
-      <Text style={styles.section}>Transcript</Text>
-      {processing ? (
-        <Text style={styles.meta}>
-          {row.status === 'extracting' ? 'Extracting tasks…' : 'Transcribing…'}
-        </Text>
-      ) : (
-        <TextInput
-          style={[styles.input, styles.inputMultiline]}
-          value={transcriptDraft}
-          onChangeText={setTranscriptDraft}
-          editable={!actionBusy && row.status !== 'archived'}
-          multiline
-          placeholder="No transcript yet."
-        />
-      )}
+      <View style={styles.panel}>
+        <Eyebrow>Transcript</Eyebrow>
+        <View style={styles.ribbon}>
+          <VoiceRibbon live={processing} />
+        </View>
+        {processing ? (
+          <Text style={styles.meta}>
+            {row.status === 'extracting'
+              ? 'Extracting tasks…'
+              : 'Transcribing…'}
+          </Text>
+        ) : (
+          <TextField
+            style={styles.transcript}
+            value={transcriptDraft}
+            onChangeText={setTranscriptDraft}
+            editable={!actionBusy && row.status !== 'archived'}
+            multiline
+            placeholder="No transcript yet."
+          />
+        )}
+      </View>
 
       {row.status !== 'archived' ? (
-        <Pressable
-          style={styles.button}
+        <Button
+          variant="cta"
           disabled={actionBusy}
           onPress={() => saveContent.mutate()}
         >
-          <Text style={styles.buttonText}>
-            {saveContent.isPending ? 'Saving…' : 'Save title & transcript'}
-          </Text>
-        </Pressable>
+          {saveContent.isPending ? 'Saving…' : 'Save changes'}
+        </Button>
       ) : null}
       {saveContent.error ? (
         <Text style={styles.error}>
@@ -240,13 +293,13 @@ export default function NoteDetailScreen() {
         </Text>
       ) : null}
 
-      {row.status === 'review_ready' && (
-        <>
-          <Text style={styles.section}>Task Suggestions</Text>
-          {suggestions.isLoading ? (
+      <View style={styles.panel}>
+        <Eyebrow>Suggestions</Eyebrow>
+        {row.status === 'review_ready' ? (
+          suggestions.isLoading ? (
             <Text style={styles.meta}>Loading suggestions…</Text>
-          ) : suggestions.data && suggestions.data.length > 0 ? (
-            suggestions.data.map((suggestion) => (
+          ) : pendingSuggestions.length ? (
+            pendingSuggestions.map((suggestion) => (
               <SuggestionCard
                 key={suggestion.id}
                 suggestion={suggestion}
@@ -256,32 +309,40 @@ export default function NoteDetailScreen() {
               />
             ))
           ) : (
-            <Text style={styles.meta}>No tasks found in this note.</Text>
-          )}
-          {approve.error ? (
-            <Text style={styles.error}>
-              {errorMessageForUi(approve.error, 'Approve failed')}
-            </Text>
-          ) : null}
-          {reject.error ? (
-            <Text style={styles.error}>
-              {errorMessageForUi(reject.error, 'Reject failed')}
-            </Text>
-          ) : null}
-        </>
-      )}
+            <EmptyState
+              title="Nothing waiting here."
+              body="No pending suggestions for this note."
+            />
+          )
+        ) : processing ? (
+          <Text style={styles.meta}>Suggestions appear when processing finishes.</Text>
+        ) : (
+          <EmptyState
+            title="Nothing waiting here."
+            body="Process this note to extract next steps."
+          />
+        )}
+        {approve.error ? (
+          <Text style={styles.error}>
+            {errorMessageForUi(approve.error, 'Approve failed')}
+          </Text>
+        ) : null}
+        {reject.error ? (
+          <Text style={styles.error}>
+            {errorMessageForUi(reject.error, 'Reject failed')}
+          </Text>
+        ) : null}
+      </View>
 
-      {isRetryableProcessing(row.status) && (
-        <Pressable
-          style={styles.button}
+      {isRetryableProcessing(row.status) ? (
+        <Button
+          variant="quiet"
           disabled={retry.isPending}
           onPress={() => retry.mutate()}
         >
-          <Text style={styles.buttonText}>
-            {retry.isPending ? 'Retrying…' : 'Retry processing'}
-          </Text>
-        </Pressable>
-      )}
+          {retry.isPending ? 'Retrying…' : 'Retry processing'}
+        </Button>
+      ) : null}
       {retry.error ? (
         <Text style={styles.error}>
           {errorMessageForUi(retry.error, 'Retry failed')}
@@ -289,24 +350,22 @@ export default function NoteDetailScreen() {
       ) : null}
 
       {canArchive ? (
-        <Pressable
-          style={[styles.button, styles.secondary]}
+        <Button
+          variant="quiet"
           disabled={actionBusy}
           onPress={() => archive.mutate()}
         >
-          <Text style={styles.buttonText}>Archive note</Text>
-        </Pressable>
+          Archive note
+        </Button>
       ) : null}
 
-      <Pressable
-        style={[styles.button, styles.danger]}
+      <Button
+        variant="destructive"
         disabled={removeNote.isPending}
         onPress={() => removeNote.mutate()}
       >
-        <Text style={styles.buttonText}>
-          {removeNote.isPending ? 'Deleting…' : 'Delete note'}
-        </Text>
-      </Pressable>
+        {removeNote.isPending ? 'Deleting…' : 'Delete note'}
+      </Button>
       {removeNote.error ? (
         <Text style={styles.error}>
           {errorMessageForUi(removeNote.error, 'Delete failed')}
@@ -350,15 +409,14 @@ function SuggestionCard(props: {
       {pending ? (
         <>
           <Text style={styles.fieldLabel}>Title</Text>
-          <TextInput
-            style={styles.input}
+          <TextField
             value={title}
             onChangeText={setTitle}
             editable={!busy}
           />
           <Text style={styles.fieldLabel}>Details</Text>
-          <TextInput
-            style={[styles.input, styles.inputMultiline]}
+          <TextField
+            style={styles.transcript}
             value={details}
             onChangeText={setDetails}
             editable={!busy}
@@ -367,46 +425,33 @@ function SuggestionCard(props: {
           <Text style={styles.fieldLabel}>Kind</Text>
           <View style={styles.filters}>
             {KINDS.map((k) => (
-              <Pressable
+              <Button
                 key={k}
-                style={[styles.chip, kind === k && styles.chipActive]}
+                variant={kind === k ? 'ink' : 'quiet'}
+                size="sm"
                 disabled={busy}
                 onPress={() => setKind(k)}
               >
-                <Text
-                  style={[
-                    styles.chipText,
-                    kind === k && styles.chipTextActive,
-                  ]}
-                >
-                  {k}
-                </Text>
-              </Pressable>
+                {k}
+              </Button>
             ))}
           </View>
           <Text style={styles.fieldLabel}>Priority</Text>
           <View style={styles.filters}>
             {([null, 'low', 'normal', 'high'] as const).map((p) => (
-              <Pressable
+              <Button
                 key={p ?? 'none'}
-                style={[styles.chip, priority === p && styles.chipActive]}
+                variant={priority === p ? 'ink' : 'quiet'}
+                size="sm"
                 disabled={busy}
                 onPress={() => setPriority(p)}
               >
-                <Text
-                  style={[
-                    styles.chipText,
-                    priority === p && styles.chipTextActive,
-                  ]}
-                >
-                  {p ?? 'none'}
-                </Text>
-              </Pressable>
+                {p ?? 'none'}
+              </Button>
             ))}
           </View>
           <Text style={styles.fieldLabel}>Due (YYYY-MM-DD)</Text>
-          <TextInput
-            style={styles.input}
+          <TextField
             value={dueLocal}
             onChangeText={setDueLocal}
             editable={!busy}
@@ -418,23 +463,21 @@ function SuggestionCard(props: {
         <>
           <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
           {suggestion.details ? (
-            <Text style={styles.suggestionDetails}>{suggestion.details}</Text>
+            <Text style={styles.meta}>{suggestion.details}</Text>
           ) : null}
-          <Text style={styles.suggestionMeta}>
-            Status: {suggestion.status.replaceAll('_', ' ')}
-          </Text>
         </>
       )}
 
-      <Text style={styles.suggestionMeta}>
-        Kind: {suggestion.kind} • Confidence: {suggestion.confidence}
+      <Text style={styles.meta}>
+        {suggestion.kind.replaceAll('_', ' ')} · {suggestion.confidence}
       </Text>
-      <Text style={styles.sourceQuote}>"{suggestion.source_quote}"</Text>
+      <Text style={styles.quote}>“{suggestion.source_quote}”</Text>
 
       {pending ? (
         <View style={styles.suggestionActions}>
-          <Pressable
-            style={[styles.actionButton, styles.approveButton]}
+          <Button
+            variant="cta"
+            size="sm"
             disabled={busy}
             onPress={() =>
               onApprove({
@@ -448,15 +491,11 @@ function SuggestionCard(props: {
               })
             }
           >
-            <Text style={styles.actionButtonText}>Approve</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.actionButton, styles.danger]}
-            disabled={busy}
-            onPress={onReject}
-          >
-            <Text style={styles.actionButtonText}>Reject</Text>
-          </Pressable>
+            Approve
+          </Button>
+          <Button variant="ghost" size="sm" disabled={busy} onPress={onReject}>
+            Dismiss
+          </Button>
         </View>
       ) : null}
     </View>
@@ -464,73 +503,62 @@ function SuggestionCard(props: {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f5' },
-  content: { padding: 24, gap: 10 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  meta: { color: '#555' },
-  section: { marginTop: 12, fontWeight: '600' },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#555', marginTop: 4 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 15,
-    color: '#14241c',
-    backgroundColor: '#fff',
+  scroll: { flex: 1, backgroundColor: colors.paper },
+  content: {
+    padding: space[5],
+    gap: space[3],
+    paddingBottom: space[10],
   },
-  inputMultiline: { minHeight: 100, textAlignVertical: 'top' },
-  error: { color: '#7a2e0b' },
-  button: {
-    marginTop: 8,
-    backgroundColor: '#1f4b3a',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  secondary: { backgroundColor: '#5a5a5a' },
-  danger: { backgroundColor: '#7a2e0b' },
-  buttonText: { color: '#fff', fontWeight: '600' },
-  suggestionCard: {
-    marginTop: 12,
-    padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    gap: 6,
-  },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  chipActive: { backgroundColor: '#1f4b3a', borderColor: '#1f4b3a' },
-  chipText: { color: '#555', fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
-  suggestionTitle: { fontSize: 16, fontWeight: '600', color: '#14241c' },
-  suggestionDetails: { fontSize: 14, color: '#555' },
-  suggestionMeta: { fontSize: 12, color: '#777' },
-  sourceQuote: {
-    marginTop: 8,
-    fontStyle: 'italic',
-    fontSize: 13,
-    color: '#555',
-    paddingLeft: 8,
-    borderLeftWidth: 2,
-    borderLeftColor: '#1f4b3a',
-  },
-  suggestionActions: { marginTop: 12, flexDirection: 'row', gap: 8 },
-  actionButton: {
+  center: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 6,
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.paper,
   },
-  approveButton: { backgroundColor: '#1f4b3a' },
-  actionButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  back: { alignSelf: 'flex-start', marginLeft: -space[2] },
+  title: {
+    fontFamily: fonts.display,
+    fontSize: 34,
+    color: colors.ink,
+  },
+  status: { fontFamily: fonts.sans, fontSize: 13, color: colors.stone },
+  fieldLabel: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 12,
+    color: colors.stone,
+    marginTop: space[2],
+  },
+  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
+  panel: {
+    marginTop: space[4],
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: space[4],
+    gap: space[3],
+  },
+  ribbon: { marginVertical: space[2] },
+  transcript: { minHeight: 120, textAlignVertical: 'top' as const },
+  meta: { fontFamily: fonts.sans, fontSize: 13, color: colors.stone },
+  error: { fontFamily: fonts.sans, color: colors.destructive },
+  suggestionCard: {
+    marginTop: space[2],
+    padding: space[4],
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: space[2],
+  },
+  suggestionTitle: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  quote: {
+    fontFamily: fonts.display,
+    fontSize: 14,
+    color: colors.stone,
+    fontStyle: 'italic',
+  },
+  suggestionActions: { flexDirection: 'row', gap: space[2], marginTop: space[2] },
 });
