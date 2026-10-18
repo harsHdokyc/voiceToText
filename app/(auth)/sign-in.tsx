@@ -1,13 +1,15 @@
+import { Link, Redirect } from 'expo-router';
 import { useState } from 'react';
-import { Redirect } from 'expo-router';
 import { Text } from 'react-native';
 
 import {
   AuthButton,
-  AuthField,
-  AuthLink,
+  AuthLabeledField,
   AuthMessage,
+  AuthPasswordField,
   AuthScreen,
+  AuthTabs,
+  authInlineLinkStyle,
 } from '@/features/auth/components/auth-ui';
 import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { signInWithPassword } from '@/features/auth/services/auth-service';
@@ -32,8 +34,10 @@ export default function SignInScreen() {
         </>
       }
       subtitle="Pick up where your thoughts left off."
+      tabs={<AuthTabs active="signin" />}
     >
-      <AuthField
+      <AuthLabeledField
+        label="Email"
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
@@ -42,18 +46,23 @@ export default function SignInScreen() {
         value={email}
         onChangeText={setEmail}
       />
-      <AuthField
+      <AuthPasswordField
+        label="Password"
+        trailing={
+          <Link href="/(auth)/forgot-password" style={authInlineLinkStyle}>
+            Forgot password?
+          </Link>
+        }
         autoCapitalize="none"
         autoComplete="password"
-        placeholder="Password"
-        secureTextEntry
+        placeholder="At least 8 characters"
         textContentType="password"
         value={password}
         onChangeText={setPassword}
       />
       <AuthMessage>{message}</AuthMessage>
       <AuthButton
-        label="Sign in"
+        label="Continue →"
         busy={busy}
         onPress={() =>
           void run(async () => {
@@ -61,8 +70,6 @@ export default function SignInScreen() {
           })
         }
       />
-      <AuthLink href="/(auth)/forgot-password" label="Forgot password?" />
-      <AuthLink href="/(auth)/sign-up" label="Create an account" />
     </AuthScreen>
   );
 }

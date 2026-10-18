@@ -1,13 +1,14 @@
-import { useState } from 'react';
 import { Redirect, router } from 'expo-router';
+import { useState } from 'react';
 import { Text } from 'react-native';
 
 import {
   AuthButton,
-  AuthField,
-  AuthLink,
+  AuthLabeledField,
   AuthMessage,
+  AuthPasswordField,
   AuthScreen,
+  AuthTabs,
 } from '@/features/auth/components/auth-ui';
 import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { signUpWithPassword } from '@/features/auth/services/auth-service';
@@ -38,8 +39,10 @@ export default function SignUpScreen() {
         </>
       }
       subtitle="A place for your thoughts to become next steps."
+      tabs={<AuthTabs active="signup" />}
     >
-      <AuthField
+      <AuthLabeledField
+        label="Name"
         autoComplete="name"
         autoCapitalize="words"
         placeholder="Your name"
@@ -48,7 +51,8 @@ export default function SignUpScreen() {
         maxLength={DISPLAY_NAME_MAX}
         onChangeText={(t) => setName(t.slice(0, DISPLAY_NAME_MAX))}
       />
-      <AuthField
+      <AuthLabeledField
+        label="Email"
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
@@ -57,18 +61,18 @@ export default function SignUpScreen() {
         value={email}
         onChangeText={setEmail}
       />
-      <AuthField
+      <AuthPasswordField
+        label="Password"
         autoCapitalize="none"
         autoComplete="new-password"
-        placeholder="Password (min 8 characters)"
-        secureTextEntry
+        placeholder="At least 8 characters"
         textContentType="newPassword"
         value={password}
         onChangeText={setPassword}
       />
       <AuthMessage>{message}</AuthMessage>
       <AuthButton
-        label="Create account"
+        label="Create account →"
         busy={busy}
         onPress={() =>
           void run(async () => {
@@ -95,7 +99,6 @@ export default function SignUpScreen() {
           })
         }
       />
-      <AuthLink href="/(auth)/sign-in" label="Already have an account? Sign in" />
     </AuthScreen>
   );
 }

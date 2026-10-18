@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { Redirect, router } from 'expo-router';
+import { useState } from 'react';
 import { Text } from 'react-native';
 
 import {
   AuthButton,
-  AuthField,
+  AuthLabeledField,
   AuthLink,
   AuthMessage,
   AuthScreen,
@@ -28,23 +28,27 @@ export default function ForgotPasswordScreen() {
     <AuthScreen
       title={
         <>
-          A fresh <Text style={{ fontFamily: fonts.sansItalic, color: colors.cobalt }}>start.</Text>
+          A fresh{' '}
+          <Text style={{ fontFamily: fonts.sansItalic, color: colors.cobalt }}>
+            start.
+          </Text>
         </>
       }
       subtitle="Get back to what matters. We'll email an 8-digit code."
     >
-      <AuthField
+      <AuthLabeledField
+        label="Email"
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
-        placeholder="Email"
+        placeholder="you@example.com"
         textContentType="emailAddress"
         value={email}
         onChangeText={setEmail}
       />
       <AuthMessage>{message}</AuthMessage>
       <AuthButton
-        label="Send reset code"
+        label="Send reset code →"
         busy={busy}
         onPress={() =>
           void run(async () => {
