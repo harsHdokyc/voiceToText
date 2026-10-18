@@ -1,11 +1,10 @@
 import { useState } from "react";
-import { motion } from "motion/react";
 import { Check, Loader2 } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import {
-  normalizeWaitlistInput,
-  waitlistResultFromError,
+  toWaitlistRow,
   waitlistSchema,
+  waitlistStatusFromError,
 } from "@/lib/waitlist";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,14 +33,10 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
     setErrors({});
     setStatus("loading");
     try {
-      const row = normalizeWaitlistInput(parsed.data);
-      const { error } = await getSupabase().from("waitlist").insert(row);
-      if (!error) {
-        setStatus("success");
-        return;
-      }
-      const mapped = waitlistResultFromError(error);
-      setStatus(mapped.status);
+      const { error } = await getSupabase()
+        .from("waitlist")
+        .insert(toWaitlistRow(parsed.data));
+      setStatus(error ? waitlistStatusFromError(error) : "success");
     } catch {
       setStatus("error");
     }
@@ -49,9 +44,7 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
 
   if (status === "success" || status === "already") {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div
         className="rounded-2xl bg-foreground p-6 text-background shadow-lift"
         role="status"
       >
@@ -63,21 +56,24 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
         </div>
         <p className="mt-4 font-display text-2xl tracking-[-0.03em]">
           {status === "success"
-            ? `You're on the list${firstName ? `, ${firstName.trim()}` : ""}.`
+            ? `You're on the list${firstName.trim() ? `, ${firstName.trim()}` : ""}.`
             : "You're already on the list."}
         </p>
         <p className="mt-2 text-sm text-background/65">
           We'll email {email.trim()} when there's something for you to try. No
           spam in between.
         </p>
-      </motion.div>
+      </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       <div className={cn("grid gap-4", !compact && "sm:grid-cols-[1fr_1.4fr]")}>
-        <Field label="First name" optional error={errors.firstName}>
+        <label className="block">
+          <span className="eyebrow mb-2 flex justify-between text-muted-foreground">
+            First name <span className="opacity-60">Optional</span>
+          </span>
           <input
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
@@ -85,8 +81,14 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
             className="input-field"
             placeholder="Maya"
           />
-        </Field>
-        <Field label="Email" error={errors.email}>
+          {errors.firstName ? (
+            <span className="mt-1.5 block text-sm text-destructive">
+              {errors.firstName}
+            </span>
+          ) : null}
+        </label>
+        <label className="block">
+          <span className="eyebrow mb-2 block text-muted-foreground">Email</span>
           <input
             type="email"
             value={email}
@@ -96,7 +98,12 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
             className={cn("input-field", errors.email && "border-destructive")}
             placeholder="you@example.com"
           />
-        </Field>
+          {errors.email ? (
+            <span className="mt-1.5 block text-sm text-destructive">
+              {errors.email}
+            </span>
+          ) : null}
+        </label>
       </div>
       <Button
         type="submit"
@@ -115,41 +122,16 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
           </>
         )}
       </Button>
-      {status === "error" && (
+      {status === "error" ? (
         <p role="alert" className="text-sm text-destructive">
           Something went wrong and you weren't added. Please try again in a
           moment.
         </p>
-      )}
+      ) : null}
       <p className="text-xs text-muted-foreground">
         We'll only use your email to contact you about early access. Unsubscribe
         any time.
       </p>
     </form>
-  );
-}
-
-function Field({
-  label,
-  optional,
-  error,
-  children,
-}: {
-  label: string;
-  optional?: boolean;
-  error?: string | undefined;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="eyebrow mb-2 flex justify-between text-muted-foreground">
-        {label}
-        {optional && <span className="opacity-60">Optional</span>}
-      </span>
-      {children}
-      {error && (
-        <span className="mt-1.5 block text-sm text-destructive">{error}</span>
-      )}
-    </label>
   );
 }

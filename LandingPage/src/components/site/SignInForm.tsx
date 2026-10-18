@@ -2,21 +2,24 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, Check, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { appUrl } from "@/lib/env";
+import { appUrl } from "@/lib/config";
+
+type Mode = "signin" | "signup" | "reset";
 
 export function SignInForm() {
-  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [show, setShow] = useState(false);
   const [error, setError] = useState("");
   const [resetDone, setResetDone] = useState(false);
-  const changeMode = (next: typeof mode) => {
+
+  function changeMode(next: Mode) {
     setMode(next);
     setError("");
     setResetDone(false);
-  };
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,49 +43,51 @@ export function SignInForm() {
     window.location.assign(appUrl());
   }
 
+  const title =
+    mode === "signin" ? (
+      <>
+        Welcome <span className="italic text-primary">back.</span>
+      </>
+    ) : mode === "signup" ? (
+      <>
+        Make room for <span className="italic text-primary">ideas.</span>
+      </>
+    ) : (
+      <>
+        A fresh <span className="italic text-primary">start.</span>
+      </>
+    );
+
+  const subtitle =
+    mode === "signin"
+      ? "Pick up where your thoughts left off."
+      : mode === "signup"
+        ? "A place for your thoughts to become next steps."
+        : "Get back to what matters.";
+
   return (
     <div className="w-full max-w-md">
       <p className="eyebrow text-primary">Your next chapter</p>
       <h1 className="mt-4 text-4xl font-medium leading-tight md:text-5xl">
-        {mode === "signin" ? (
-          <>
-            Welcome <span className="italic text-primary">back.</span>
-          </>
-        ) : mode === "signup" ? (
-          <>
-            Make room for <span className="italic text-primary">ideas.</span>
-          </>
-        ) : (
-          <>
-            A fresh <span className="italic text-primary">start.</span>
-          </>
-        )}
+        {title}
       </h1>
-      <p className="mt-4 text-muted-foreground">
-        {mode === "signin"
-          ? "Pick up where your thoughts left off."
-          : mode === "signup"
-            ? "A place for your thoughts to become next steps."
-            : "Get back to what matters."}
-      </p>
-      {mode !== "reset" && (
+      <p className="mt-4 text-muted-foreground">{subtitle}</p>
+
+      {mode !== "reset" ? (
         <div className="mt-6 grid grid-cols-2 border-b border-border">
-          <Button
-            variant="ghost"
-            className={`h-12 rounded-none border-b-2 ${mode === "signin" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
-            onClick={() => changeMode("signin")}
-          >
-            Sign in
-          </Button>
-          <Button
-            variant="ghost"
-            className={`h-12 rounded-none border-b-2 ${mode === "signup" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
-            onClick={() => changeMode("signup")}
-          >
-            Sign up
-          </Button>
+          {(["signin", "signup"] as const).map((m) => (
+            <Button
+              key={m}
+              variant="ghost"
+              className={`h-12 rounded-none border-b-2 ${mode === m ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
+              onClick={() => changeMode(m)}
+            >
+              {m === "signin" ? "Sign in" : "Sign up"}
+            </Button>
+          ))}
         </div>
-      )}
+      ) : null}
+
       {resetDone ? (
         <div className="mt-8 border-y border-border py-7" role="status">
           <Check className="h-7 w-7 text-primary" />
@@ -97,7 +102,7 @@ export function SignInForm() {
         </div>
       ) : (
         <form onSubmit={submit} noValidate className="mt-7 space-y-5">
-          {mode === "signup" && (
+          {mode === "signup" ? (
             <label className="block">
               <span className="mb-2 block text-sm">Name</span>
               <input
@@ -108,7 +113,7 @@ export function SignInForm() {
                 onChange={(e) => setName(e.target.value)}
               />
             </label>
-          )}
+          ) : null}
           <label className="block">
             <span className="mb-2 block text-sm">Email</span>
             <input
@@ -120,11 +125,11 @@ export function SignInForm() {
               onChange={(e) => setEmail(e.target.value)}
             />
           </label>
-          {mode !== "reset" && (
+          {mode !== "reset" ? (
             <div>
               <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm">
-                <label htmlFor="preview-password">Password</label>
-                {mode === "signin" && (
+                <label htmlFor="auth-password">Password</label>
+                {mode === "signin" ? (
                   <Button
                     type="button"
                     variant="link"
@@ -133,11 +138,11 @@ export function SignInForm() {
                   >
                     Forgot password?
                   </Button>
-                )}
+                ) : null}
               </div>
               <div className="relative">
                 <input
-                  id="preview-password"
+                  id="auth-password"
                   type={show ? "text" : "password"}
                   autoComplete={
                     mode === "signup" ? "new-password" : "current-password"
@@ -152,7 +157,6 @@ export function SignInForm() {
                   variant="ghost"
                   size="icon"
                   className="absolute right-1 top-1"
-                  title={show ? "Hide password" : "Show password"}
                   aria-label={show ? "Hide password" : "Show password"}
                   onClick={() => setShow(!show)}
                 >
@@ -160,21 +164,17 @@ export function SignInForm() {
                 </Button>
               </div>
             </div>
-          )}
-          {error && (
+          ) : null}
+          {error ? (
             <p role="alert" className="text-sm text-destructive">
               {error}
             </p>
-          )}
+          ) : null}
           <Button type="submit" variant="cta" size="xl" className="w-full">
-            {mode === "reset"
-              ? "Open reset in app"
-              : mode === "signup"
-                ? "Continue to Saydo"
-                : "Continue to Saydo"}
+            {mode === "reset" ? "Open reset in app" : "Continue to Saydo"}
             {mode === "reset" ? <Mail /> : <ArrowRight />}
           </Button>
-          {mode === "signup" && (
+          {mode === "signup" ? (
             <p className="text-xs leading-relaxed text-muted-foreground">
               By continuing, you acknowledge the{" "}
               <Link to="/terms" className="underline">
@@ -186,9 +186,10 @@ export function SignInForm() {
               </Link>
               .
             </p>
-          )}
+          ) : null}
         </form>
       )}
+
       <div className="my-6 flex items-center gap-4 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
         or
@@ -203,7 +204,7 @@ export function SignInForm() {
         Accounts live in the Saydo app. This page sends you there — the waitlist
         form is the path if you do not have access yet.
       </p>
-      {mode === "reset" && (
+      {mode === "reset" ? (
         <Button
           variant="link"
           className="mt-4 px-0"
@@ -211,7 +212,7 @@ export function SignInForm() {
         >
           Back to sign in
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -1,14 +1,7 @@
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { SaydoMark } from "./SaydoMark";
 
-export function Wordmark({
-  className = "",
-  mark = true,
-}: {
-  className?: string;
-  mark?: boolean;
-}) {
+export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <Link
       to="/"
@@ -18,12 +11,14 @@ export function Wordmark({
         className,
       )}
     >
-      {mark ? (
-        <SaydoMark
-          size={36}
-          className="rounded-[0.7rem] shadow-[2px_2px_0_0_var(--ink)] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-[-4deg]"
-        />
-      ) : null}
+      <img
+        src="/saydo-mark.svg"
+        width={36}
+        height={36}
+        alt=""
+        draggable={false}
+        className="shrink-0 rounded-[0.7rem] shadow-[2px_2px_0_0_var(--ink)] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-[-4deg]"
+      />
       <span>Saydo</span>
     </Link>
   );

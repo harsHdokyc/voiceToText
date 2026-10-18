@@ -101,37 +101,21 @@ export function AuthTabs({ active }: { active: 'signin' | 'signup' }) {
     <View style={styles.tabs}>
       <Link
         href="/(auth)/sign-in"
-        style={StyleSheet.flatten([
-          styles.tab,
-          active === 'signin' && styles.tabActive,
-        ])}
+        style={active === 'signin' ? styles.tabOn : styles.tab}
         accessibilityRole="tab"
         accessibilityState={{ selected: active === 'signin' }}
       >
-        <Text
-          style={StyleSheet.flatten([
-            styles.tabLabel,
-            active === 'signin' && styles.tabLabelActive,
-          ])}
-        >
+        <Text style={active === 'signin' ? styles.tabLabelOn : styles.tabLabel}>
           Sign in
         </Text>
       </Link>
       <Link
         href="/(auth)/sign-up"
-        style={StyleSheet.flatten([
-          styles.tab,
-          active === 'signup' && styles.tabActive,
-        ])}
+        style={active === 'signup' ? styles.tabOn : styles.tab}
         accessibilityRole="tab"
         accessibilityState={{ selected: active === 'signup' }}
       >
-        <Text
-          style={StyleSheet.flatten([
-            styles.tabLabel,
-            active === 'signup' && styles.tabLabelActive,
-          ])}
-        >
+        <Text style={active === 'signup' ? styles.tabLabelOn : styles.tabLabel}>
           Sign up
         </Text>
       </Link>
@@ -393,13 +377,24 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  tabActive: { borderBottomColor: colors.cobalt },
+  tabOn: {
+    flex: 1,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: colors.cobalt,
+  },
   tabLabel: {
     fontFamily: fonts.sansMedium,
     fontSize: 15,
     color: colors.stone,
   },
-  tabLabelActive: { color: colors.cobalt },
+  tabLabelOn: {
+    fontFamily: fonts.sansMedium,
+    fontSize: 15,
+    color: colors.cobalt,
+  },
   labeledField: { gap: space[2], marginTop: space[1] },
   labelRow: {
     flexDirection: 'row',

@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import {
   Image,
   StyleSheet,
@@ -15,7 +14,6 @@ import { colors, fonts, space } from '@/theme';
 
 const markSource = require('../../assets/brand/saydo-mark.png');
 
-/** Primary Saydo mark (lime mic badge). */
 export function SaydoMark({
   size = 36,
   style,
@@ -32,7 +30,6 @@ export function SaydoMark({
   );
 }
 
-/** Mark + wordmark row used in chrome. */
 export function SaydoWordmark({
   markSize = 36,
   color = colors.ink,
@@ -56,31 +53,8 @@ export function SaydoWordmark({
   );
 }
 
-export function SaydoBrandLockup({
-  children,
-  markSize = 36,
-  color = colors.ink,
-}: {
-  children?: ReactNode;
-  markSize?: number;
-  color?: string;
-}) {
-  return (
-    <View style={styles.row}>
-      <SaydoMark size={markSize} />
-      {children ?? (
-        <Text style={[styles.name, { color }]}>{APP_NAME}</Text>
-      )}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[2] + 2,
-  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space[2] + 2 },
   name: {
     fontFamily: fonts.displaySemibold,
     fontSize: 22,

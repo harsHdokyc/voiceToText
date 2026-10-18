@@ -1,9 +1,9 @@
+/** Landing → product app URL (Expo). Falls back to waitlist. */
 export function appUrl(): string {
-  const value = import.meta.env.VITE_APP_URL?.trim();
-  return value && value.length > 0 ? value : "/early-access";
+  return import.meta.env.VITE_APP_URL?.trim() || "/early-access";
 }
 
-export function getSupabaseEnv(): { url: string; key: string } {
+export function supabaseConfig(): { url: string; key: string } {
   const url = import.meta.env.VITE_SUPABASE_URL?.trim();
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
   if (!url || !key) {

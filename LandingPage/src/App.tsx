@@ -13,22 +13,13 @@ import { ProductPage } from "@/pages/ProductPage";
 import { SignInPage } from "@/pages/SignInPage";
 import { TermsPage } from "@/pages/TermsPage";
 
-function ScrollToTop() {
+export function App() {
   const { pathname, hash } = useLocation();
   useEffect(() => {
-    if (hash) {
-      const el = document.querySelector(hash);
-      if (el) {
-        el.scrollIntoView();
-        return;
-      }
-    }
-    window.scrollTo(0, 0);
+    if (hash) document.querySelector(hash)?.scrollIntoView();
+    else window.scrollTo(0, 0);
   }, [pathname, hash]);
-  return null;
-}
 
-export function App() {
   return (
     <>
       <a
@@ -39,7 +30,6 @@ export function App() {
       </a>
       <SiteHeader />
       <main id="main" tabIndex={-1}>
-        <ScrollToTop />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/product" element={<ProductPage />} />

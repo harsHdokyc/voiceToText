@@ -1,17 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseEnv } from "./env";
-
-export type WaitlistInsert = {
-  email: string;
-  first_name: string | null;
-  source?: string;
-};
+import { supabaseConfig } from "./config";
 
 let client: SupabaseClient | undefined;
 
 export function getSupabase(): SupabaseClient {
   if (!client) {
-    const { url, key } = getSupabaseEnv();
+    const { url, key } = supabaseConfig();
     client = createClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
     });

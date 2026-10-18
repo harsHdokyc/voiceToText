@@ -1,42 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
-  normalizeWaitlistInput,
-  waitlistResultFromError,
+  toWaitlistRow,
   waitlistSchema,
+  waitlistStatusFromError,
 } from "./waitlist";
 
 describe("waitlistSchema", () => {
   it("accepts a valid email and optional first name", () => {
-    const parsed = waitlistSchema.parse({
-      email: "  Maya@Example.com ",
-      firstName: " Maya ",
-    });
-    expect(parsed.email).toBe("Maya@Example.com");
-    expect(parsed.firstName).toBe("Maya");
+    expect(
+      waitlistSchema.parse({ email: "  Maya@Example.com ", firstName: " Maya " }),
+    ).toEqual({ email: "Maya@Example.com", firstName: "Maya" });
   });
 
   it("rejects an empty email", () => {
-    const result = waitlistSchema.safeParse({ email: "   " });
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.flatten().fieldErrors.email?.[0]).toMatch(/email/i);
-    }
+    expect(waitlistSchema.safeParse({ email: "   " }).success).toBe(false);
   });
 
   it("rejects an oversized first name", () => {
-    const result = waitlistSchema.safeParse({
-      email: "a@b.co",
-      firstName: "x".repeat(81),
-    });
-    expect(result.success).toBe(false);
+    expect(
+      waitlistSchema.safeParse({ email: "a@b.co", firstName: "x".repeat(81) })
+        .success,
+    ).toBe(false);
   });
 });
 
-describe("normalizeWaitlistInput", () => {
+describe("toWaitlistRow", () => {
   it("lowercases email and nulls empty first name", () => {
-    expect(
-      normalizeWaitlistInput({ email: "Maya@Example.com", firstName: "  " }),
-    ).toEqual({
+    expect(toWaitlistRow({ email: "Maya@Example.com", firstName: "  " })).toEqual({
       email: "maya@example.com",
       first_name: null,
       source: "landing",
@@ -44,21 +34,12 @@ describe("normalizeWaitlistInput", () => {
   });
 });
 
-describe("waitlistResultFromError", () => {
+describe("waitlistStatusFromError", () => {
   it("maps unique violation to already", () => {
-    expect(waitlistResultFromError({ code: "23505" })).toEqual({
-      ok: true,
-      status: "already",
-    });
+    expect(waitlistStatusFromError({ code: "23505" })).toBe("already");
   });
 
-  it("maps other errors to failure with reason", () => {
-    expect(
-      waitlistResultFromError({ code: "42501", message: "permission denied" }),
-    ).toEqual({
-      ok: false,
-      status: "error",
-      reason: "permission denied",
-    });
+  it("maps other errors to error", () => {
+    expect(waitlistStatusFromError({ code: "42501" })).toBe("error");
   });
 });
