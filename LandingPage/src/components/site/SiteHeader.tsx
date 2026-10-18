@@ -90,7 +90,7 @@ export function SiteHeader() {
       </div>
 
       {open ? (
-        <div className="container-site flex h-[calc(100dvh-5.5rem)] flex-col justify-between gap-6 overflow-y-auto pb-6 pt-6 lg:hidden">
+        <div data-lenis-prevent className="container-site flex h-[calc(100dvh-5.5rem)] flex-col justify-between gap-6 overflow-y-auto pb-6 pt-6 lg:hidden">
           <nav aria-label="Mobile" className="flex flex-col">
             {NAV.map((n, i) => (
               <Link

@@ -163,7 +163,7 @@
   * {
     border-color: var(--color-border);
   }
-  html { scroll-behavior: smooth; }
+  /* scroll smoothing via Lenis — CSS scroll-behavior fights it */
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);

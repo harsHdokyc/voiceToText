@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useLenis } from "lenis/react";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { AboutPage } from "@/pages/AboutPage";
@@ -15,10 +16,12 @@ import { TermsPage } from "@/pages/TermsPage";
 
 export function App() {
   const { pathname, hash } = useLocation();
+  const lenis = useLenis();
   useEffect(() => {
-    if (hash) document.querySelector(hash)?.scrollIntoView();
-    else window.scrollTo(0, 0);
-  }, [pathname, hash]);
+    if (!lenis) return;
+    if (hash) lenis.scrollTo(hash, { immediate: true });
+    else lenis.scrollTo(0, { immediate: true });
+  }, [pathname, hash, lenis]);
 
   return (
     <>

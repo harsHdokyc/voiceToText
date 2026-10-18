@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useLenis } from "lenis/react";
 import { ArrowRight, Check, Mic, Pencil, RotateCcw, Sparkles, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ const journey = [
 export function InteractiveJourney() {
   const sectionRef = useRef<HTMLElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+  const lenis = useLenis();
   const [step, setStep] = useState(0);
   const [kept, setKept] = useState<number[]>([]);
   const [dismissed, setDismissed] = useState<number[]>([]);
@@ -65,7 +67,8 @@ export function InteractiveJourney() {
       section.getBoundingClientRect().top +
       window.scrollY +
       (max * (index + 0.5)) / total;
-    window.scrollTo({ top, behavior: "smooth" });
+    if (lenis) lenis.scrollTo(top);
+    else window.scrollTo({ top, behavior: "smooth" });
   }
 
   useEffect(() => {
