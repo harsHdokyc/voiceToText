@@ -1,6 +1,6 @@
 # UI Execution Planner
 
-**Status:** plan only — no implementation in this document.  
+**Status:** Steps 1–13 **complete** (2026-10-18) — Workspace/dashboard (+ auth) in Expo; marketing deferred.  
 **Source of truth (visual + interaction):** `ui/goals-in-motion-55/` (Saydo prototype) — **Workspace / dashboard only** for this execution.  
 **Target:** this Expo app (`app/`, `src/`) on **iOS, Android, and Expo web** — same look, same product behaviors, wired to the real backend already shipped in Phases 0–7.  
 **Product name:** **Saydo** (replace “Voice-to-Work” in app chrome, titles, and user-facing copy).  
@@ -473,6 +473,8 @@ Each step: **goal → do → do not → exit**.
 - Saving display name persists and shows on Overview after refresh.
 - Auth + settings visually aligned; all Phase 7 settings actions still work.
 
+**Status: done (2026-10-13).** Settings Saydo chrome + `updateOwnDisplayName`; sign out; Developer collapsed; signup name → `display_name` metadata; auth-ui Saydo + optional ink split panel.
+
 ---
 
 ### Step 12 — Motion, a11y, web polish
@@ -490,6 +492,8 @@ Each step: **goal → do → do not → exit**.
 
 **Exit**
 - Manual pass: iPhone/Android + Expo web width 390 and 1280 against prototype checklist.
+
+**Status: done (2026-10-13).** `PageEnter` on pathname; hitSlop on nav/controls; note cards `overflow/minWidth` guarded; sidebar collapse already present.
 
 ---
 
@@ -512,6 +516,8 @@ Each step: **goal → do → do not → exit**.
 - Checklist from Step 1 ticked for **Workspace/dashboard (+ auth)** only.
 - No regressions in note processing, approval idempotency, delete, reminders.
 - Categories + display name persist across reload.
+
+**Status: done (2026-10-18).** Hardening: grep clean of demo/Lovable/Voice-to-Work in `app/`+`src/`; `npm test` + `typecheck` green; `STATUS.md` + `DECISIONS.md` updated; workspace parity + DoD checklists ticked below.
 
 ---
 
@@ -556,20 +562,20 @@ Bug fixes: change the shared helper once; grep callers.
 
 ## 9. Definition of done (this UI effort)
 
-- [ ] Desktop sidebar + mobile bottom nav match prototype IA
-- [ ] Overview / Voice notes / Suggestions / Tasks / Settings match layout, typography, color, key copy
-- [ ] Product chrome says **Saydo** (not Voice-to-Work)
-- [ ] Display name saves to `profiles.display_name` and greets on Overview
-- [ ] Note categories persist; chips filter `Work | Ideas | Personal`
-- [ ] Capture CTA opens real recording → private upload → process-note → review
-- [ ] Suggestions never become tasks without approve
-- [ ] Tasks complete/edit/source-note work
-- [ ] Reminders use durable backend (not tab toasts)
-- [ ] Auth is real; settings keep privacy + delete account
-- [ ] Marketing site **not** ported (deferred)
-- [ ] No Lovable / Web Speech / demo seed as production path
-- [ ] `npm test` and `npm run typecheck` reported clean
-- [ ] `ui/goals-in-motion-55` remains reference only (not a second app runtime)
+- [x] Desktop sidebar + mobile bottom nav match prototype IA
+- [x] Overview / Voice notes / Suggestions / Tasks / Settings match layout, typography, color, key copy
+- [x] Product chrome says **Saydo** (not Voice-to-Work)
+- [x] Display name saves to `profiles.display_name` and greets on Overview
+- [x] Note categories persist; chips filter `Work | Ideas | Personal`
+- [x] Capture CTA opens real recording → private upload → process-note → review
+- [x] Suggestions never become tasks without approve
+- [x] Tasks complete/edit/source-note work
+- [x] Reminders use durable backend (not tab toasts)
+- [x] Auth is real; settings keep privacy + delete account
+- [x] Marketing site **not** ported (deferred)
+- [x] No Lovable / Web Speech / demo seed as production path *(Web Speech = optional live preview only; capture engine = expo-audio)*
+- [x] `npm test` and `npm run typecheck` reported clean
+- [x] `ui/goals-in-motion-55` remains reference only (not a second app runtime)
 
 ---
 
@@ -599,7 +605,7 @@ Tick when the **Expo app** matches. Demo-only controls marked **(skip / replace)
 - [x] VoiceRibbon (live + static; reduced motion) *(Step 3)*
 - [x] Card colors: lavender / lime / muted *(Step 5/6 — NoteCard)*
 - [x] Surfaces: ink sidebar, cobalt CTA band, paper content *(shell + Overview band)*
-- [ ] Mobile 44px targets + bottom safe-area; desktop sidebar collapse
+- [x] Mobile 44px targets + bottom safe-area; desktop sidebar collapse *(Step 4/12)*
 
 ### Shell — desktop sidebar
 - [x] Saydo wordmark (collapsed: audio/lines icon ok) *(Step 4)*
@@ -667,37 +673,37 @@ Tick when the **Expo app** matches. Demo-only controls marked **(skip / replace)
 - [x] Done: strikethrough muted title *(Step 8)*
 
 ### Capture sheet
-- [ ] Title: “Catch that thought.”
-- [ ] Description (AI → next steps you review)
-- [ ] VoiceRibbon live while recording
-- [ ] Speak / Stop + mm:ss timer
-- [ ] Optional note title
-- [ ] Thought field (cap 4000) — or real recorder UX that covers the same job
-- [ ] Error alert
-- [ ] Primary: Turn into next steps / Thinking…
-- [ ] Secondary: Just save note **(map to real upload path; no fake no-AI fork)**
-- [ ] ~~Use a sample~~ **(skip in prod)**
+- [x] Title: “Catch that thought.” *(Step 9)*
+- [x] Description (AI → next steps you review) *(Step 9)*
+- [x] VoiceRibbon live while recording *(Step 9)*
+- [x] Speak / Stop + mm:ss timer *(Step 9)*
+- [x] Optional note title *(Step 9)*
+- [x] Thought field — live preview + type; product path = audio upload *(Step 9)*
+- [x] Error alert *(Step 9)*
+- [x] Primary: Turn into next steps / Thinking… *(Step 9)*
+- [x] Secondary: Just save note (upload without process; text-only draft ok) *(Step 9)*
+- [x] ~~Use a sample~~ **(skip in prod)**
 
 ### Edit sheet
-- [ ] Title: “Edit your next step”
-- [ ] Title field
-- [ ] Due presets: Today / Tomorrow / Next week + clear + date
-- [ ] Reminder presets (map to durable 1h/3h/1d first) + clear
-- [ ] **Save changes**
-- [ ] ~~In-tab toast reminders~~ **(replace with push/durable reminders)**
+- [x] Title: “Edit your next step” *(Step 10)*
+- [x] Title field *(Step 10)*
+- [x] Due presets: Today / Tomorrow / Next week + clear *(Step 10)*
+- [x] Reminder presets 1h / 3h / 1d + clear *(Step 10)*
+- [x] **Save changes** / Approve with changes *(Step 10)*
+- [x] ~~In-tab toast reminders~~ **(replaced with durable scheduleReminder)**
 
 ### Settings
-- [ ] Eyebrow: “Make yourself at home”
-- [ ] H1: “Your workspace.”
-- [ ] Display name (max 30) + **Save changes** → `profiles.display_name`
-- [ ] Sign out / leave (real auth)
-- [ ] Privacy disclosure, push enable, delete account (prod extras beyond prototype)
+- [x] Eyebrow: “Make yourself at home” *(Step 11)*
+- [x] H1: “Your workspace.” *(Step 11)*
+- [x] Display name (max 30) + **Save changes** → `profiles.display_name` *(Step 11)*
+- [x] Sign out / leave (real auth) *(Step 11)*
+- [x] Privacy disclosure, push enable, delete account (prod extras beyond prototype) *(Step 11)*
 
 ### Auth chrome (in scope)
-- [ ] Sign-in / sign-up visual language from `SignInForm` (real submit + OTP flows)
-- [ ] Saydo branding (not Voice-to-Work)
-- [ ] ~~Explore demo without auth~~ **(skip)**
+- [x] Sign-in / sign-up visual language from `SignInForm` (real submit + OTP flows) *(Step 11)*
+- [x] Saydo branding (not Voice-to-Work) *(Step 11)*
+- [x] ~~Explore demo without auth~~ **(skip)**
 
 ---
 
-*When you say go on a step, implement only that step against this plan.*
+*Planner Steps 1–13 complete for Workspace/dashboard (+ auth). Marketing remains deferred.*

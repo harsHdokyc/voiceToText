@@ -11,6 +11,7 @@ import {
   assertOtp,
   assertPassword,
 } from '@/features/auth/services/auth-validation';
+import { normalizeDisplayName } from '@/features/settings/services/greeting-name';
 
 export type { OtpPurpose };
 
@@ -25,11 +26,17 @@ export async function signInWithPassword(email: string, password: string) {
   });
 }
 
-export async function signUpWithPassword(email: string, password: string) {
+export async function signUpWithPassword(
+  email: string,
+  password: string,
+  displayName?: string,
+) {
   return withApiLog('api.auth.sign_up', {}, async () => {
+    const name = displayName ? normalizeDisplayName(displayName) : '';
     const { data, error } = await supabase.auth.signUp({
       email: assertEmail(email),
       password: assertPassword(password),
+      options: name ? { data: { display_name: name } } : undefined,
     });
     if (error) throw error;
     return data;

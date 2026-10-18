@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Redirect } from 'expo-router';
+import { Text } from 'react-native';
 
 import {
   AuthButton,
@@ -10,8 +11,8 @@ import {
 } from '@/features/auth/components/auth-ui';
 import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { signInWithPassword } from '@/features/auth/services/auth-service';
-import { APP_NAME } from '@/lib/constants';
 import { useAuth } from '@/providers/auth-provider';
+import { colors, fonts } from '@/theme';
 
 export default function SignInScreen() {
   const { session, isLoading } = useAuth();
@@ -24,12 +25,19 @@ export default function SignInScreen() {
   }
 
   return (
-    <AuthScreen title={APP_NAME} subtitle="Sign in with email and password">
+    <AuthScreen
+      title={
+        <>
+          Welcome <Text style={styles.accent}>back.</Text>
+        </>
+      }
+      subtitle="Pick up where your thoughts left off."
+    >
       <AuthField
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
-        placeholder="Email"
+        placeholder="you@example.com"
         textContentType="emailAddress"
         value={email}
         onChangeText={setEmail}
@@ -58,3 +66,10 @@ export default function SignInScreen() {
     </AuthScreen>
   );
 }
+
+const styles = {
+  accent: {
+    fontFamily: fonts.sansItalic,
+    color: colors.cobalt,
+  },
+};

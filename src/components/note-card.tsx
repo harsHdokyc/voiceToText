@@ -58,7 +58,7 @@ export function NoteCard({
           <Pressable
             accessibilityLabel={`Options for ${note.title ?? 'note'}`}
             onPress={() => setMenuOpen((v) => !v)}
-            hitSlop={8}
+            hitSlop={12}
           >
             <Ionicons name="ellipsis-horizontal" size={18} color={colors.ink} />
           </Pressable>
@@ -92,7 +92,7 @@ export function NoteCard({
         <Pressable
           accessibilityLabel={`Open ${note.title ?? 'note'}`}
           onPress={open}
-          hitSlop={8}
+          hitSlop={12}
         >
           <Ionicons name="arrow-forward" size={18} color={colors.ink} />
         </Pressable>
@@ -136,14 +136,19 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    width: '100%',
+    maxWidth: '100%',
   },
   card: {
     minHeight: 220,
+    minWidth: 0,
+    maxWidth: '100%',
     borderRadius: radius.lg,
     padding: space[6],
     gap: space[3],
+    overflow: 'hidden',
   },
-  cardBody: { flex: 1 },
+  cardBody: { flex: 1, minWidth: 0 },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',

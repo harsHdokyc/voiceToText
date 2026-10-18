@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CaptureProvider, useCapture } from '@/components/capture-sheet';
+import { PageEnter } from '@/components/page-enter';
 import { Button } from '@/components/ui';
 import {
   hrefForWorkspaceNav,
@@ -20,6 +21,8 @@ import {
   type WorkspaceNavItem,
 } from '@/components/workspace-nav';
 import { countPendingSuggestions } from '@/features/notes/services/suggestions-service';
+import { greetingName } from '@/features/settings/services/greeting-name';
+import { getOwnProfile } from '@/features/settings/services/profile-service';
 import { APP_NAME } from '@/lib/constants';
 import { useAuth } from '@/providers/auth-provider';
 import { colors, fonts, radius, space } from '@/theme';
@@ -53,10 +56,16 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
   const { openCapture } = useCapture();
-  const display =
-    (user?.user_metadata?.display_name as string | undefined)?.trim() ||
-    user?.email?.split('@')[0] ||
-    'You';
+  const profile = useQuery({
+    queryKey: ['profile'],
+    queryFn: getOwnProfile,
+    staleTime: 60_000,
+  });
+  const display = greetingName(
+    profile.data?.display_name ??
+      (user?.user_metadata?.display_name as string | undefined),
+    user?.email,
+  );
   const initial = display.charAt(0).toUpperCase();
 
   const pending = useQuery({
@@ -187,6 +196,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                   collapsed ? 'Expand navigation' : 'Collapse navigation'
                 }
                 onPress={() => setCollapsed((c) => !c)}
+                hitSlop={12}
                 style={styles.collapseBtn}
               >
                 <Ionicons
@@ -221,12 +231,13 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
             !desktop && { paddingBottom: 72 + insets.bottom },
           ]}
         >
-          {children}
+          <PageEnter animKey={pathname}>{children}</PageEnter>
           {!desktop ? (
             <Pressable
               onPress={() => router.push('/(app)/settings' as Href)}
               style={styles.mobileSettings}
               accessibilityLabel="Settings"
+              hitSlop={12}
             >
               <Ionicons
                 name="settings-outline"
@@ -254,6 +265,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                   style={[styles.tab, active && styles.tabActive]}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
+                  hitSlop={8}
                 >
                   <Ionicons
                     name={NAV_ICONS[item]}
