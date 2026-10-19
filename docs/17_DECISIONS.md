@@ -5,6 +5,15 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-19 · Marketing host = Vercel, Root Directory `LandingPage`
+- **Context:** Landing Vite app lives in a monorepo next to Expo. Building from repo root pulls Expo `tsconfig` / wrong install graph; Vercel needs an explicit app root.
+- **Alternatives:** Netlify; Expo web for marketing; subdirectory rewrite without Root Directory.
+- **Decision:**
+  - Host static marketing on **Vercel** with **Root Directory = `LandingPage`**, production branch `main`.
+  - Inject `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (and optional `VITE_APP_URL`) as Vercel env at build time.
+  - Keep `tsc -b` scoped to `LandingPage/src` only — do not include `vite.config.ts` in that project unless `@types/node` is added.
+- **Consequence:** Deploy progress and ops checklist live in [LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md) and [STATUS.md](./20_STATUS.md). Never put `service_role` in Vercel.
+
 ## 2026-10-18 · Marketing landing = Vite app + shared Supabase waitlist
 - **Context:** Marketing site was deferred from Expo; `LandingPage/` needed a real waitlist without a second backend. Reference UI already inserts into `waitlist` (table was missing on hosted).
 - **Alternatives:** Separate waitlist DB/SaaS; create Auth users from the form; host marketing inside Expo.

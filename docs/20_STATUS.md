@@ -1,13 +1,32 @@
 # Project Status
-Last updated: 2026-10-18 (Phases 0–7 complete + Saydo workspace UI).
+Last updated: 2026-10-19 (Phases 0–7 complete + Saydo workspace UI + landing on Vercel).
 
 ## Current phase
 **Phases 0–7 complete** against plan exit criteria (see inventory below). Hosted backend: [voiceToWork](https://supabase.com/dashboard/project/ubqhyeicmgmdzethtids).
-**AI provider:** official OpenAI via OpenAI SDK (see [DECISIONS.md](./DECISIONS.md)).
-**Product UI:** Saydo workspace/dashboard (+ auth) from `ui/goals-in-motion-55` reference — see [ui-execution-planner.md](./ui-execution-planner.md) (Steps 1–13).
-**Marketing:** Vite app in `LandingPage/` + `waitlist` table on the same hosted project — see [LANDING_ARCHITECTURE.md](./LANDING_ARCHITECTURE.md).
+**AI provider:** official OpenAI via OpenAI SDK (see [DECISIONS.md](./17_DECISIONS.md)).
+**Product UI:** Saydo workspace/dashboard (+ auth) from `ui/goals-in-motion-55` reference — see [ui-execution-planner.md](./22_ui-execution-planner.md) (Steps 1–13).
+**Marketing:** Vite app in `LandingPage/` on **Vercel** + `waitlist` on the same hosted project — see [LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
 
 Living phase map: [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md). P0/P1/P2: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
+
+## Marketing deploy (Vercel) — progress
+
+| Item | Status |
+|---|---|
+| Host | **Vercel** (GitHub `harsHdokyc/voiceToText`, branch `main`) |
+| Root Directory | `LandingPage` |
+| Build | `npm run build` (`prebuild` = `tsc -b`, then `vite build`) |
+| Backend | Same Supabase project; `public.waitlist` live (RLS insert-only; rows present on hosted) |
+| Env at build | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (optional `VITE_APP_URL` for Sign-in links) |
+| Green deploy | Yes — e.g. `f3c3219` (PR #2 merge) built + deployed |
+| Lenis smooth scroll | On `main` (`b134cf4`); included once Vercel builds that commit or later |
+| Known fail (fixed) | `e9b19b1` — `tsc` typechecked `vite.config.ts` → missing `node:url` types. Reverted include in `3dbf7e9` |
+| Harmless warning | Vite may log `Cannot find base config file "expo/tsconfig.base"` (parent Expo `tsconfig`); does not fail the build |
+| Production URL | https://saydooo.vercel.app/ |
+| SPA refresh 404 | Fixed via `LandingPage/vercel.json` rewrite → `index.html` |
+| Custom domain | Optional; Vercel URL above until set |
+
+Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING_ARCHITECTURE.md#deployment-vercel).
 
 ## Phase inventory + intentional leftovers
 
@@ -90,8 +109,9 @@ Living phase map: [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md). P0/P
 ## Deployed backend
 | Item | Status |
 |---|---|
-| Migrations through `phase7_hardening` | Applied on hosted |
+| Migrations through `phase7_hardening` + `waitlist` | Applied on hosted |
 | Edge functions above | ACTIVE (register-push-token, dispatch-reminders, delete-note, delete-account, process-note redeployed) |
+| Marketing static site | Vercel ← `LandingPage/` (see Marketing deploy above) |
 
 ## Logging
 See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
@@ -105,7 +125,7 @@ See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 **Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`). Behavior tests for pure helpers (greeting/display name, due presets, capture timer, live-dictation concat, dueLabel, etc.).
 
 ## Next slice
-**Saydo workspace UI (planner Steps 1–13) shipped in Expo.** Remaining work is mostly **manual / ops** — see **[LEFTOVER.md](./LEFTOVER.md)** §YOU DO THESE (secrets, cron, device smoke, RLS two-user). Optional later: marketing site port from `ui/`; custom reminder datetime picker.
+**Saydo workspace UI (planner Steps 1–13) shipped in Expo. Marketing landing shipped on Vercel** (waitlist wired). Remaining work is mostly **manual / ops** — see **[LEFTOVER.md](./18_LEFTOVER.md)** §YOU DO THESE (secrets, cron, device smoke, RLS two-user) and §E marketing deploy follow-ups. Optional later: custom domain, invite mail, custom reminder datetime picker.
 
 ## Locked decisions
 See [DECISIONS.md](./DECISIONS.md).

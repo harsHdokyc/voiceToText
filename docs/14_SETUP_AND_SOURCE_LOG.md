@@ -1,9 +1,16 @@
 # Setup and Official Sources
 ## Environment
-Client `.env` only:
+Client `.env` only (Expo app):
 ```env
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+```
+
+Landing (`LandingPage/.env` locally; same names on **Vercel** project env — Root Directory `LandingPage`):
+```env
+VITE_SUPABASE_URL=
+VITE_SUPABASE_PUBLISHABLE_KEY=
+VITE_APP_URL=                      # optional; product/Expo web URL for Sign in
 ```
 
 Edge / server secrets (Dashboard → Edge Functions → Secrets, or `supabase/functions/.env` locally):
@@ -14,7 +21,9 @@ AI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
 AI_CHAT_MODEL=gpt-4o-mini
 # Later: RESEND_API_KEY, EXPO_ACCESS_TOKEN, APP_BASE_URL
 ```
-Never prefix secrets with `EXPO_PUBLIC_`. Don't commit filled `.env` files.
+Never prefix secrets with `EXPO_PUBLIC_` / never put `service_role` in Vite or Vercel. Don't commit filled `.env` files.
+
+Marketing deploy status: [20_STATUS.md](./20_STATUS.md), [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
 
 If older Naga secrets are still set on the project, **replace** them — env overrides code defaults. See `DECISIONS.md`.
 

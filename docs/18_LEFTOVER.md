@@ -1,9 +1,9 @@
 # Leftovers — what remains to finish the project
 
-Last updated: 2026-10-03 (code leftovers shipped; **manual items left for you**).
+Last updated: 2026-10-19 (code leftovers shipped; marketing on Vercel; **manual items left for you**).
 
-Phases **0–7** are done. Code polish from this leftover pass is also in the app.  
-Living ship status: [STATUS.md](./STATUS.md). Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
+Phases **0–7** are done. Code polish from this leftover pass is also in the app. Marketing landing is on Vercel — see [STATUS.md](./20_STATUS.md) + [LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).  
+Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 
 ---
 
@@ -42,6 +42,16 @@ Living ship status: [STATUS.md](./STATUS.md). Scope: [02_V1_SCOPE.md](./02_V1_SC
 | C4 | Approve twice → one task; extraction retry no duplicate pendings (manual/integration) | [ ] |
 | C5 | Production/preview build + secret scan clean | [ ] |
 | C6 | Optional: wire local Supabase RLS suite into CI | [ ] |
+
+### E. Marketing deploy follow-ups (Vercel)
+
+| # | Item | Done? |
+|---|---|---|
+| E1 | Confirm Vercel env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (Production + Preview) | [ ] |
+| E2 | Smoke waitlist on production URL (new email + duplicate) | [ ] |
+| E3 | Set `VITE_APP_URL` to real product web URL | [ ] |
+| E4 | Optional custom domain on Vercel | [ ] |
+| E5 | Keep Root Directory = `LandingPage`; do not re-include `vite.config.ts` in `tsc` without `@types/node` | [ ] (process) |
 
 ### D. Optional / later (not required for private beta)
 
