@@ -51,3 +51,4 @@ graphify-out/
 # Agent / MCP deploy scratch
 .tmp*
 .tmp-*/
+expo-env.d.ts
