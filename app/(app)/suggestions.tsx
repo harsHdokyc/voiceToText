@@ -3,15 +3,15 @@ import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
-import { SuggestionReviewRow } from '@/components/work-row';
 import { Button, EmptyState, Eyebrow } from '@/components/ui';
+import { WorkspacePage } from '@/components/workspace-page';
+import { SuggestionReviewRow } from '@/components/work-row';
 import {
   pendingSuggestionIds,
   suggestionKindLabel,
@@ -78,10 +78,7 @@ export default function SuggestionsScreen() {
     saveEdit.isPending;
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-    >
+    <WorkspacePage>
       <Eyebrow>Possibilities, not commitments</Eyebrow>
       <Text style={styles.title}>
         Your <Text style={styles.accent}>call.</Text>
@@ -174,17 +171,11 @@ export default function SuggestionsScreen() {
           });
         }}
       />
-    </ScrollView>
+    </WorkspacePage>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.paper },
-  content: {
-    padding: space[5],
-    gap: space[4],
-    paddingBottom: space[10],
-  },
   title: {
     fontFamily: fonts.display,
     fontSize: 36,

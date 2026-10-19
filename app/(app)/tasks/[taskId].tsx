@@ -4,7 +4,6 @@ import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -12,6 +11,7 @@ import {
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { Button, Eyebrow } from '@/components/ui';
+import { WorkspacePage } from '@/components/workspace-page';
 import {
   archiveTask,
   completeTask,
@@ -127,11 +127,7 @@ export default function TaskDetailScreen() {
   );
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
+    <WorkspacePage gap={space[3]}>
       <Eyebrow>The things you chose</Eyebrow>
       <Text style={styles.title}>{row.title}</Text>
       <Text style={styles.meta}>
@@ -252,17 +248,11 @@ export default function TaskDetailScreen() {
           });
         }}
       />
-    </ScrollView>
+    </WorkspacePage>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.paper },
-  content: {
-    padding: space[5],
-    gap: space[3],
-    paddingBottom: space[10],
-  },
   center: {
     flex: 1,
     alignItems: 'center',

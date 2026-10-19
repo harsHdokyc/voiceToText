@@ -20,6 +20,9 @@ export type TranscriptResult = {
 /**
  * Server-side transcription via Gemini 3.5 Transcribe (Interactions API).
  * Default model: `gemini-3.5-transcribe`.
+ *
+ * This model does **not** support system instructions. Guidance is via
+ * `transcription_config` — we use smart mode (clean readable text for extraction).
  * @see https://ai.google.dev/gemini-api/docs/transcribe
  */
 export async function transcribeAudio(params: {
@@ -42,15 +45,14 @@ export async function transcribeAudio(params: {
           mime_type: mimeType,
         },
       ],
-      ...(params.language
-        ? {
-          generation_config: {
-            transcription_config: {
-              language_codes: [params.language],
-            },
-          },
-        }
-        : {}),
+      generation_config: {
+        transcription_config: {
+          // Clean fillers / false starts so extraction sees readable speech.
+          mode: "smart",
+          // Hint when known; empty = auto-detect + code-switching.
+          language_codes: params.language ? [params.language] : [],
+        },
+      },
     });
 
     const text = typeof interaction.output_text === "string"

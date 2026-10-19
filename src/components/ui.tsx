@@ -1,10 +1,12 @@
 /**
  * Minimal Saydo UI primitives (Step 3). Not a full design-system package.
  */
+import { Ionicons } from '@expo/vector-icons';
 import { type ReactNode, useEffect } from 'react';
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -25,7 +27,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colors, fonts, radius, space, type } from '@/theme';
+import { colors, fonts, layout, radius, space, type } from '@/theme';
 
 export type ButtonVariant =
   | 'cta'
@@ -180,10 +182,8 @@ export function EmptyState({
   );
 }
 
-/** Matches ui/goals-in-motion-55 VoiceRibbon exactly (Experience.tsx). */
+/** Matches ui/goals-in-motion-55 VoiceRibbon (Experience.tsx): flex-1 equal bars + beat. */
 const RIBBON_BARS = 52;
-/** Cap bar width — flex-1 alone fattens bars on wide cobalt bands. */
-const RIBBON_BAR_W = 2;
 
 export function VoiceRibbon({
   live = true,
@@ -197,14 +197,15 @@ export function VoiceRibbon({
 }) {
   const reduced = useReducedMotion();
   const { width } = useWindowDimensions();
-  const desktop = width >= 768;
-  // Prototype: h-16 / md:h-24 wrap; h-14 / md:h-20 bars
+  const desktop = width >= layout.desktopMin;
+  // Prototype: h-16 / md:h-24 wrap; h-14 / md:h-20 bars; gap-1 / md:gap-1.5
   const barH = compact ? 40 : desktop ? 80 : 56;
   const wrapH = compact ? 48 : desktop ? 96 : 64;
+  const gap = compact ? 3 : desktop ? 6 : 4;
 
   return (
     <View
-      style={[styles.ribbon, { height: wrapH }]}
+      style={[styles.ribbon, { height: wrapH, gap }]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
@@ -235,7 +236,7 @@ function RibbonBar({
   // Prototype keyframes: [0.15+(i%5)/10, 0.4+(i%7)/12, 0.15+(i%5)/10]
   const low = 0.15 + (index % 5) / 10;
   const high = 0.4 + (index % 7) / 12;
-  const scale = useSharedValue(0.2);
+  const scale = useSharedValue(live ? low : 0.2);
 
   useEffect(() => {
     if (!live) {
@@ -265,7 +266,7 @@ function RibbonBar({
     <Animated.View
       style={[
         styles.ribbonBar,
-        { backgroundColor: color, height, width: RIBBON_BAR_W },
+        { backgroundColor: color, height },
         anim,
       ]}
     />
@@ -293,13 +294,32 @@ export function Sheet({
       onRequestClose={onClose}
     >
       <View style={styles.sheetRoot}>
-        <Pressable style={styles.sheetBackdrop} onPress={onClose} />
+        <Pressable
+          style={styles.sheetBackdrop}
+          onPress={onClose}
+          accessibilityLabel="Dismiss"
+        />
         <View style={styles.sheetCard} accessibilityViewIsModal>
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            style={styles.sheetClose}
+            accessibilityLabel="Close"
+            accessibilityRole="button"
+          >
+            <Ionicons name="close" size={18} color={colors.stone} />
+          </Pressable>
           <Text style={styles.sheetTitle}>{title}</Text>
           {description ? (
             <Text style={styles.sheetDesc}>{description}</Text>
           ) : null}
-          {children}
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.sheetBody}
+          >
+            {children}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -320,6 +340,7 @@ const styles = StyleSheet.create({
   field: {
     width: '100%',
     minHeight: 52,
+    // Prototype input-field: height 3.25rem, radius ~0.85rem
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.input,
@@ -356,40 +377,74 @@ const styles = StyleSheet.create({
   },
   ribbon: {
     width: '100%',
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     overflow: 'hidden',
   },
-  // Prototype bars are thin needles (~2px), not flex-grown slabs.
+  // Prototype: each bar is flex-1 (equal width across the ribbon).
   ribbonBar: {
+    flex: 1,
+    minWidth: 0,
     borderRadius: 999,
   },
   sheetRoot: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     padding: space[4],
   },
   sheetBackdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(23, 23, 23, 0.45)',
+    backgroundColor: 'rgba(23, 23, 23, 0.55)',
   },
+  /** Prototype DialogContent: max-w-lg, p-6, rounded-lg, paper bg */
   sheetCard: {
+    width: '100%',
+    maxWidth: 512,
     maxHeight: '90%',
-    borderRadius: radius.lg,
-    backgroundColor: colors.card,
-    padding: space[6],
-    gap: space[3],
+    borderRadius: radius.xl,
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingTop: space[6],
+    paddingHorizontal: space[6],
+    paddingBottom: space[6],
+    shadowColor: colors.ink,
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 12,
+  },
+  sheetClose: {
+    position: 'absolute',
+    top: space[4],
+    right: space[4],
+    zIndex: 2,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
   },
   sheetTitle: {
     fontFamily: fonts.display,
     fontSize: 28,
+    fontWeight: '500',
     color: colors.ink,
+    paddingRight: space[8],
   },
   sheetDesc: {
+    marginTop: space[2],
     fontFamily: fonts.sans,
     fontSize: 14,
+    lineHeight: 20,
     color: colors.stone,
-    marginBottom: space[2],
+  },
+  sheetBody: {
+    marginTop: space[5],
+    gap: space[4],
+    paddingBottom: space[2],
   },
 });

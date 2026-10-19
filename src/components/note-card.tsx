@@ -7,6 +7,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type LayoutChangeEvent,
 } from 'react-native';
 
 import { Button, Eyebrow } from '@/components/ui';
@@ -112,20 +113,26 @@ export function NoteCardGrid({
   const { width } = useWindowDimensions();
   const cols = width >= 1280 ? 3 : width >= 640 ? 2 : 1;
   const gap = space[4];
-  const pagePad = width >= 768 ? space[10] : space[5];
-  const contentW = Math.min(width, 1280) - pagePad * 2;
+  const [gridW, setGridW] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => {
+    setGridW(e.nativeEvent.layout.width);
+  };
   const cardW =
-    cols === 1 ? contentW : (contentW - gap * (cols - 1)) / cols;
+    gridW > 0
+      ? cols === 1
+        ? gridW
+        : (gridW - gap * (cols - 1)) / cols
+      : undefined;
 
   return (
-    <View style={[styles.grid, { gap }]}>
+    <View style={[styles.grid, { gap }]} onLayout={onLayout}>
       {notes.map((note, i) => (
         <NoteCard
           key={note.id}
           note={note}
           index={i}
           onDelete={onDelete}
-          style={{ width: cardW }}
+          style={cardW != null ? { width: cardW } : { flexGrow: 1 }}
         />
       ))}
     </View>

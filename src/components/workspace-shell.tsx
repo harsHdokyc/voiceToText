@@ -25,9 +25,7 @@ import { greetingName } from '@/features/settings/services/greeting-name';
 import { getOwnProfile } from '@/features/settings/services/profile-service';
 import { SaydoWordmark } from '@/components/saydo-mark';
 import { useAuth } from '@/providers/auth-provider';
-import { colors, fonts, radius, space } from '@/theme';
-
-const DESKTOP_MIN = 768;
+import { colors, fonts, layout, radius, space } from '@/theme';
 
 const NAV_ICONS: Record<
   WorkspaceNavItem,
@@ -52,7 +50,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
   const section = workspaceSectionFromPath(pathname);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const desktop = width >= DESKTOP_MIN;
+  const desktop = width >= layout.desktopMin;
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
   const { openCapture } = useCapture();
@@ -191,7 +189,15 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
       ) : null}
 
       <View style={styles.main}>
-        <View style={[styles.header, { paddingTop: desktop ? 0 : 0 }]}>
+        <View
+          style={[
+            styles.header,
+            desktop && {
+              minHeight: layout.headerHeightDesktop,
+              paddingHorizontal: layout.pagePadXDesktop,
+            },
+          ]}
+        >
           <View style={styles.headerLeft}>
             {desktop ? (
               <Pressable
@@ -294,13 +300,16 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
 const styles = StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: colors.paper },
   sidebar: {
-    width: 240,
+    width: layout.sidebarWidth,
     backgroundColor: colors.ink,
     padding: space[4],
     borderRightWidth: 1,
     borderRightColor: 'rgba(255,255,255,0.12)',
   },
-  sidebarCollapsed: { width: 80, alignItems: 'center' },
+  sidebarCollapsed: {
+    width: layout.sidebarCollapsedWidth,
+    alignItems: 'center',
+  },
   brandRow: {
     height: 56,
     justifyContent: 'center',
@@ -377,10 +386,10 @@ const styles = StyleSheet.create({
   },
   main: { flex: 1, minWidth: 0 },
   header: {
-    minHeight: 64,
+    minHeight: layout.headerHeight,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingHorizontal: space[5],
+    paddingHorizontal: layout.pagePadX,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -418,7 +427,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space[2],
-    paddingHorizontal: space[5],
+    paddingHorizontal: layout.pagePadX,
     paddingVertical: space[3],
   },
   mobileSettingsText: {

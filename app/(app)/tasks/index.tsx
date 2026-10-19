@@ -3,15 +3,15 @@ import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
-import { TaskProgressRow } from '@/components/work-row';
 import { Button, EmptyState, Eyebrow } from '@/components/ui';
+import { WorkspacePage } from '@/components/workspace-page';
+import { TaskProgressRow } from '@/components/work-row';
 import {
   archiveTask,
   completeTask,
@@ -70,10 +70,7 @@ export default function TasksScreen() {
     toggleComplete.isPending || remove.isPending || saveEdit.isPending;
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-    >
+    <WorkspacePage>
       <Eyebrow>The things you chose</Eyebrow>
       <Text style={styles.title}>
         Make <Text style={styles.accent}>progress.</Text>
@@ -172,17 +169,11 @@ export default function TasksScreen() {
           });
         }}
       />
-    </ScrollView>
+    </WorkspacePage>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.paper },
-  content: {
-    padding: space[5],
-    gap: space[4],
-    paddingBottom: space[10],
-  },
   title: {
     fontFamily: fonts.display,
     fontSize: 36,

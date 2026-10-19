@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import {
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -11,6 +10,7 @@ import {
 
 import { SaydoWordmark } from '@/components/saydo-mark';
 import { Button, Eyebrow, TextField } from '@/components/ui';
+import { WorkspacePage } from '@/components/workspace-page';
 import { signOut } from '@/features/auth/services/auth-service';
 import { registerForPushNotifications } from '@/features/reminders/services/push-registration';
 import { deleteAccount } from '@/features/settings/services/account-service';
@@ -108,10 +108,9 @@ export default function SettingsScreen() {
     wipe.isPending;
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
+    <WorkspacePage
+      gap={space[3]}
+      contentStyle={styles.formWidth}
     >
       <SaydoWordmark markSize={40} style={styles.brand} />
       <Eyebrow>Make yourself at home</Eyebrow>
@@ -252,20 +251,12 @@ export default function SettingsScreen() {
           ) : null}
         </View>
       ) : null}
-    </ScrollView>
+    </WorkspacePage>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.paper },
-  content: {
-    padding: space[5],
-    gap: space[3],
-    paddingBottom: space[10],
-    maxWidth: 560,
-    width: '100%',
-    alignSelf: 'center',
-  },
+  formWidth: { maxWidth: 560 },
   brand: { marginBottom: space[2] },
   title: {
     fontFamily: fonts.display,

@@ -5,10 +5,8 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -16,6 +14,11 @@ import { useCapture } from '@/components/capture-sheet';
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { NoteCardGrid } from '@/components/note-card';
 import { Button, EmptyState, Eyebrow, VoiceRibbon } from '@/components/ui';
+import {
+  useWorkspaceDesktop,
+  useWorkspaceWide,
+  WorkspacePage,
+} from '@/components/workspace-page';
 import {
   SuggestionReviewRow,
   TaskProgressRow,
@@ -52,9 +55,8 @@ export default function OverviewScreen() {
   const { user } = useAuth();
   const { openCapture } = useCapture();
   const queryClient = useQueryClient();
-  const { width } = useWindowDimensions();
-  const desktop = width >= 768;
-  const wide = width >= 1024;
+  const desktop = useWorkspaceDesktop();
+  const wide = useWorkspaceWide();
   const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
   const [editingSuggestion, setEditingSuggestion] =
     useState<TaskSuggestion | null>(null);
@@ -136,13 +138,7 @@ export default function OverviewScreen() {
     saveTaskEdit.isPending ||
     saveSuggestionEdit.isPending;
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[
-        styles.content,
-        desktop && styles.contentDesktop,
-      ]}
-    >
+    <WorkspacePage gap={space[6]}>
       {/* Greeting + counts — lg:grid-cols-[1fr_auto] */}
       <View style={[styles.greetingRow, wide && styles.greetingRowWide]}>
         <View style={styles.greetingCopy}>
@@ -359,25 +355,11 @@ export default function OverviewScreen() {
           });
         }}
       />
-    </ScrollView>
+    </WorkspacePage>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.paper },
-  content: {
-    paddingHorizontal: space[5],
-    paddingVertical: space[6],
-    gap: space[6],
-    paddingBottom: space[10],
-    maxWidth: 1280,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  contentDesktop: {
-    paddingHorizontal: space[10],
-    paddingVertical: space[10],
-  },
   greetingRow: { gap: space[6] },
   greetingRowWide: {
     flexDirection: 'row',

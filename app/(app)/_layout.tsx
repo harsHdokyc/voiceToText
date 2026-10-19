@@ -45,10 +45,8 @@ export default function AppLayout() {
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="notes/index" />
-        <Stack.Screen
-          name="notes/[noteId]"
-          options={{ ...detailHeader, title: 'Note' }}
-        />
+        {/* Prototype detail lives inside WorkspacePage chrome — no Stack title bar */}
+        <Stack.Screen name="notes/[noteId]" options={{ headerShown: false }} />
         <Stack.Screen name="suggestions" />
         <Stack.Screen name="tasks/index" />
         <Stack.Screen
