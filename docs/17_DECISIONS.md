@@ -5,6 +5,17 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-19 · AI provider = Google Gemini via LangChain + @google/genai
+- **Context:** Switch Edge AI off OpenAI/Naga OpenAI-compatible stack to Gemini; use LangChain for chat/extraction communication.
+- **Alternatives:** Keep OpenAI SDK; Gemini OpenAI-compat endpoint only; LangChain for both STT and chat; Vertex AI.
+- **Decision:**
+  - **Chat / task extraction:** LangChain `ChatGoogleGenerativeAI` from `@langchain/google-genai` (+ `@langchain/core`), JSON + Zod (not `withStructuredOutput`). Default `AI_CHAT_MODEL=gemini-3.8-flash`, fallback `gemini-3.6-flash` (do not use retired `gemini-2.5-flash`).
+  - **Transcription:** Official `@google/genai` **Interactions API** with `AI_TRANSCRIPTION_MODEL=gemini-3.5-transcribe` (dedicated STT model; not a LangChain chat wrapper).
+  - **Secret:** `GOOGLE_API_KEY` (alias `GEMINI_API_KEY`) — Edge only, never Expo / `EXPO_PUBLIC_*`.
+  - Keep provider adapters (`transcription-provider`, `task-extraction-provider`); call sites (`process-note`, spike) unchanged.
+- **Consequence:** Hosted Edge secrets must **replace** any `OPENAI_*` values with `GOOGLE_API_KEY` (+ optional model overrides). Spike slug `openai-spike` remains historical. Supersedes “AI provider = official OpenAI” defaults for new deploys.
+- **Why STT is not LangChain:** `gemini-3.5-transcribe` is Interactions-API STT; LangChain’s Google chat integration covers chat models, not this unary transcribe path.
+
 ## 2026-10-19 · Marketing host = Vercel, Root Directory `LandingPage`
 - **Context:** Landing Vite app lives in a monorepo next to Expo. Building from repo root pulls Expo `tsconfig` / wrong install graph; Vercel needs an explicit app root.
 - **Alternatives:** Netlify; Expo web for marketing; subdirectory rewrite without Root Directory.
@@ -45,6 +56,7 @@ Format: date · decision · context · alternatives considered · consequence.
   - `AI_CHAT_MODEL=gpt-4o-mini` (structured extraction)
 - **Consequence:** Hosted Edge secrets must be **replaced** (old Naga URL/key/models override code defaults if left set). Adapters unchanged — swap is config-only. Naga remains a historical prototype option if `OPENAI_BASE_URL` points at it again.
 - **Supersedes:** earlier “Prototype AI provider = Naga” default for new deploys (entry kept below for history).
+- **Status:** Superseded for defaults by “AI provider = Google Gemini via LangChain + @google/genai” (2026-10-19).
 
 ## 2026-10-02 · Prototype AI provider = Naga (OpenAI-compatible), not direct OpenAI yet
 - **Context:** Need a low-cost STT + chat path for early spikes. Naga exposes OpenAI SDK-compatible APIs at `https://api.naga.ac/v1` ([overview](https://docs.naga.ac/api-reference/overview), [Whisper free](https://naga.ac/models/whisper-large-v3%3Afree)).
@@ -95,6 +107,7 @@ Format: date · decision · context · alternatives considered · consequence.
 - **Alternatives:** Block on `ai` + `@ai-sdk/openai` spike; dual-support both SDKs from day one.
 - **Decision:** **V1 uses the official OpenAI SDK** (Deno/JSR or npm import verified in Phase 0) inside `TaskExtractionProvider`, with **Zod (and app checks) validating all model output before persist**. Same vendor stack as transcription. **Do not adopt Vercel AI SDK for V1** unless a later multi-provider need appears; the provider interface stays SDK-swappable.
 - **Consequence:** Phase 0 spike = “small OpenAI chat/structured call works on Edge,” not “fight AI SDK bundling.” Pin SDK versions. Never log transcripts/prompts.
+- **Status:** Superseded for SDK choice by LangChain Gemini + Zod (2026-10-19); still no Vercel AI SDK for V1.
 
 ## 2026-10-02 · Transactional email = Resend from Edge; Auth email separate
 - **Context:** Reminders/notifications need email later; Supabase Auth has its own mail path.

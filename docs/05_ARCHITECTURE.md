@@ -8,7 +8,7 @@
 - Backend: Supabase Auth, Postgres, private Storage, Edge Functions, RLS, Cron (`pg_cron`/`pg_net`), Vault, optional Queues, optional Realtime.
 - Email: Resend from Edge Function for transactional messages; configure Auth email separately.
 - Push: Expo Notifications + Expo Push Service.
-- AI: transcription + structured extraction via official OpenAI SDK behind server adapters; Zod validation before persist (see `DECISIONS.md`).
+- AI: transcription (`@google/genai` + `gemini-3.5-transcribe`) + structured extraction (LangChain `ChatGoogleGenerativeAI` + Gemini chat models) behind server adapters; Zod validation before persist (see `DECISIONS.md`).
 
 ## Flow
 Expo app -> Auth session / TanStack Query / RLS-protected CRUD / private Storage upload.

@@ -1,7 +1,13 @@
-import type OpenAI from "npm:openai@4.104.0";
+import type { GoogleGenAI } from "npm:@google/genai@2.30.0";
 
 import { getAiConfig } from "./config.ts";
-import { createOpenAiClient } from "./openai-client.ts";
+import { createGoogleGenAiClient } from "./google-genai-client.ts";
+import { edgeLog } from "../log.ts";
+import {
+  bytesToBase64,
+  describeProcessError,
+  mimeTypeForAudioFile,
+} from "./provider-utils.ts";
 
 export type TranscriptResult = {
   text: string;
@@ -12,26 +18,59 @@ export type TranscriptResult = {
 };
 
 /**
- * Server-side transcription via OpenAI-compatible /audio/transcriptions.
- * Default: official OpenAI `gpt-4o-mini-transcribe`.
+ * Server-side transcription via Gemini 3.5 Transcribe (Interactions API).
+ * Default model: `gemini-3.5-transcribe`.
+ * @see https://ai.google.dev/gemini-api/docs/transcribe
  */
 export async function transcribeAudio(params: {
   file: File;
   language?: string;
-  client?: OpenAI;
+  client?: GoogleGenAI;
 }): Promise<TranscriptResult> {
   const config = getAiConfig();
-  const client = params.client ?? createOpenAiClient(config);
+  const mimeType = mimeTypeForAudioFile(params.file);
+  const bytes = new Uint8Array(await params.file.arrayBuffer());
 
-  const transcript = await client.audio.transcriptions.create({
-    model: config.transcriptionModel,
-    file: params.file,
-    ...(params.language ? { language: params.language } : {}),
-  });
+  try {
+    const client = params.client ?? createGoogleGenAiClient(config);
+    const interaction = await client.interactions.create({
+      model: config.transcriptionModel,
+      input: [
+        {
+          type: "audio",
+          data: bytesToBase64(bytes),
+          mime_type: mimeType,
+        },
+      ],
+      ...(params.language
+        ? {
+          generation_config: {
+            transcription_config: {
+              language_codes: [params.language],
+            },
+          },
+        }
+        : {}),
+    });
 
-  return {
-    text: transcript.text,
-    model: config.transcriptionModel,
-    provider: config.providerLabel,
-  };
+    const text = typeof interaction.output_text === "string"
+      ? interaction.output_text
+      : "";
+
+    return {
+      text,
+      model: config.transcriptionModel,
+      provider: config.providerLabel,
+    };
+  } catch (error) {
+    const { code, reason } = describeProcessError(error, "transcription_failed");
+    edgeLog("error", "edge.ai.transcribe", {
+      event: "fail",
+      code,
+      reason,
+      model: config.transcriptionModel,
+      mimeType,
+    });
+    throw error;
+  }
 }

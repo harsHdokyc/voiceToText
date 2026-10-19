@@ -1,5 +1,5 @@
 # Logging — Combined Reference
-Last updated: 2026-10-02.
+Last updated: 2026-10-20.
 
 Single source for **how we log**, **what appears in the terminal**, and **error codes**.  
 Agent rule: `.cursor/rules/08-logging.mdc`. Security: never log audio, transcripts, passwords, OTP, tokens, signed URLs, or API keys.
@@ -81,7 +81,9 @@ Edge Function logs: Supabase Dashboard → Edge Functions → `process-note` →
 | `api.push.register` | Expo push token registration |
 | `api.notes.delete` / `api.account.delete` | Deletion |
 | `edge.note-audio` | Upload/download proxy (no storage key in responses) |
-| `edge.process-note` | Claim → download → Whisper → extract → persist |
+| `edge.process-note` | Claim → download → STT → extract → persist |
+| `edge.ai.transcribe` | STT fail only (`code`, `reason`, `model`) |
+| `edge.ai.extract` | Chat fail / fallback retry (`code`, `reason`, `model`) |
 | `edge.approve-suggestion` | Approve suggestion + create task |
 | `edge.reject-suggestion` | Reject suggestion |
 | `edge.register-push-token` | Upsert device token |
@@ -110,6 +112,9 @@ Prefer these `code` values in DB `last_error_code`, JSON `error`, and logs `code
 | `transcript_persist_failed` | Could not write transcript/status |
 | `transcription_failed` | Generic STT failure fallback |
 | `extraction_failed` | Generic extraction failure fallback |
+| `upstream_404` / `upstream_400` / `upstream_*` | Provider HTTP status mapped from Gemini/LangChain |
+| `invalid_json_from_model` | Chat returned non-JSON |
+| `schema_validation_failed` | Chat JSON failed Zod |
 | `suggestions_insert_failed` | Could not write suggestions to DB |
 | `final_status_update_failed` | Could not update note to review_ready |
 | `process_note_empty` | Invoke returned empty body |

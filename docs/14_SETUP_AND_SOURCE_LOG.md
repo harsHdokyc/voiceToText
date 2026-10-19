@@ -15,17 +15,16 @@ VITE_APP_URL=                      # optional; product/Expo web URL for Sign in
 
 Edge / server secrets (Dashboard → Edge Functions → Secrets, or `supabase/functions/.env` locally):
 ```env
-OPENAI_API_KEY=                    # OpenAI secret key (never commit)
-OPENAI_BASE_URL=https://api.openai.com/v1
-AI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe
-AI_CHAT_MODEL=gpt-4o-mini
+GOOGLE_API_KEY=                    # Gemini / Google AI Studio key (never commit)
+AI_TRANSCRIPTION_MODEL=gemini-3.5-transcribe
+AI_CHAT_MODEL=gemini-3.8-flash
 # Later: RESEND_API_KEY, EXPO_ACCESS_TOKEN, APP_BASE_URL
 ```
 Never prefix secrets with `EXPO_PUBLIC_` / never put `service_role` in Vite or Vercel. Don't commit filled `.env` files.
 
 Marketing deploy status: [20_STATUS.md](./20_STATUS.md), [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
 
-If older Naga secrets are still set on the project, **replace** them — env overrides code defaults. See `DECISIONS.md`.
+If older `OPENAI_*` / Naga secrets are still set on the project, **replace** them with `GOOGLE_API_KEY` — stale OpenAI env is unused by the new adapters. See `DECISIONS.md`.
 
 ## Official docs to verify
 - Supabase Expo quickstart: https://supabase.com/docs/guides/getting-started/quickstarts/expo-react-native
@@ -40,9 +39,10 @@ If older Naga secrets are still set on the project, **replace** them — env ove
 - TanStack Query: https://tanstack.com/query/latest/docs/framework/react/overview
 - Expo Audio: https://docs.expo.dev/versions/latest/sdk/audio/
 - Expo Notifications: https://docs.expo.dev/versions/latest/sdk/notifications/
-- OpenAI speech-to-text: https://platform.openai.com/docs/guides/speech-to-text
-- OpenAI models: https://platform.openai.com/docs/models
-- OpenAI pricing: https://developers.openai.com/api/docs/pricing
+- LangChain ChatGoogleGenerativeAI: https://docs.langchain.com/oss/javascript/integrations/chat/google_generative_ai
+- Gemini models: https://ai.google.dev/gemini-api/docs/models
+- Gemini 3.5 Transcribe: https://ai.google.dev/gemini-api/docs/transcribe
+- Gemini API key: https://ai.google.dev/gemini-api/docs/api-key
 - Resend example: https://supabase.com/docs/guides/functions/examples/send-emails
 - Edge Function limits (idle/wall clock): https://supabase.com/docs/guides/functions/limits
 

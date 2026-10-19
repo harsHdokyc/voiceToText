@@ -1,24 +1,24 @@
 # AI Pipeline and SDK Map
 ## V1 split
-1. Transcription: OpenAI-compatible `/audio/transcriptions` from a Supabase Edge Function through `TranscriptionProvider`. API key is server-side.
-2. Task extraction: OpenAI-compatible chat completions from `TaskExtractionProvider` with JSON + Zod validation before DB persist. Do not use Vercel AI SDK for V1 (see `DECISIONS.md`).
+1. Transcription: Gemini 3.5 Transcribe (`gemini-3.5-transcribe`) via `@google/genai` Interactions API in a Supabase Edge Function through `TranscriptionProvider`. API key is server-side.
+2. Task extraction: LangChain `ChatGoogleGenerativeAI` (`@langchain/google-genai`) from `TaskExtractionProvider` with structured output + Zod validation before DB persist. Do not use Vercel AI SDK for V1 (see `DECISIONS.md`).
 3. Validate output at runtime before DB persistence.
 4. Keep suggestions pending until user approval.
 
 ## Current provider (see DECISIONS.md)
 | Setting | Value |
 |---|---|
-| SDK | `openai` (official) on Edge |
-| Base URL | `https://api.openai.com/v1` (`OPENAI_BASE_URL`) |
-| API key secret | `OPENAI_API_KEY` (OpenAI secret key — Edge only) |
-| Transcription model | `gpt-4o-mini-transcribe` (`AI_TRANSCRIPTION_MODEL`) |
-| Chat / extraction model | `gpt-4o-mini` (`AI_CHAT_MODEL`) |
+| Chat SDK | LangChain `@langchain/google-genai` + `@langchain/core` on Edge |
+| STT SDK | `@google/genai` Interactions API on Edge |
+| API key secret | `GOOGLE_API_KEY` (alias `GEMINI_API_KEY` — Edge only) |
+| Transcription model | `gemini-3.5-transcribe` (`AI_TRANSCRIPTION_MODEL`) |
+| Chat / extraction model | `gemini-3.8-flash` (`AI_CHAT_MODEL`), fallback `gemini-3.6-flash` |
 
-Shared modules: `supabase/functions/_shared/ai/{config,openai-client,transcription-provider,task-extraction-provider}.ts`.
+Shared modules: `supabase/functions/_shared/ai/{config,langchain-gemini-client,google-genai-client,transcription-provider,task-extraction-provider,provider-utils}.ts`.
 
-Spike function: `openai-spike` probes `config` \| `chat` \| `transcribe`.
+Spike function: `openai-spike` (historical slug) probes `config` \| `chat` \| `transcribe` against Gemini.
 
-**Privacy / cost:** Official OpenAI paid usage — no Naga `:free` training caveat. Keep spend bounded (≤60s audio, short transcripts). Never put the key in Expo/`EXPO_PUBLIC_*`.
+**Privacy / cost:** Gemini paid usage via Google AI Studio / Gemini API. Keep spend bounded (≤60s audio, short transcripts). Never put the key in Expo/`EXPO_PUBLIC_*`.
 
 ## Provider interfaces
 ```ts
@@ -53,12 +53,11 @@ type TaskSuggestion = {
 Check ownership/state -> claim idempotent job -> validate audio type/size/duration -> transcribe -> persist transcript -> extract -> Zod validation and app-specific checks -> persist suggestions -> mark review-ready. On failure persist safe error code/retryability, not full provider response or sensitive content.
 
 ## SDK details
-Pin the OpenAI SDK version that Phase 0 proves on Edge. Prefer structured/JSON response modes when available; always re-validate with Zod. The provider interface stays swappable — change base URL / model / key, not call sites.
-Track model/provider, latency, audio seconds, token usage/cost estimates without logging note content. Bound file length, output size, timeout, retries, and per-user spend. V1 audio processing is inline after an atomic DB claim for short clips only (see `DECISIONS.md`).
+Pin LangChain Google GenAI + `@google/genai` versions that work on Edge. Chat uses LangChain invoke with `json: true`, then Zod — **not** `withStructuredOutput()` (Gemini rejects LangChain’s Zod→`responseSchema` for `.nullable()`). STT uses the Interactions API dedicated transcribe model. Track model/provider, latency, audio seconds, token usage/cost estimates without logging note content. Bound file length, output size, timeout, retries, and per-user spend. V1 audio processing is inline after an atomic DB claim for short clips only (see `DECISIONS.md`).
 
 ## References
-- OpenAI speech-to-text: https://platform.openai.com/docs/guides/speech-to-text
-- OpenAI models / pricing: https://platform.openai.com/docs/models
-- OpenAI API pricing: https://developers.openai.com/api/docs/pricing
-- gpt-4o-mini-transcribe: https://developers.openai.com/api/docs/models/gpt-4o-mini-transcribe
-- gpt-4o-mini: https://developers.openai.com/api/docs/models/gpt-4o-mini
+- LangChain ChatGoogleGenerativeAI: https://docs.langchain.com/oss/javascript/integrations/chat/google_generative_ai
+- Gemini models: https://ai.google.dev/gemini-api/docs/models
+- Gemini 3.5 Transcribe: https://ai.google.dev/gemini-api/docs/models/gemini-3.5-transcribe
+- Audio transcription (Interactions API): https://ai.google.dev/gemini-api/docs/transcribe
+- Gemini API keys: https://ai.google.dev/gemini-api/docs/api-key

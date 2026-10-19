@@ -3,7 +3,7 @@
 Mobile-first app that turns voice notes into editable transcripts and **user-approved** tasks.
 
 ## Status
-Phase 0–4 scaffold + hosted Supabase + email/password OTP auth + note processing. AI via **official OpenAI** (`gpt-4o-mini-transcribe` + `gpt-4o-mini`). See [docs/STATUS.md](./docs/STATUS.md) and [docs/DECISIONS.md](./docs/DECISIONS.md).
+Phase 0–4 scaffold + hosted Supabase + email/password OTP auth + note processing. AI via **Google Gemini** (LangChain chat + `@google/genai` STT: `gemini-3.5-transcribe` + `gemini-3.8-flash`). See [docs/STATUS.md](./docs/STATUS.md) and [docs/DECISIONS.md](./docs/DECISIONS.md).
 
 ## Quick links
 | What | Where |
@@ -19,14 +19,13 @@ Phase 0–4 scaffold + hosted Supabase + email/password OTP auth + note processi
 
 ## Hosted app setup
 1. Client `.env` already points at the hosted project (see `.env.example`).
-2. Set Edge secrets in Supabase Dashboard (never in Expo) — **replace any old Naga values**:
-   - `OPENAI_API_KEY` = OpenAI secret key
-   - `OPENAI_BASE_URL` = `https://api.openai.com/v1`
-   - optional: `AI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe`, `AI_CHAT_MODEL=gpt-4o-mini`
+2. Set Edge secrets in Supabase Dashboard (never in Expo) — **replace any old `OPENAI_*` / Naga values**:
+   - `GOOGLE_API_KEY` = Gemini / Google AI Studio key
+   - optional: `AI_TRANSCRIPTION_MODEL=gemini-3.5-transcribe`, `AI_CHAT_MODEL=gemini-3.8-flash`
 3. `npm start` → sign in → invoke `health` / `openai-spike` (`config` then `chat`).
 
 ## Stack
-Expo + React Native + TypeScript · Expo Router · TanStack Query · Supabase · OpenAI SDK on Edge (`gpt-4o-mini-transcribe` + `gpt-4o-mini`) · Expo Push / Resend later · auth: email/password + 8-digit OTP.
+Expo + React Native + TypeScript · Expo Router · TanStack Query · Supabase · LangChain Gemini + `@google/genai` on Edge (`gemini-3.5-transcribe` + `gemini-3.8-flash`) · Expo Push / Resend later · auth: email/password + 8-digit OTP.
 
 ## Core product loop
 Record → private upload → transcribe → extract candidate tasks → user reviews/approves → tasks + optional reminders.

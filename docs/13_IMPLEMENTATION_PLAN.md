@@ -1,6 +1,6 @@
 # Implementation Plan — Vertical Slices
 ## Phase 0: runtime spike
-Create Expo TypeScript + Expo Router app; Supabase client/session persistence (email/password) from current official quickstart; TanStack Query provider; local Supabase config; first migration; minimal Edge Function; verify **official OpenAI SDK** on Deno/Edge with a small structured call; verify audio package and short-audio runtime limits (~60s cap). Exit: auth, migration, function, and small OpenAI request work.
+Create Expo TypeScript + Expo Router app; Supabase client/session persistence (email/password) from current official quickstart; TanStack Query provider; local Supabase config; first migration; minimal Edge Function; verify **Gemini via LangChain + `@google/genai`** on Deno/Edge with a small structured call; verify audio package and short-audio runtime limits (~60s cap). Exit: auth, migration, function, and small Gemini request work.
 
 ## Phase 1: Auth shell
 Sign in/up, session restore, protected routes, sign out, home empty state. Exit: session persists and signed-out users can't enter private screens.

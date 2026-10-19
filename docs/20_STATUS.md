@@ -3,7 +3,7 @@ Last updated: 2026-10-19 (Phases 0–7 complete + Saydo workspace UI + landing o
 
 ## Current phase
 **Phases 0–7 complete** against plan exit criteria (see inventory below). Hosted backend: [voiceToWork](https://supabase.com/dashboard/project/ubqhyeicmgmdzethtids).
-**AI provider:** official OpenAI via OpenAI SDK (see [DECISIONS.md](./17_DECISIONS.md)).
+**AI provider:** Google Gemini via LangChain + `@google/genai` (see [DECISIONS.md](./17_DECISIONS.md)).
 **Product UI:** Saydo workspace/dashboard (+ auth) from `ui/goals-in-motion-55` reference — see [ui-execution-planner.md](./22_ui-execution-planner.md) (Steps 1–13).
 **Marketing:** Vite app in `LandingPage/` on **Vercel** + `waitlist` on the same hosted project — see [LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
 
@@ -32,7 +32,7 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 
 | Phase | Plan exit | Met? |
 |---|---|---|
-| 0 Runtime spike | Auth, migration, Edge function, small OpenAI request | **yes** (live secrets = ops) |
+| 0 Runtime spike | Auth, migration, Edge function, small Gemini request | **yes** (live secrets = ops) |
 | 1 Auth shell | Session persists; signed-out blocked from app | **yes** |
 | 2 Notes + storage | Own upload works; cross-user denied | **partial** → RLS inventory + SQL checklist in Phase 7; live two-user deny still manual |
 | 3 Transcription | Recording → transcript; recoverable failure | **yes** |
@@ -69,9 +69,9 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 - [ ] Delete note (audio gone); delete account (cannot sign in)
 
 ### Ops still required
-1. Edge secrets: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, **`CRON_SECRET`**
+1. Edge secrets: `GOOGLE_API_KEY`, **`CRON_SECRET`** (optional model overrides `AI_*`)
 2. Schedule `dispatch-reminders` every minute with header `x-cron-secret: <CRON_SECRET>`
-3. Re-check OpenAI + Supabase terms before public launch
+3. Re-check Google Gemini + Supabase terms before public launch
 
 ---
 
@@ -104,7 +104,7 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | `register-push-token` | Upsert Expo token |
 | `dispatch-reminders` | Cron; claim → Expo push → delivery ledger |
 | `delete-note` / `delete-account` | Storage cleanup + DB wipe / auth delete |
-| `openai-spike` / `health` | Debug |
+| `openai-spike` / `health` | Debug (spike slug historical; probes Gemini) |
 
 ## Deployed backend
 | Item | Status |
@@ -119,8 +119,8 @@ See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 ## Tests
 | Command | Last result |
 |---|---|
-| `npm run typecheck` | Pass (2026-10-18) |
-| `npm test` | 139 passed / 25 files (2026-10-18) |
+| `npm run typecheck` | Pass (2026-10-19) |
+| `npm test` | 141 passed / 25 files (2026-10-19) |
 
 **Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`). Behavior tests for pure helpers (greeting/display name, due presets, capture timer, live-dictation concat, dueLabel, etc.).
 
@@ -131,4 +131,4 @@ See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 See [DECISIONS.md](./DECISIONS.md).
 
 ## Blockers
-None for code exit. Live reminders need `CRON_SECRET` + cron schedule; live AI needs OpenAI Edge secrets.
+None for code exit. Live reminders need `CRON_SECRET` + cron schedule; live AI needs `GOOGLE_API_KEY` Edge secret.

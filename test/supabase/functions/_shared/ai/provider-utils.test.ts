@@ -1,37 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-    describeProcessError,
-    failTargetForStage,
-    isRetryableHttpStatus,
-    providerLabelFromBaseUrl,
-    publicAiConfigView,
-    uniqueChatModels,
+  bytesToBase64,
+  describeProcessError,
+  failTargetForStage,
+  isRetiredModelError,
+  isRetryableHttpStatus,
+  isRetryableUpstream,
+  messageContentToText,
+  mimeTypeForAudioFile,
+  parseModelJson,
+  publicAiConfigView,
+  uniqueChatModels,
+  upstreamHttpStatus,
 } from '@supabaseShared/ai/provider-utils';
-
-describe('providerLabelFromBaseUrl', () => {
-  it('detects naga and openai hosts', () => {
-    expect(providerLabelFromBaseUrl('https://api.naga.ac/v1')).toBe('naga');
-    expect(providerLabelFromBaseUrl('https://api.openai.com/v1')).toBe(
-      'openai',
-    );
-  });
-
-  it('falls back for unknown or invalid URLs', () => {
-    expect(providerLabelFromBaseUrl('https://example.com/v1')).toBe(
-      'openai-compatible',
-    );
-    expect(providerLabelFromBaseUrl('not-a-url')).toBe('openai-compatible');
-  });
-});
 
 describe('uniqueChatModels', () => {
   it('puts preferred first and dedupes fallbacks', () => {
-    expect(uniqueChatModels('scout', ['scout', 'mini', 'llama'])).toEqual([
-      'scout',
-      'mini',
-      'llama',
-    ]);
+    expect(
+      uniqueChatModels('gemini-3.8-flash', [
+        'gemini-3.8-flash',
+        'gemini-3.6-flash',
+      ]),
+    ).toEqual(['gemini-3.8-flash', 'gemini-3.6-flash']);
   });
 });
 
@@ -39,26 +30,23 @@ describe('publicAiConfigView', () => {
   it('exposes safe fields and key presence without the key', () => {
     expect(
       publicAiConfigView({
-        providerLabel: 'naga',
-        baseUrl: 'https://api.naga.ac/v1',
-        transcriptionModel: 'whisper',
-        chatModel: 'scout',
+        providerLabel: 'gemini',
+        transcriptionModel: 'gemini-3.5-transcribe',
+        chatModel: 'gemini-3.8-flash',
         apiKey: 'secret',
       }),
     ).toEqual({
-      provider: 'naga',
-      baseUrl: 'https://api.naga.ac/v1',
-      transcriptionModel: 'whisper',
-      chatModel: 'scout',
+      provider: 'gemini',
+      transcriptionModel: 'gemini-3.5-transcribe',
+      chatModel: 'gemini-3.8-flash',
       apiKeyConfigured: true,
     });
 
     expect(
       publicAiConfigView({
-        providerLabel: 'naga',
-        baseUrl: 'https://api.naga.ac/v1',
-        transcriptionModel: 'whisper',
-        chatModel: 'scout',
+        providerLabel: 'gemini',
+        transcriptionModel: 'gemini-3.5-transcribe',
+        chatModel: 'gemini-3.8-flash',
         apiKey: null,
       }).apiKeyConfigured,
     ).toBe(false);
@@ -66,11 +54,35 @@ describe('publicAiConfigView', () => {
 });
 
 describe('isRetryableHttpStatus', () => {
-  it('retries flaky upstream statuses only', () => {
+  it('retries flaky/retired-model upstream statuses', () => {
     expect(isRetryableHttpStatus(503)).toBe(true);
     expect(isRetryableHttpStatus(429)).toBe(true);
+    expect(isRetryableHttpStatus(404)).toBe(true);
     expect(isRetryableHttpStatus(400)).toBe(false);
     expect(isRetryableHttpStatus(undefined)).toBe(false);
+  });
+});
+
+describe('isRetiredModelError', () => {
+  it('detects 404 and Google retired-model message text', () => {
+    expect(isRetiredModelError({ status: 404 })).toBe(true);
+    expect(
+      isRetiredModelError(
+        new Error('This model models/gemini-2.5-flash is no longer available'),
+      ),
+    ).toBe(true);
+    expect(isRetiredModelError(new Error('schema_validation_failed'))).toBe(
+      false,
+    );
+  });
+});
+
+describe('upstreamHttpStatus', () => {
+  it('reads status from nested SDK-shaped errors', () => {
+    expect(upstreamHttpStatus({ status: 429 })).toBe(429);
+    expect(upstreamHttpStatus({ statusCode: 503 })).toBe(503);
+    expect(upstreamHttpStatus({ response: { status: 500 } })).toBe(500);
+    expect(upstreamHttpStatus(new Error('nope'))).toBeUndefined();
   });
 });
 
@@ -114,5 +126,67 @@ describe('describeProcessError', () => {
       code: 'audio_download_failed',
       reason: 'audio_download_failed: object not found',
     });
+  });
+
+  it('truncates long provider reasons to 300 chars', () => {
+    const long = `x`.repeat(400);
+    const err = Object.assign(new Error(`Gemini boom ${long}`), { status: 400 });
+    const described = describeProcessError(err, 'extraction_failed');
+    expect(described.code).toBe('upstream_400');
+    expect(described.reason.length).toBe(300);
+    expect(described.reason.startsWith('Gemini boom')).toBe(true);
+  });
+});
+
+describe('isRetryableUpstream', () => {
+  it('retries retired-model and 5xx, not schema failures', () => {
+    expect(isRetryableUpstream({ status: 404 })).toBe(true);
+    expect(isRetryableUpstream({ status: 503 })).toBe(true);
+    expect(isRetryableUpstream(new Error('schema_validation_failed'))).toBe(
+      false,
+    );
+  });
+});
+
+describe('mimeTypeForAudioFile', () => {
+  it('prefers declared type and normalizes common aliases', () => {
+    expect(mimeTypeForAudioFile({ type: 'audio/mp4', name: 'x.m4a' })).toBe(
+      'audio/m4a',
+    );
+    expect(mimeTypeForAudioFile({ type: 'audio/mpeg', name: 'x.mp3' })).toBe(
+      'audio/mp3',
+    );
+  });
+
+  it('falls back to filename extension when type is missing', () => {
+    expect(mimeTypeForAudioFile({ name: 'clip.wav' })).toBe('audio/wav');
+    expect(mimeTypeForAudioFile({ name: 'clip.webm' })).toBe('audio/webm');
+    expect(mimeTypeForAudioFile({ name: 'clip.bin' })).toBe('audio/mp3');
+  });
+});
+
+describe('bytesToBase64', () => {
+  it('encodes bytes to standard base64', () => {
+    expect(bytesToBase64(new Uint8Array([72, 105]))).toBe('SGk=');
+  });
+});
+
+describe('messageContentToText', () => {
+  it('keeps strings and joins multimodal text parts', () => {
+    expect(messageContentToText('plain')).toBe('plain');
+    expect(
+      messageContentToText([{ type: 'text', text: 'a' }, { type: 'text', text: 'b' }]),
+    ).toBe('ab');
+  });
+});
+
+describe('parseModelJson', () => {
+  it('parses bare JSON and fenced JSON blocks', () => {
+    expect(parseModelJson('{"tasks":[]}')).toEqual({ tasks: [] });
+    expect(parseModelJson('```json\n{"tasks":[]}\n```')).toEqual({ tasks: [] });
+  });
+
+  it('throws on non-JSON', () => {
+    expect(() => parseModelJson('not-json')).toThrow();
   });
 });

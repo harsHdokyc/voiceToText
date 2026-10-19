@@ -44,3 +44,10 @@ yarn-error.*
 # Supabase local
 supabase/.branches
 supabase/.temp
+
+# Graphify (local graph build; keep .cursor/rules/graphify.mdc tracked)
+graphify-out/
+
+# Agent / MCP deploy scratch
+.tmp*
+.tmp-*/

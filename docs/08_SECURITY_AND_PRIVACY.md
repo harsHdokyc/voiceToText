@@ -1,5 +1,5 @@
 # Security and Privacy
-1. Never ship service-role, OpenAI, Resend, or other secrets in Expo code or `EXPO_PUBLIC_*`.
+1. Never ship service-role, Google/Gemini (`GOOGLE_API_KEY`), Resend, or other secrets in Expo code or `EXPO_PUBLIC_*`.
 2. Supabase URL and publishable key are public configuration; RLS is the boundary.
 3. Enable RLS and explicit policies for every exposed user table.
 4. Audio bucket is private. Persist object path, not public URL.

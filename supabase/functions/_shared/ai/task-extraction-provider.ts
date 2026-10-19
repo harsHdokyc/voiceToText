@@ -1,10 +1,13 @@
-import OpenAI from "npm:openai@4.104.0";
 import { z } from "npm:zod@3.25.76";
 
 import { CHAT_MODEL_FALLBACKS, getAiConfig } from "./config.ts";
-import { createOpenAiClient } from "./openai-client.ts";
+import { createChatModel } from "./langchain-gemini-client.ts";
+import { edgeLog } from "../log.ts";
 import {
-  isRetryableHttpStatus,
+  describeProcessError,
+  isRetryableUpstream,
+  messageContentToText,
+  parseModelJson,
   uniqueChatModels,
 } from "./provider-utils.ts";
 
@@ -20,71 +23,68 @@ export const TaskSuggestionSchema = z.object({
 
 export type TaskSuggestion = z.infer<typeof TaskSuggestionSchema>;
 
-function isRetryableUpstream(error: unknown): boolean {
-  if (!(error instanceof OpenAI.APIError)) return false;
-  return isRetryableHttpStatus(error.status);
-}
+const ExtractionSchema = z.object({
+  tasks: z.array(TaskSuggestionSchema),
+});
+
+const EXTRACTION_SYSTEM =
+  `Return JSON only: {"tasks": [{"title": string (1-200 chars), "details": string|null (max 1000), "kind": "task"|"reminder"|"idea"|"question"|"follow_up", "due_at": string|null (ISO date or null if ambiguous), "priority": "low"|"normal"|"high"|null (only if clear), "source_quote": string (1-500 chars, exact text from transcript), "confidence": "high"|"medium"|"low"}]}. No other keys. ` +
+  `Extract only clearly stated or strongly implied actions. Never invent names, deadlines, commitments, or context. ` +
+  `If date is ambiguous, return null for due_at and retain source_quote. No priority unless clearly stated. ` +
+  `If no tasks found, return an empty array for tasks. Keep titles concise. Preserve traceability via source_quote.`;
 
 /**
- * Structured extraction via OpenAI-compatible chat completions + Zod.
+ * Structured extraction via LangChain ChatGoogleGenerativeAI + Zod.
  * Transcript is untrusted content, never system instructions.
- * ponytail: short retry chain across chat models on 408/429/5xx.
+ * ponytail: short retry chain across chat models on 404/408/429/5xx.
+ * Zod validates after the call — not via withStructuredOutput (Gemini 400).
  */
 export async function extractTasks(params: {
   transcript: string;
-  client?: OpenAI;
 }): Promise<{ suggestions: TaskSuggestion[]; model: string; provider: string }> {
   const config = getAiConfig();
-  const client = params.client ?? createOpenAiClient(config);
   const models = uniqueChatModels(config.chatModel, CHAT_MODEL_FALLBACKS);
-
   let lastError: unknown;
 
-  for (const model of models) {
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i]!;
     try {
-      const completion = await client.chat.completions.create({
-        model,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              `Return JSON only: {"tasks": [{"title": string (1-200 chars), "details": string|null (max 1000), "kind": "task"|"reminder"|"idea"|"question"|"follow_up", "due_at": string|null (ISO date or null if ambiguous), "priority": "low"|"normal"|"high"|null (only if clear), "source_quote": string (1-500 chars, exact text from transcript), "confidence": "high"|"medium"|"low"}]}. No other keys. ` +
-              `Extract only clearly stated or strongly implied actions. Never invent names, deadlines, commitments, or context. ` +
-              `If date is ambiguous, return null for due_at and retain source_quote. No priority unless clearly stated. ` +
-              `If no tasks found, return an empty array for tasks. Keep titles concise. Preserve traceability via source_quote.`,
-          },
-          {
-            role: "user",
-            content: params.transcript,
-          },
-        ],
-      });
+      const llm = createChatModel(model, config);
+      const aiMsg = await llm.invoke([
+        ["system", EXTRACTION_SYSTEM],
+        ["human", params.transcript],
+      ]);
 
-      const raw = completion.choices[0]?.message?.content ?? '{"tasks":[]}';
+      const raw = messageContentToText(aiMsg.content);
       let parsed: unknown;
       try {
-        parsed = JSON.parse(raw);
+        parsed = parseModelJson(raw);
       } catch {
         throw new Error("invalid_json_from_model");
       }
 
-      const validated = z.object({
-        tasks: z.array(TaskSuggestionSchema),
-      }).safeParse(parsed);
+      const validated = ExtractionSchema.safeParse(parsed);
       if (!validated.success) {
         throw new Error("schema_validation_failed");
       }
 
       return {
         suggestions: validated.data.tasks,
-        model: completion.model ?? model,
+        model,
         provider: config.providerLabel,
       };
     } catch (error) {
       lastError = error;
-      if (!isRetryableUpstream(error)) throw error;
+      const willRetry = isRetryableUpstream(error) && i + 1 < models.length;
+      const { code, reason } = describeProcessError(error, "extraction_failed");
+      edgeLog(willRetry ? "warn" : "error", "edge.ai.extract", {
+        event: willRetry ? "retry" : "fail",
+        code,
+        reason,
+        model,
+        willRetry,
+      });
+      if (!willRetry) throw error;
     }
   }
 

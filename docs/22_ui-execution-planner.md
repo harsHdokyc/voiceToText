@@ -110,7 +110,7 @@ Canonical implementation: `ui/goals-in-motion-55/src/components/workspace/Worksp
 |---|---|---|
 | In-memory `useState` notes/tasks | Not durable / not multi-device | Existing Supabase services + TanStack Query |
 | Web Speech API dictation | Not the product capture path; weak on native | Existing `expo-audio` record → upload → `process-note` |
-| Lovable gateway `generateNextSteps` | Wrong provider; secrets wrong place | Existing Edge `process-note` (OpenAI per `DECISIONS.md`) |
+| Lovable gateway `generateNextSteps` | Wrong provider; secrets wrong place | Existing Edge `process-note` (Gemini per `DECISIONS.md`) |
 | Browser `Notification` + 15s poll | Not durable | Existing reminders + Expo push |
 | Fake sign-in (navigate only) | No session | Existing auth screens + OTP flows |
 | “Demo mode” footers / sample seed as sole data | Misleading in real app | Empty states + real user data; optional seed only in storybook/demo flag if ever needed |

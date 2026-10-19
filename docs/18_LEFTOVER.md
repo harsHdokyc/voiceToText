@@ -13,13 +13,13 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 
 | # | Item | Done? |
 |---|---|---|
-| A1 | Set Edge secrets: `OPENAI_API_KEY`, `OPENAI_BASE_URL` | [ ] |
+| A1 | Set Edge secret: `GOOGLE_API_KEY` (optional `AI_CHAT_MODEL` / `AI_TRANSCRIPTION_MODEL`) | [ ] |
 | A2 | Set Edge secret `CRON_SECRET` | [ ] |
 | A3 | Schedule `dispatch-reminders` ~every 1 min with header `x-cron-secret: <CRON_SECRET>` (Dashboard Cron or pg_cron + Vault) | [ ] |
 | A4 | Verify `openai-spike` → `config` → `chat`, then record a real note | [ ] |
-| A5 | **Rotate** any OpenAI key that appeared in git; purge history or unblock after rotate so `git push` works | [ ] |
+| A5 | **Rotate** any provider key that appeared in git; purge history or unblock after rotate so `git push` works | [ ] |
 | A6 | Confirm Auth email OTP templates on hosted Supabase | [ ] |
-| A7 | Re-read OpenAI + Supabase terms before broader launch | [ ] |
+| A7 | Re-read Google Gemini + Supabase terms before broader launch | [ ] |
 
 ### B. Device smoke (blocks private beta confidence)
 

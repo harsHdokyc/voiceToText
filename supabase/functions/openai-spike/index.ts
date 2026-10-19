@@ -6,11 +6,12 @@ import { extractTasks } from "../_shared/ai/task-extraction-provider.ts";
 import { transcribeAudio } from "../_shared/ai/transcription-provider.ts";
 
 /**
- * AI runtime spike (OpenAI SDK → official OpenAI by default).
+ * AI runtime spike (LangChain Gemini chat + @google/genai STT).
+ * Function slug `openai-spike` is historical — probes Gemini now.
  *
  * Body JSON:
  * - `{ "probe": "config" }` — provider/models/key presence (no secrets)
- * - `{ "probe": "chat" }` — structured extraction sample (needs OPENAI_API_KEY)
+ * - `{ "probe": "chat" }` — structured extraction sample (needs GOOGLE_API_KEY)
  * - `{ "probe": "transcribe" }` — multipart also accepted; JSON with base64:
  *   `{ "probe": "transcribe", "filename": "clip.m4a", "audioBase64": "..." }`
  */
@@ -56,9 +57,9 @@ export default {
         skipped: false,
         ...publicAiConfig(config),
         notes: [
-          "Default provider is official OpenAI (see DECISIONS.md).",
-          "STT: gpt-4o-mini-transcribe · chat: gpt-4o-mini.",
-          "Never put OPENAI_API_KEY in Expo / EXPO_PUBLIC_*.",
+          "Default provider is Google Gemini (see DECISIONS.md).",
+          "STT: gemini-3.5-transcribe · chat: gemini-3.8-flash (fallback gemini-3.6-flash).",
+          "Never put GOOGLE_API_KEY in Expo / EXPO_PUBLIC_*.",
         ],
       });
     }
@@ -68,7 +69,7 @@ export default {
         ok: true,
         skipped: true,
         reason:
-          "OPENAI_API_KEY not set — add OpenAI API key via Supabase Edge secrets, with OPENAI_BASE_URL=https://api.openai.com/v1",
+          "GOOGLE_API_KEY not set — add Gemini API key via Supabase Edge secrets",
         ...publicAiConfig(config),
       });
     }
@@ -117,7 +118,7 @@ export default {
           ok: false,
           error: message,
           hint: upstreamUnavailable
-            ? "Upstream rate-limited or unavailable — retry later, or check OpenAI billing/limits."
+            ? "Upstream rate-limited or unavailable — retry later, or check Gemini quota/billing."
             : undefined,
           ...publicAiConfig(config),
         },
