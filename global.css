@@ -1,3 +1,53 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Web scrollbar chrome (cobalt thumb on muted track).
+ * Native ignores these pseudo-elements; Expo web picks them up via NativeWind.
+ */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.cobalt') theme('colors.muted');
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: theme('colors.muted');
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: theme('colors.cobalt');
+    border-radius: 999px;
+    border: 2px solid theme('colors.muted');
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.cobalt-deep');
+  }
+
+  *::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  .saydo-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.cobalt') theme('colors.muted');
+  }
+}

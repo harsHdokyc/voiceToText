@@ -7,7 +7,6 @@ import { AppProviders } from '@/providers/app-providers';
 import { colors, useSaydoFonts } from '@/theme';
 
 import '../global.css';
-import '@/styles/saydo-web.css';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   /* already prevented or unavailable in tests */
