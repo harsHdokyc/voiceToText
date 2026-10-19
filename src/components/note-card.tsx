@@ -3,7 +3,6 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   Pressable,
-  StyleSheet,
   Text,
   useWindowDimensions,
   View,
@@ -19,12 +18,13 @@ import {
 } from '@/features/notes/services/note-category';
 import { displayTranscript } from '@/features/notes/services/note-status';
 import type { NoteRow } from '@/features/notes/services/notes-service';
-import { colors, fonts, radius, space } from '@/theme';
+import { cn } from '@/lib/cn';
+import { colors, space } from '@/theme';
 
-const TONE_BG: Record<NoteCardTone, string> = {
-  lavender: colors.lavender,
-  lime: colors.lime,
-  muted: colors.muted,
+const TONE_CLASS: Record<NoteCardTone, string> = {
+  lavender: 'bg-lavender',
+  lime: 'bg-lime',
+  muted: 'bg-muted',
 };
 
 export function NoteCard({
@@ -32,11 +32,13 @@ export function NoteCard({
   index,
   onDelete,
   style,
+  className,
 }: {
   note: NoteRow;
   index: number;
   onDelete?: (noteId: string) => void;
   style?: object;
+  className?: string;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const tone = noteCardTone(index);
@@ -50,8 +52,15 @@ export function NoteCard({
   };
 
   return (
-    <View style={[styles.card, { backgroundColor: TONE_BG[tone] }, style]}>
-      <View style={styles.topRow}>
+    <View
+      className={cn(
+        'min-h-[220px] min-w-0 max-w-full gap-3 overflow-hidden rounded-lg p-6',
+        TONE_CLASS[tone],
+        className,
+      )}
+      style={style}
+    >
+      <View className="flex-row items-center justify-between">
         <Eyebrow color="rgba(23,23,23,0.55)">
           {normalizeNoteCategory(note.category)}
         </Eyebrow>
@@ -66,7 +75,7 @@ export function NoteCard({
         ) : null}
       </View>
       {menuOpen && onDelete ? (
-        <View style={styles.menu}>
+        <View className="absolute right-4 top-[52px] z-[2] rounded-md border border-border bg-card p-1 shadow-md">
           <Button
             variant="ghost"
             size="sm"
@@ -76,20 +85,27 @@ export function NoteCard({
             }}
           >
             <Ionicons name="trash-outline" size={16} color={colors.destructive} />
-            <Text style={styles.deleteLabel}>Delete note</Text>
+            <Text className="font-sans text-[13px] text-destructive">
+              Delete note
+            </Text>
           </Button>
         </View>
       ) : null}
-      <Pressable onPress={open} style={styles.cardBody}>
-        <Text style={styles.title} numberOfLines={2}>
+      <Pressable onPress={open} className="min-w-0 flex-1">
+        <Text className="mt-2 font-display text-[22px] text-ink" numberOfLines={2}>
           {note.title?.trim() || 'A new thought'}
         </Text>
-        <Text style={styles.preview} numberOfLines={2}>
+        <Text
+          className="mt-3 font-sans text-sm leading-[22px] text-ink/55"
+          numberOfLines={2}
+        >
           {transcript}
         </Text>
       </Pressable>
-      <View style={styles.footer}>
-        <Text style={styles.time}>{formatNoteTime(note.created_at)}</Text>
+      <View className="mt-auto flex-row items-center justify-between pt-5">
+        <Text className="font-mono text-[10px] text-ink/55">
+          {formatNoteTime(note.created_at)}
+        </Text>
         <Pressable
           accessibilityLabel={`Open ${note.title ?? 'note'}`}
           onPress={open}
@@ -125,7 +141,11 @@ export function NoteCardGrid({
       : undefined;
 
   return (
-    <View style={[styles.grid, { gap }]} onLayout={onLayout}>
+    <View
+      className="w-full max-w-full flex-row flex-wrap"
+      style={{ gap }}
+      onLayout={onLayout}
+    >
       {notes.map((note, i) => (
         <NoteCard
           key={note.id}
@@ -138,73 +158,3 @@ export function NoteCardGrid({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    width: '100%',
-    maxWidth: '100%',
-  },
-  card: {
-    minHeight: 220,
-    minWidth: 0,
-    maxWidth: '100%',
-    borderRadius: radius.lg,
-    padding: space[6],
-    gap: space[3],
-    overflow: 'hidden',
-  },
-  cardBody: { flex: 1, minWidth: 0 },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  menu: {
-    position: 'absolute',
-    right: space[4],
-    top: 52,
-    zIndex: 2,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: space[1],
-    shadowColor: colors.ink,
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-  },
-  deleteLabel: {
-    fontFamily: fonts.sans,
-    color: colors.destructive,
-    fontSize: 13,
-  },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 22,
-    color: colors.ink,
-    marginTop: space[2],
-  },
-  preview: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 22,
-    color: 'rgba(23,23,23,0.55)',
-    marginTop: space[3],
-  },
-  footer: {
-    marginTop: 'auto',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: space[5],
-  },
-  time: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    color: 'rgba(23,23,23,0.55)',
-  },
-});

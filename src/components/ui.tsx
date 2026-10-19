@@ -1,5 +1,5 @@
 /**
- * Minimal Saydo UI primitives (Step 3). Not a full design-system package.
+ * Minimal Saydo UI primitives — NativeWind / Tailwind className styling.
  */
 import { Ionicons } from '@expo/vector-icons';
 import { type ReactNode, useEffect } from 'react';
@@ -7,7 +7,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   useWindowDimensions,
@@ -27,7 +26,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colors, fonts, layout, radius, space, type } from '@/theme';
+import { cn } from '@/lib/cn';
+import { colors, layout } from '@/theme';
 
 export type ButtonVariant =
   | 'cta'
@@ -39,33 +39,40 @@ export type ButtonVariant =
   | 'link';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | 'icon';
 
-const variantStyles: Record<
-  ButtonVariant,
-  { bg: string; fg: string; border?: string; rounded?: number }
-> = {
-  cta: { bg: colors.cobalt, fg: colors.card, rounded: radius.pill },
-  ink: { bg: colors.ink, fg: colors.paper, rounded: radius.pill },
-  lime: { bg: colors.lime, fg: colors.ink, rounded: radius.pill },
-  quiet: {
-    bg: 'transparent',
-    fg: colors.ink,
-    border: colors.border,
-    rounded: radius.pill,
-  },
-  ghost: { bg: 'transparent', fg: colors.ink },
-  destructive: { bg: colors.destructive, fg: colors.card },
-  link: { bg: 'transparent', fg: colors.cobalt },
+const variantClass: Record<ButtonVariant, string> = {
+  cta: 'bg-cobalt rounded-pill',
+  ink: 'bg-ink rounded-pill',
+  lime: 'bg-lime rounded-pill',
+  quiet: 'bg-transparent border border-border rounded-pill',
+  ghost: 'bg-transparent',
+  destructive: 'bg-destructive rounded-md',
+  link: 'bg-transparent',
 };
 
-const sizeStyles: Record<
-  ButtonSize,
-  { minH: number; px: number; fontSize: number; icon: number }
-> = {
-  sm: { minH: 32, px: 12, fontSize: 12, icon: 32 },
-  md: { minH: 40, px: 16, fontSize: 14, icon: 40 },
-  lg: { minH: 44, px: 20, fontSize: 15, icon: 44 },
-  xl: { minH: 52, px: 28, fontSize: 15, icon: 52 },
-  icon: { minH: 40, px: 0, fontSize: 14, icon: 40 },
+const variantTextClass: Record<ButtonVariant, string> = {
+  cta: 'text-card',
+  ink: 'text-paper',
+  lime: 'text-ink',
+  quiet: 'text-ink',
+  ghost: 'text-ink',
+  destructive: 'text-card',
+  link: 'text-cobalt underline',
+};
+
+const sizeClass: Record<ButtonSize, string> = {
+  sm: 'min-h-8 px-3',
+  md: 'min-h-10 px-4',
+  lg: 'min-h-11 px-5',
+  xl: 'min-h-[52px] px-7',
+  icon: 'h-10 w-10 px-0',
+};
+
+const sizeTextClass: Record<ButtonSize, string> = {
+  sm: 'text-xs',
+  md: 'text-sm',
+  lg: 'text-[15px]',
+  xl: 'text-[15px]',
+  icon: 'text-sm',
 };
 
 export function Button({
@@ -75,7 +82,9 @@ export function Button({
   onPress,
   disabled,
   style,
+  className,
   textStyle,
+  textClassName,
   accessibilityLabel,
 }: {
   variant?: ButtonVariant;
@@ -84,44 +93,35 @@ export function Button({
   onPress?: () => void;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  className?: string;
   textStyle?: StyleProp<TextStyle>;
+  textClassName?: string;
   accessibilityLabel?: string;
 }) {
-  const v = variantStyles[variant];
-  const s = sizeStyles[size];
-  const isIcon = size === 'icon';
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.btn,
-        {
-          backgroundColor: v.bg,
-          borderColor: v.border ?? 'transparent',
-          borderWidth: v.border ? 1 : 0,
-          borderRadius: v.rounded ?? radius.md,
-          minHeight: isIcon ? s.icon : s.minH,
-          width: isIcon ? s.icon : undefined,
-          paddingHorizontal: isIcon ? 0 : s.px,
-          opacity: disabled ? 0.5 : pressed ? 0.9 : 1,
-        },
-        style,
-      ]}
+      className={cn(
+        'flex-row items-center justify-center gap-2 active:opacity-90',
+        variantClass[variant],
+        sizeClass[size],
+        disabled && 'opacity-50',
+        className,
+      )}
+      style={style}
     >
       {typeof children === 'string' || typeof children === 'number' ? (
         <Text
-          style={[
-            styles.btnText,
-            {
-              color: v.fg,
-              fontSize: s.fontSize,
-              textDecorationLine: variant === 'link' ? 'underline' : 'none',
-            },
-            textStyle,
-          ]}
+          className={cn(
+            'font-sans-medium font-medium',
+            variantTextClass[variant],
+            sizeTextClass[size],
+            textClassName,
+          )}
+          style={textStyle}
         >
           {children}
         </Text>
@@ -135,14 +135,24 @@ export function Button({
 export function Eyebrow({
   children,
   style,
+  className,
   color = colors.stone,
 }: {
   children: ReactNode;
   style?: StyleProp<TextStyle>;
+  className?: string;
   color?: string;
 }) {
   return (
-    <Text style={[type.eyebrow, { color }, style]}>{children}</Text>
+    <Text
+      className={cn(
+        'font-mono text-[11px] uppercase tracking-[1.5px]',
+        className,
+      )}
+      style={[{ color }, style]}
+    >
+      {children}
+    </Text>
   );
 }
 
@@ -152,16 +162,17 @@ export function TextField({
   ...props
 }: TextInputProps & {
   style?: StyleProp<TextStyle>;
-  /** Web: Saydo scrollbar / chrome (see saydo-web.css). */
   className?: string;
 }) {
   return (
     <TextInput
       placeholderTextColor={colors.stone}
       {...props}
-      // RN Web forwards className to the DOM node.
-      {...(className ? ({ className } as object) : null)}
-      style={[styles.field, style]}
+      className={cn(
+        'w-full min-h-[52px] rounded-[14px] border border-input bg-card px-4 text-base font-sans text-ink',
+        className,
+      )}
+      style={style}
     />
   );
 }
@@ -174,10 +185,14 @@ export function EmptyState({
   body: string;
 }) {
   return (
-    <View style={styles.empty} accessibilityRole="text">
-      <Text style={styles.emptyIcon}>inbox</Text>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyBody}>{body}</Text>
+    <View className="items-center py-10" accessibilityRole="text">
+      <Text className="font-mono text-xs uppercase tracking-wide text-stone">
+        inbox
+      </Text>
+      <Text className="mt-5 font-display text-2xl text-ink">{title}</Text>
+      <Text className="mt-3 px-6 text-center font-sans text-sm text-stone">
+        {body}
+      </Text>
     </View>
   );
 }
@@ -203,9 +218,20 @@ export function VoiceRibbon({
   const wrapH = compact ? 48 : desktop ? 96 : 64;
   const gap = compact ? 3 : desktop ? 6 : 4;
 
+  // Layout + Reanimated must use `style` — NativeWind className on
+  // Animated.View drops flex widths, so bars vanish on web/native.
   return (
     <View
-      style={[styles.ribbon, { height: wrapH, gap }]}
+      style={{
+        width: '100%',
+        minWidth: 0,
+        height: wrapH,
+        gap,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+      }}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
@@ -243,7 +269,6 @@ function RibbonBar({
       scale.value = 0.2;
       return;
     }
-    // Prototype: duration 1.4, delay i*0.04, scaleY [low, high, low], repeat Infinity
     scale.value = low;
     scale.value = withDelay(
       index * 40,
@@ -265,8 +290,13 @@ function RibbonBar({
   return (
     <Animated.View
       style={[
-        styles.ribbonBar,
-        { backgroundColor: color, height },
+        {
+          flex: 1,
+          minWidth: 0,
+          borderRadius: 999,
+          backgroundColor: color,
+          height,
+        },
         anim,
       ]}
     />
@@ -293,30 +323,37 @@ export function Sheet({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.sheetRoot}>
+      <View className="flex-1 items-center justify-center p-4">
         <Pressable
-          style={styles.sheetBackdrop}
+          className="absolute inset-0 bg-ink/55"
           onPress={onClose}
           accessibilityLabel="Dismiss"
         />
-        <View style={styles.sheetCard} accessibilityViewIsModal>
+        <View
+          className="max-h-[90%] w-full max-w-lg rounded-xl border border-border bg-paper px-6 pb-6 pt-6 shadow-lg"
+          accessibilityViewIsModal
+        >
           <Pressable
             onPress={onClose}
             hitSlop={12}
-            style={styles.sheetClose}
+            className="absolute right-4 top-4 z-[2] h-8 w-8 items-center justify-center rounded-sm"
             accessibilityLabel="Close"
             accessibilityRole="button"
           >
             <Ionicons name="close" size={18} color={colors.stone} />
           </Pressable>
-          <Text style={styles.sheetTitle}>{title}</Text>
+          <Text className="pr-8 font-display text-[28px] font-medium text-ink">
+            {title}
+          </Text>
           {description ? (
-            <Text style={styles.sheetDesc}>{description}</Text>
+            <Text className="mt-2 font-sans text-sm leading-5 text-stone">
+              {description}
+            </Text>
           ) : null}
           <ScrollView
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.sheetBody}
+            contentContainerClassName="mt-5 gap-4 pb-2"
           >
             {children}
           </ScrollView>
@@ -325,126 +362,3 @@ export function Sheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space[2],
-  },
-  btnText: {
-    fontFamily: fonts.sansMedium,
-    fontWeight: '500',
-  },
-  field: {
-    width: '100%',
-    minHeight: 52,
-    // Prototype input-field: height 3.25rem, radius ~0.85rem
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.input,
-    backgroundColor: colors.card,
-    paddingHorizontal: space[4],
-    fontSize: 16,
-    fontFamily: fonts.sans,
-    color: colors.ink,
-  },
-  empty: {
-    paddingVertical: space[10],
-    alignItems: 'center',
-  },
-  emptyIcon: {
-    fontFamily: fonts.mono,
-    fontSize: 12,
-    color: colors.stone,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  emptyTitle: {
-    marginTop: space[5],
-    fontFamily: fonts.display,
-    fontSize: 24,
-    color: colors.ink,
-  },
-  emptyBody: {
-    marginTop: space[3],
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.stone,
-    textAlign: 'center',
-    paddingHorizontal: space[6],
-  },
-  ribbon: {
-    width: '100%',
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  // Prototype: each bar is flex-1 (equal width across the ribbon).
-  ribbonBar: {
-    flex: 1,
-    minWidth: 0,
-    borderRadius: 999,
-  },
-  sheetRoot: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: space[4],
-  },
-  sheetBackdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(23, 23, 23, 0.55)',
-  },
-  /** Prototype DialogContent: max-w-lg, p-6, rounded-lg, paper bg */
-  sheetCard: {
-    width: '100%',
-    maxWidth: 512,
-    maxHeight: '90%',
-    borderRadius: radius.xl,
-    backgroundColor: colors.paper,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingTop: space[6],
-    paddingHorizontal: space[6],
-    paddingBottom: space[6],
-    shadowColor: colors.ink,
-    shadowOpacity: 0.18,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 12,
-  },
-  sheetClose: {
-    position: 'absolute',
-    top: space[4],
-    right: space[4],
-    zIndex: 2,
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-  },
-  sheetTitle: {
-    fontFamily: fonts.display,
-    fontSize: 28,
-    fontWeight: '500',
-    color: colors.ink,
-    paddingRight: space[8],
-  },
-  sheetDesc: {
-    marginTop: space[2],
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.stone,
-  },
-  sheetBody: {
-    marginTop: space[5],
-    gap: space[4],
-    paddingBottom: space[2],
-  },
-});

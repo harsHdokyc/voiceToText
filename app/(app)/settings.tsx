@@ -1,12 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import {
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 
 import { SaydoWordmark } from '@/components/saydo-mark';
 import { Button, Eyebrow, TextField } from '@/components/ui';
@@ -22,7 +16,7 @@ import {
 } from '@/features/settings/services/profile-service';
 import { errorMessageForUi } from '@/lib/api-error';
 import { supabase } from '@/lib/supabase';
-import { colors, fonts, space } from '@/theme';
+import { space } from '@/theme';
 
 export default function SettingsScreen() {
   const queryClient = useQueryClient();
@@ -108,16 +102,13 @@ export default function SettingsScreen() {
     wipe.isPending;
 
   return (
-    <WorkspacePage
-      gap={space[3]}
-      contentStyle={styles.formWidth}
-    >
-      <SaydoWordmark markSize={40} style={styles.brand} />
+    <WorkspacePage gap={space[3]} contentClassName="max-w-[560px]">
+      <SaydoWordmark markSize={40} className="mb-2" />
       <Eyebrow>Make yourself at home</Eyebrow>
-      <Text style={styles.title}>Your workspace.</Text>
+      <Text className="mb-2 font-display text-4xl text-ink">Your workspace.</Text>
 
-      <View style={styles.block}>
-        <Text style={styles.label}>Display name</Text>
+      <View className="mb-2 gap-2 border-t border-border pt-6">
+        <Text className="font-sans text-sm text-ink">Display name</Text>
         <TextField
           value={displayName}
           onChangeText={(t) => {
@@ -129,14 +120,14 @@ export default function SettingsScreen() {
           editable={!busy}
           autoCapitalize="words"
         />
-        <Text style={styles.hint}>
+        <Text className="font-sans text-[13px] text-stone">
           Shown on Overview · max {DISPLAY_NAME_MAX} characters
         </Text>
         <Button
           variant="cta"
           disabled={busy || !displayName.trim()}
           onPress={() => saveName.mutate()}
-          style={styles.saveBtn}
+          className="mt-2 self-start"
         >
           {saveName.isPending
             ? 'Saving…'
@@ -145,20 +136,20 @@ export default function SettingsScreen() {
               : 'Save changes'}
         </Button>
         {saveName.error ? (
-          <Text style={styles.error}>
+          <Text className="font-sans text-sm text-destructive">
             {errorMessageForUi(saveName.error, 'Save failed')}
           </Text>
         ) : null}
       </View>
 
-      <Text style={styles.section}>Privacy</Text>
+      <Text className="mt-4 font-sans-medium text-base text-ink">Privacy</Text>
       {privacyDisclosureParagraphs().map((p) => (
-        <Text key={p.slice(0, 24)} style={styles.body}>
+        <Text key={p.slice(0, 24)} className="font-sans text-sm leading-[21px] text-ink">
           {p}
         </Text>
       ))}
 
-      <Text style={styles.section}>Notifications</Text>
+      <Text className="mt-4 font-sans-medium text-base text-ink">Notifications</Text>
       <Button
         variant="quiet"
         disabled={busy}
@@ -167,19 +158,19 @@ export default function SettingsScreen() {
         {push.isPending ? 'Enabling…' : 'Enable push reminders'}
       </Button>
       {push.data ? (
-        <Text style={styles.meta}>
+        <Text className="font-sans text-xs text-stone">
           {push.data.skipped
             ? `Skipped (${push.data.reason})`
             : 'Push token registered'}
         </Text>
       ) : null}
       {push.error ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-sm text-destructive">
           {errorMessageForUi(push.error, 'Push registration failed')}
         </Text>
       ) : null}
 
-      <Text style={styles.section}>Account</Text>
+      <Text className="mt-4 font-sans-medium text-base text-ink">Account</Text>
       <Button
         variant="quiet"
         disabled={busy}
@@ -195,12 +186,12 @@ export default function SettingsScreen() {
         {wipe.isPending ? 'Deleting…' : 'Delete account'}
       </Button>
       {wipe.error ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-sm text-destructive">
           {errorMessageForUi(wipe.error, 'Account delete failed')}
         </Text>
       ) : null}
       {leave.error ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-sm text-destructive">
           {errorMessageForUi(leave.error, 'Sign out failed')}
         </Text>
       ) : null}
@@ -208,16 +199,16 @@ export default function SettingsScreen() {
       <Pressable
         onPress={() => setDevOpen((v) => !v)}
         hitSlop={8}
-        style={styles.devToggle}
+        className="mt-6 min-h-[44px] justify-center"
         accessibilityRole="button"
         accessibilityState={{ expanded: devOpen }}
       >
-        <Text style={styles.devToggleText}>
+        <Text className="font-mono text-[11px] uppercase tracking-wide text-stone">
           {devOpen ? 'Hide developer' : 'Developer'}
         </Text>
       </Pressable>
       {devOpen ? (
-        <View style={styles.devBlock}>
+        <View className="gap-2">
           <Button variant="quiet" size="sm" onPress={() => health.mutate()}>
             health
           </Button>
@@ -236,13 +227,17 @@ export default function SettingsScreen() {
             openai-spike chat
           </Button>
           {health.data ? (
-            <Text style={styles.meta}>{JSON.stringify(health.data)}</Text>
+            <Text className="font-sans text-xs text-stone">
+              {JSON.stringify(health.data)}
+            </Text>
           ) : null}
           {spike.data ? (
-            <Text style={styles.meta}>{JSON.stringify(spike.data)}</Text>
+            <Text className="font-sans text-xs text-stone">
+              {JSON.stringify(spike.data)}
+            </Text>
           ) : null}
           {health.error || spike.error ? (
-            <Text style={styles.error}>
+            <Text className="font-sans text-sm text-destructive">
               {errorMessageForUi(
                 health.error ?? spike.error,
                 'Request failed',
@@ -254,67 +249,3 @@ export default function SettingsScreen() {
     </WorkspacePage>
   );
 }
-
-const styles = StyleSheet.create({
-  formWidth: { maxWidth: 560 },
-  brand: { marginBottom: space[2] },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 36,
-    color: colors.ink,
-    marginBottom: space[2],
-  },
-  block: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: space[6],
-    gap: space[2],
-    marginBottom: space[2],
-  },
-  label: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.ink,
-  },
-  hint: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: colors.stone,
-  },
-  saveBtn: { alignSelf: 'flex-start', marginTop: space[2] },
-  section: {
-    marginTop: space[4],
-    fontFamily: fonts.sansMedium,
-    fontSize: 16,
-    color: colors.ink,
-  },
-  body: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.ink,
-  },
-  meta: {
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    color: colors.stone,
-  },
-  error: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.destructive,
-  },
-  devToggle: {
-    marginTop: space[6],
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  devToggleText: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: colors.stone,
-  },
-  devBlock: { gap: space[2] },
-});

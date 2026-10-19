@@ -1,6 +1,5 @@
 import {
   Image,
-  StyleSheet,
   Text,
   View,
   type ImageStyle,
@@ -10,7 +9,8 @@ import {
 } from 'react-native';
 
 import { APP_NAME } from '@/lib/constants';
-import { colors, fonts, space } from '@/theme';
+import { cn } from '@/lib/cn';
+import { colors } from '@/theme';
 
 const markSource = require('../../assets/brand/saydo-mark.png');
 
@@ -35,29 +35,32 @@ export function SaydoWordmark({
   color = colors.ink,
   showName = true,
   style,
+  className,
   nameStyle,
+  nameClassName,
 }: {
   markSize?: number;
   color?: string;
   showName?: boolean;
   style?: StyleProp<ViewStyle>;
+  className?: string;
   nameStyle?: StyleProp<TextStyle>;
+  nameClassName?: string;
 }) {
   return (
-    <View style={[styles.row, style]}>
+    <View className={cn('flex-row items-center gap-[10px]', className)} style={style}>
       <SaydoMark size={markSize} />
       {showName ? (
-        <Text style={[styles.name, { color }, nameStyle]}>{APP_NAME}</Text>
+        <Text
+          className={cn(
+            'font-display-semibold text-[22px] tracking-[-0.3px]',
+            nameClassName,
+          )}
+          style={[{ color }, nameStyle]}
+        >
+          {APP_NAME}
+        </Text>
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: space[2] + 2 },
-  name: {
-    fontFamily: fonts.displaySemibold,
-    fontSize: 22,
-    letterSpacing: -0.3,
-  },
-});

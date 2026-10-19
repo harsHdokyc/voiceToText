@@ -73,7 +73,17 @@ export const layout = {
   notesSearchWidth: 288,
 } as const;
 
-/** Shared content inset for every dashboard screen (Overview, Notes, …). */
+/**
+ * Shared content inset classes for every dashboard screen.
+ * Mirrors `mx-auto max-w-7xl px-5 py-6 md:px-10 md:py-10`.
+ */
+export function workspacePageContentClassName(desktop: boolean) {
+  return desktop
+    ? 'w-full max-w-content self-center px-page-x-desktop pt-page-y-desktop pb-10'
+    : 'w-full max-w-content self-center px-page-x pt-page-y pb-10';
+}
+
+/** Numeric gutters when a caller still needs StyleProp overrides. */
 export function workspacePageContentStyle(
   desktop: boolean,
   extras?: {

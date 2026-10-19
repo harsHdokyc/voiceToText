@@ -9,12 +9,12 @@ import {
   AuthPasswordField,
   AuthScreen,
   AuthTabs,
-  authInlineLinkStyle,
+  authInlineLinkClassName,
 } from '@/features/auth/components/auth-ui';
+import { cn } from '@/lib/cn';
 import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { signInWithPassword } from '@/features/auth/services/auth-service';
 import { useAuth } from '@/providers/auth-provider';
-import { colors, fonts } from '@/theme';
 
 export default function SignInScreen() {
   const { session, isLoading } = useAuth();
@@ -30,7 +30,7 @@ export default function SignInScreen() {
     <AuthScreen
       title={
         <>
-          Welcome <Text style={styles.accent}>back.</Text>
+          Welcome <Text className="font-sans-italic text-cobalt">back.</Text>
         </>
       }
       subtitle="Pick up where your thoughts left off."
@@ -49,7 +49,7 @@ export default function SignInScreen() {
       <AuthPasswordField
         label="Password"
         trailing={
-          <Link href="/(auth)/forgot-password" style={authInlineLinkStyle}>
+          <Link href="/(auth)/forgot-password" className={cn(authInlineLinkClassName)}>
             Forgot password?
           </Link>
         }
@@ -74,9 +74,3 @@ export default function SignInScreen() {
   );
 }
 
-const styles = {
-  accent: {
-    fontFamily: fonts.sansItalic,
-    color: colors.cobalt,
-  },
-};

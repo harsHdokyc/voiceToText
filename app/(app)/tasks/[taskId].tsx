@@ -2,12 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { Button, Eyebrow } from '@/components/ui';
@@ -27,7 +22,7 @@ import {
   listRemindersForTask,
 } from '@/features/reminders/services/reminders-service';
 import { errorMessageForUi } from '@/lib/api-error';
-import { colors, fonts, space } from '@/theme';
+import { colors, space } from '@/theme';
 
 export default function TaskDetailScreen() {
   const { taskId } = useLocalSearchParams<{ taskId: string }>();
@@ -98,7 +93,7 @@ export default function TaskDetailScreen() {
 
   if (task.isLoading) {
     return (
-      <View style={styles.center}>
+      <View className="flex-1 items-center justify-center bg-paper">
         <ActivityIndicator color={colors.cobalt} />
       </View>
     );
@@ -106,8 +101,8 @@ export default function TaskDetailScreen() {
 
   if (task.isError || !task.data) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>
+      <View className="flex-1 items-center justify-center bg-paper">
+        <Text className="font-sans text-destructive">
           {errorMessageForUi(task.error, 'Task not found')}
         </Text>
       </View>
@@ -129,13 +124,15 @@ export default function TaskDetailScreen() {
   return (
     <WorkspacePage gap={space[3]}>
       <Eyebrow>The things you chose</Eyebrow>
-      <Text style={styles.title}>{row.title}</Text>
-      <Text style={styles.meta}>
+      <Text className="font-display text-[32px] text-ink">{row.title}</Text>
+      <Text className="font-sans text-[13px] text-stone">
         {taskStatusLabel(row.status)} · {dueLabel(row.due_at)}
       </Text>
 
       {row.details ? (
-        <Text style={styles.details}>{row.details}</Text>
+        <Text className="font-sans text-[15px] leading-[22px] text-ink">
+          {row.details}
+        </Text>
       ) : null}
 
       {row.source_note_id ? (
@@ -144,20 +141,25 @@ export default function TaskDetailScreen() {
             pathname: '/(app)/notes/[noteId]',
             params: { noteId: row.source_note_id },
           }}
-          style={styles.noteLink}
+          className="py-1 font-sans-medium text-sm text-cobalt"
         >
           Source note →
         </Link>
       ) : (
-        <Text style={styles.meta}>No source note linked.</Text>
+        <Text className="font-sans text-[13px] text-stone">No source note linked.</Text>
       )}
 
       {scheduled.length ? (
-        <View style={styles.remindBlock}>
-          <Text style={styles.label}>Scheduled reminders</Text>
+        <View className="mt-2 gap-2">
+          <Text className="font-sans-medium text-[13px] text-ink">
+            Scheduled reminders
+          </Text>
           {scheduled.map((r) => (
-            <View key={r.id} style={styles.reminderRow}>
-              <Text style={styles.meta}>
+            <View
+              key={r.id}
+              className="flex-row items-center justify-between gap-2"
+            >
+              <Text className="font-sans text-[13px] text-stone">
                 <Ionicons name="notifications-outline" size={12} />{' '}
                 {new Date(r.scheduled_for).toLocaleString(undefined, {
                   weekday: 'short',
@@ -186,7 +188,9 @@ export default function TaskDetailScreen() {
             onPress={() => setEditOpen(true)}
           >
             <Ionicons name="pencil" size={16} color={colors.card} />
-            <Text style={styles.ctaLabel}>Edit your next step</Text>
+            <Text className="font-sans-medium text-[15px] text-card">
+              Edit your next step
+            </Text>
           </Button>
           <Button
             variant="quiet"
@@ -214,7 +218,7 @@ export default function TaskDetailScreen() {
       </Button>
 
       {toggle.error || archive.error || remove.error || cancelRemind.error ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-destructive">
           {errorMessageForUi(
             toggle.error ??
               archive.error ??
@@ -251,48 +255,3 @@ export default function TaskDetailScreen() {
     </WorkspacePage>
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.paper,
-  },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 32,
-    color: colors.ink,
-  },
-  meta: { fontFamily: fonts.sans, fontSize: 13, color: colors.stone },
-  details: {
-    fontFamily: fonts.sans,
-    fontSize: 15,
-    color: colors.ink,
-    lineHeight: 22,
-  },
-  label: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 13,
-    color: colors.ink,
-  },
-  noteLink: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 14,
-    color: colors.cobalt,
-    paddingVertical: 4,
-  },
-  remindBlock: { gap: space[2], marginTop: space[2] },
-  reminderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  ctaLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 15,
-    color: colors.card,
-  },
-  error: { fontFamily: fonts.sans, color: colors.destructive },
-});

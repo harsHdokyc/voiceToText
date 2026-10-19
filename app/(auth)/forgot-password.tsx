@@ -13,7 +13,6 @@ import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { requestPasswordReset } from '@/features/auth/services/auth-service';
 import { normalizeEmail } from '@/features/auth/services/auth-validation';
 import { useAuth } from '@/providers/auth-provider';
-import { colors, fonts } from '@/theme';
 
 export default function ForgotPasswordScreen() {
   const { session, isLoading } = useAuth();
@@ -29,9 +28,7 @@ export default function ForgotPasswordScreen() {
       title={
         <>
           A fresh{' '}
-          <Text style={{ fontFamily: fonts.sansItalic, color: colors.cobalt }}>
-            start.
-          </Text>
+          <Text className="font-sans-italic text-cobalt">start.</Text>
         </>
       }
       subtitle="Get back to what matters. We'll email an 8-digit code."

@@ -13,7 +13,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   useWindowDimensions,
   View,
@@ -42,7 +41,8 @@ import {
   uploadNoteAudio,
 } from '@/features/notes/services/notes-service';
 import { errorMessageForUi } from '@/lib/api-error';
-import { colors, fonts, radius, space } from '@/theme';
+import { cn } from '@/lib/cn';
+import { colors, space } from '@/theme';
 
 type CaptureContextValue = {
   openCapture: () => void;
@@ -325,29 +325,31 @@ function CaptureSheet({
       onRequestClose={handleClose}
     >
       <View
-        style={[
-          styles.root,
-          {
-            paddingTop: Math.max(insets.top, phone ? 8 : 16),
-            paddingBottom: Math.max(insets.bottom, phone ? 8 : 16),
-            paddingHorizontal: phone ? 16 : space[4],
-          },
-        ]}
+        className="flex-1 items-center justify-center"
+        style={{
+          paddingTop: Math.max(insets.top, phone ? 8 : 16),
+          paddingBottom: Math.max(insets.bottom, phone ? 8 : 16),
+          paddingHorizontal: phone ? 16 : space[4],
+        }}
       >
         <Pressable
-          style={styles.backdrop}
+          className="absolute inset-0 bg-ink/45"
           onPress={handleClose}
           accessibilityLabel="Close capture"
         />
         <View
-          style={[styles.card, { maxHeight: maxCardH }]}
+          className="z-[1] w-full max-w-lg overflow-hidden rounded-lg bg-card"
+          style={{ maxHeight: maxCardH }}
           accessibilityViewIsModal
         >
           {/* Prototype DialogContent: max-h-[90dvh] overflow-y-auto — fine on phone */}
           <ScrollView
-            {...({ className: 'saydo-scroll' } as object)}
-            style={styles.cardScroll}
-            contentContainerStyle={[styles.inner, phone && styles.innerPhone]}
+            className="saydo-scroll"
+            style={{ flexGrow: 0 }}
+            contentContainerClassName={cn(
+              'relative gap-3',
+              phone ? 'gap-2 p-5 pb-5 pt-7' : 'p-6 pb-6 pt-8',
+            )}
             keyboardShouldPersistTaps="handled"
             bounces={false}
             nestedScrollEnabled
@@ -358,20 +360,25 @@ function CaptureSheet({
               disabled={busy}
               accessibilityLabel="Close"
               hitSlop={12}
-              style={styles.closeBtn}
+              className="absolute right-4 top-4 z-[2] p-1 opacity-70"
             >
               <Ionicons name="close" size={18} color={colors.ink} />
             </Pressable>
 
-            <Text style={[styles.title, phone && styles.titlePhone]}>
+            <Text
+              className={cn(
+                'pr-6 font-display text-ink',
+                phone ? 'text-[26px] leading-8' : 'text-[30px] leading-9',
+              )}
+            >
               Catch that thought.
             </Text>
-            <Text style={styles.desc}>
+            <Text className="font-sans text-sm leading-5 text-stone">
               Speak or type it messy. Saydo’s AI turns it into next steps you
               review.
             </Text>
 
-            <View style={styles.ribbon}>
+            <View>
               <VoiceRibbon
                 live={isRecording}
                 color={colors.cobalt}
@@ -379,7 +386,7 @@ function CaptureSheet({
               />
             </View>
 
-            <View style={styles.speakRow}>
+            <View className="flex-row flex-wrap items-center justify-center gap-3">
               <Button
                 variant={isRecording ? 'destructive' : 'cta'}
                 size="xl"
@@ -394,13 +401,16 @@ function CaptureSheet({
                   size={18}
                   color={colors.card}
                 />
-                <Text style={styles.speakLabel}>
+                <Text className="font-sans-medium text-[15px] text-card">
                   {isRecording ? 'Stop listening' : 'Speak'}
                 </Text>
               </Button>
-              <Text style={styles.timer} accessibilityLiveRegion="polite">
+              <Text
+                className="font-mono text-sm text-ink"
+                accessibilityLiveRegion="polite"
+              >
                 {formatCaptureTimer(displaySeconds)}
-                <Text style={styles.timerHint}>
+                <Text className="font-mono text-[11px] text-stone">
                   {' '}
                   · {MAX_AUDIO_DURATION_SECONDS}s
                   {hasClip ? ' · ready' : ''}
@@ -408,8 +418,13 @@ function CaptureSheet({
               </Text>
             </View>
 
-            <Text style={[styles.fieldLabel, phone && styles.fieldLabelPhone]}>
-              Note title <Text style={styles.optional}>(optional)</Text>
+            <Text
+              className={cn(
+                'font-sans text-sm text-ink',
+                phone ? 'mt-0 text-[13px]' : 'mt-1',
+              )}
+            >
+              Note title <Text className="text-stone">(optional)</Text>
             </Text>
             <TextField
               placeholder="A new thought"
@@ -418,12 +433,19 @@ function CaptureSheet({
               editable={!busy}
             />
 
-            <Text style={[styles.fieldLabel, phone && styles.fieldLabelPhone]}>
+            <Text
+              className={cn(
+                'font-sans text-sm text-ink',
+                phone ? 'mt-0 text-[13px]' : 'mt-1',
+              )}
+            >
               Your thought
             </Text>
             <TextField
-              className="saydo-scroll"
-              style={[styles.thought, phone && styles.thoughtPhone]}
+              className={cn(
+                'saydo-scroll py-3',
+                phone ? 'h-[88px] max-h-[88px]' : 'h-28 max-h-28',
+              )}
               placeholder="What’s on your mind?"
               value={draftThought}
               onChangeText={onThoughtChange}
@@ -434,26 +456,34 @@ function CaptureSheet({
             />
 
             {error ? (
-              <Text style={styles.error} accessibilityRole="alert">
+              <Text
+                className="font-sans text-sm text-destructive"
+                accessibilityRole="alert"
+              >
                 {error}
               </Text>
             ) : null}
 
             {/* Prototype: grid gap-2 sm:grid-cols-2 — cta xl + quiet xl */}
-            <View style={[styles.actions, !phone && styles.actionsDesktop]}>
+            <View
+              className={cn(
+                'mt-1 w-full gap-2',
+                !phone && 'flex-row items-stretch',
+              )}
+            >
               <Button
                 variant="cta"
                 size="xl"
                 disabled={!canProcess}
                 onPress={() => void turnIntoNextSteps()}
-                style={styles.actionBtn}
+                className="min-w-0 flex-1 shrink grow basis-0"
               >
                 <Ionicons
                   name={busy ? 'hourglass-outline' : 'sparkles'}
                   size={16}
                   color={colors.card}
                 />
-                <Text style={styles.ctaLabel}>
+                <Text className="font-sans-medium text-[15px] text-card">
                   {busy ? 'Thinking…' : 'Turn into next steps'}
                 </Text>
               </Button>
@@ -462,7 +492,7 @@ function CaptureSheet({
                 size="xl"
                 disabled={!canJustSave}
                 onPress={() => void justSaveNote()}
-                style={styles.actionBtn}
+                className="min-w-0 flex-1 shrink grow basis-0"
               >
                 Just save note
               </Button>
@@ -473,137 +503,3 @@ function CaptureSheet({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(23, 23, 23, 0.45)',
-  },
-  // Prototype: max-w-lg, w-[calc(100%-2rem)], max-h-[90dvh], rounded-lg, p-6
-  card: {
-    width: '100%',
-    maxWidth: 512,
-    borderRadius: radius.lg,
-    backgroundColor: colors.card,
-    overflow: 'hidden',
-    zIndex: 1,
-  },
-  cardScroll: {
-    flexGrow: 0,
-  },
-  inner: {
-    position: 'relative',
-    padding: space[6],
-    paddingTop: space[8],
-    gap: space[3],
-    paddingBottom: space[6],
-  },
-  innerPhone: {
-    padding: space[5],
-    paddingTop: 28,
-    paddingBottom: space[5],
-    gap: space[2],
-  },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 30,
-    lineHeight: 36,
-    color: colors.ink,
-    paddingRight: space[6],
-  },
-  titlePhone: {
-    fontSize: 26,
-    lineHeight: 32,
-  },
-  // Prototype Dialog close: absolute right-4 top-4
-  closeBtn: {
-    position: 'absolute',
-    top: space[4],
-    right: space[4],
-    zIndex: 2,
-    padding: 4,
-    opacity: 0.7,
-  },
-  desc: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.stone,
-  },
-  ribbon: { marginVertical: 0 },
-  speakRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space[3],
-  },
-  speakLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 15,
-    color: colors.card,
-  },
-  timer: {
-    fontFamily: fonts.mono,
-    fontSize: 14,
-    color: colors.ink,
-  },
-  timerHint: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    color: colors.stone,
-  },
-  fieldLabel: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.ink,
-    marginTop: space[1],
-  },
-  fieldLabelPhone: {
-    marginTop: 0,
-    fontSize: 13,
-  },
-  optional: { color: colors.stone },
-  // Fixed box — overflow scrolls inside the field only (not the modal).
-  thought: {
-    height: 112,
-    maxHeight: 112,
-    paddingVertical: space[3],
-  },
-  thoughtPhone: {
-    height: 88,
-    maxHeight: 88,
-  },
-  error: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.destructive,
-  },
-  // Prototype: grid gap-2; 1 col mobile, 2 cols from sm
-  actions: {
-    marginTop: space[1],
-    flexDirection: 'column',
-    gap: space[2],
-    width: '100%',
-  },
-  actionsDesktop: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-  actionBtn: {
-    width: '100%',
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 0,
-  },
-  ctaLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 15,
-    color: colors.card,
-  },
-});

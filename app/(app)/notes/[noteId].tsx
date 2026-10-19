@@ -2,12 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import {
@@ -52,7 +47,8 @@ import {
 } from '@/features/notes/services/suggestions-service';
 import { deleteNote } from '@/features/settings/services/account-service';
 import { errorMessageForUi } from '@/lib/api-error';
-import { colors, fonts, space } from '@/theme';
+import { cn } from '@/lib/cn';
+import { colors } from '@/theme';
 
 /**
  * Note detail — layout from ui/goals-in-motion-55 Workspace currentNote view:
@@ -179,7 +175,7 @@ export default function NoteDetailScreen() {
 
   if (note.isLoading) {
     return (
-      <View style={styles.center}>
+      <View className="flex-1 items-center justify-center bg-paper">
         <ActivityIndicator color={colors.cobalt} />
       </View>
     );
@@ -187,8 +183,8 @@ export default function NoteDetailScreen() {
 
   if (note.isError || !note.data) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.error}>
+      <View className="flex-1 items-center justify-center bg-paper">
+        <Text className="font-sans text-destructive">
           {errorMessageForUi(note.error, 'Note not found')}
         </Text>
       </View>
@@ -220,54 +216,60 @@ export default function NoteDetailScreen() {
       <Button
         variant="ghost"
         size="sm"
-        style={styles.back}
+        className="-ml-2 mb-6 self-start"
         onPress={() => router.replace('/(app)/notes' as Href)}
         accessibilityLabel="All notes"
       >
         <Ionicons name="arrow-back" size={18} color={colors.ink} />
-        <Text style={styles.backLabel}>All notes</Text>
+        <Text className="font-sans-medium text-sm text-ink">All notes</Text>
       </Button>
 
-      <Eyebrow color={colors.cobalt} style={styles.metaEyebrow}>
+      <Eyebrow color={colors.cobalt} className="mb-0">
         {normalizeNoteCategory(row.category)} / {formatNoteTime(row.created_at)}
       </Eyebrow>
-      <Text style={[styles.title, wide && styles.titleWide]}>{displayTitle}</Text>
+      <Text
+        className={cn(
+          'mt-4 max-w-3xl font-display text-4xl font-medium text-ink',
+          wide && 'text-[48px]',
+        )}
+      >
+        {displayTitle}
+      </Text>
       {row.status !== 'review_ready' && !processing ? (
-        <Text style={styles.status}>
+        <Text className="mt-2 font-sans text-[13px] text-stone">
           {noteStatusLabel(row.status)}
           {row.last_error_code ? ` · ${row.last_error_code}` : ''}
         </Text>
       ) : null}
 
       {/* Prototype: mt-10 grid gap-10 lg:grid-cols-2 */}
-      <View style={[styles.columns, wide && styles.columnsWide]}>
-        <View style={styles.panel}>
+      <View className={cn('mt-10 gap-10', wide && 'flex-row items-start')}>
+        <View className="min-w-0 flex-1 border-t border-border pt-6">
           <Eyebrow>Transcript</Eyebrow>
-          <View style={styles.ribbon}>
+          <View className="my-5 w-full min-w-0">
             {/* Beat always — matches product ribbon feel on detail */}
             <VoiceRibbon live />
           </View>
           {processing ? (
-            <Text style={styles.processing}>
+            <Text className="mt-3 font-sans text-sm text-stone">
               {row.status === 'extracting'
                 ? 'Extracting tasks…'
                 : 'Transcribing…'}
             </Text>
           ) : (
-            <Text style={styles.transcript}>
+            <Text className="font-display text-2xl leading-9 text-ink">
               “{transcript?.trim() || 'No transcript yet.'}”
             </Text>
           )}
         </View>
 
-        <View style={styles.panel}>
+        <View className="min-w-0 flex-1 border-t border-border pt-6">
           <Eyebrow>Suggestions</Eyebrow>
           {row.status === 'review_ready' ? (
             suggestions.isLoading ? (
-              <ActivityIndicator
-                color={colors.cobalt}
-                style={styles.suggestionsLoad}
-              />
+              <View className="mt-6">
+                <ActivityIndicator color={colors.cobalt} />
+              </View>
             ) : pendingSuggestions.length ? (
               pendingSuggestions.map((s) => (
                 <SuggestionReviewRow
@@ -289,7 +291,7 @@ export default function NoteDetailScreen() {
               />
             )
           ) : processing ? (
-            <Text style={styles.processing}>
+            <Text className="mt-3 font-sans text-sm text-stone">
               Suggestions appear when processing finishes.
             </Text>
           ) : (
@@ -299,19 +301,19 @@ export default function NoteDetailScreen() {
             />
           )}
           {approve.error ? (
-            <Text style={styles.error}>
+            <Text className="mt-2 font-sans text-destructive">
               {errorMessageForUi(approve.error, 'Approve failed')}
             </Text>
           ) : null}
           {reject.error ? (
-            <Text style={styles.error}>
+            <Text className="mt-2 font-sans text-destructive">
               {errorMessageForUi(reject.error, 'Reject failed')}
             </Text>
           ) : null}
         </View>
       </View>
 
-      <View style={styles.footer}>
+      <View className="mt-10 flex-row flex-wrap items-center gap-2">
         {row.status !== 'archived' ? (
           <Button
             variant="quiet"
@@ -350,21 +352,21 @@ export default function NoteDetailScreen() {
           accessibilityLabel="Delete note"
         >
           <Ionicons name="trash-outline" size={16} color={colors.destructive} />
-          <Text style={styles.deleteLabel}>Delete</Text>
+          <Text className="font-sans text-[13px] text-destructive">Delete</Text>
         </Button>
       </View>
       {retry.error ? (
-        <Text style={styles.error}>
+        <Text className="mt-2 font-sans text-destructive">
           {errorMessageForUi(retry.error, 'Retry failed')}
         </Text>
       ) : null}
       {removeNote.error ? (
-        <Text style={styles.error}>
+        <Text className="mt-2 font-sans text-destructive">
           {errorMessageForUi(removeNote.error, 'Delete failed')}
         </Text>
       ) : null}
       {archive.error ? (
-        <Text style={styles.error}>
+        <Text className="mt-2 font-sans text-destructive">
           {errorMessageForUi(archive.error, 'Archive failed')}
         </Text>
       ) : null}
@@ -402,8 +404,8 @@ export default function NoteDetailScreen() {
         title="Edit note"
         description="Update title, category, or transcript."
       >
-        <Text style={styles.fieldLabel}>Category</Text>
-        <View style={styles.filters}>
+        <Text className="font-sans-medium text-xs text-stone">Category</Text>
+        <View className="flex-row flex-wrap gap-2">
           {NOTE_CATEGORIES.map((c) => (
             <Button
               key={c}
@@ -416,16 +418,16 @@ export default function NoteDetailScreen() {
             </Button>
           ))}
         </View>
-        <Text style={styles.fieldLabel}>Title</Text>
+        <Text className="font-sans-medium text-xs text-stone">Title</Text>
         <TextField
           value={title}
           onChangeText={setTitle}
           editable={!saveContent.isPending}
           placeholder="Voice note"
         />
-        <Text style={styles.fieldLabel}>Transcript</Text>
+        <Text className="font-sans-medium text-xs text-stone">Transcript</Text>
         <TextField
-          style={styles.transcriptField}
+          className="min-h-[120px] align-top"
           value={transcriptDraft}
           onChangeText={setTranscriptDraft}
           editable={!saveContent.isPending}
@@ -440,7 +442,7 @@ export default function NoteDetailScreen() {
           {saveContent.isPending ? 'Saving…' : 'Save changes'}
         </Button>
         {saveContent.error ? (
-          <Text style={styles.error}>
+          <Text className="mt-2 font-sans text-destructive">
             {errorMessageForUi(saveContent.error, 'Save failed')}
           </Text>
         ) : null}
@@ -448,87 +450,3 @@ export default function NoteDetailScreen() {
     </WorkspacePage>
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.paper,
-  },
-  back: {
-    alignSelf: 'flex-start',
-    marginLeft: -space[2],
-    marginBottom: space[6],
-  },
-  backLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 14,
-    color: colors.ink,
-  },
-  metaEyebrow: { marginBottom: 0 },
-  title: {
-    marginTop: space[4],
-    maxWidth: 768,
-    fontFamily: fonts.display,
-    fontSize: 36,
-    fontWeight: '500',
-    color: colors.ink,
-  },
-  titleWide: { fontSize: 48 },
-  status: {
-    marginTop: space[2],
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: colors.stone,
-  },
-  columns: {
-    marginTop: space[10],
-    gap: space[10],
-  },
-  columnsWide: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  panel: {
-    flex: 1,
-    minWidth: 0,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: space[6],
-  },
-  ribbon: { marginVertical: space[5], width: '100%', minWidth: 0 },
-  transcript: {
-    fontFamily: fonts.display,
-    fontSize: 24,
-    lineHeight: 36,
-    color: colors.ink,
-  },
-  processing: {
-    marginTop: space[3],
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.stone,
-  },
-  suggestionsLoad: { marginTop: space[6] },
-  footer: {
-    marginTop: space[10],
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space[2],
-    alignItems: 'center',
-  },
-  deleteLabel: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: colors.destructive,
-  },
-  fieldLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 12,
-    color: colors.stone,
-  },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
-  transcriptField: { minHeight: 120, textAlignVertical: 'top' as const },
-  error: { fontFamily: fonts.sans, color: colors.destructive, marginTop: space[2] },
-});

@@ -18,7 +18,6 @@ import {
   normalizeDisplayName,
 } from '@/features/settings/services/greeting-name';
 import { useAuth } from '@/providers/auth-provider';
-import { colors, fonts } from '@/theme';
 
 export default function SignUpScreen() {
   const { session, isLoading } = useAuth();
@@ -35,7 +34,7 @@ export default function SignUpScreen() {
     <AuthScreen
       title={
         <>
-          Make room for <Text style={styles.accent}>ideas.</Text>
+          Make room for <Text className="font-sans-italic text-cobalt">ideas.</Text>
         </>
       }
       subtitle="A place for your thoughts to become next steps."
@@ -103,9 +102,3 @@ export default function SignUpScreen() {
   );
 }
 
-const styles = {
-  accent: {
-    fontFamily: fonts.sansItalic,
-    color: colors.cobalt,
-  },
-};

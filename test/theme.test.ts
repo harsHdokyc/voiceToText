@@ -1,23 +1,34 @@
 import { describe, expect, it } from 'vitest';
 
-import { layout, space, workspacePageContentStyle } from '@/theme-tokens';
+import {
+  layout,
+  space,
+  workspacePageContentClassName,
+  workspacePageContentStyle,
+} from '@/theme-tokens';
+
+describe('workspacePageContentClassName', () => {
+  it('uses mobile gutters matching prototype px-5 py-6', () => {
+    expect(workspacePageContentClassName(false)).toBe(
+      'w-full max-w-content self-center px-page-x pt-page-y pb-10',
+    );
+  });
+
+  it('uses desktop gutters matching prototype md:px-10 md:py-10', () => {
+    expect(workspacePageContentClassName(true)).toBe(
+      'w-full max-w-content self-center px-page-x-desktop pt-page-y-desktop pb-10',
+    );
+  });
+});
 
 describe('workspacePageContentStyle', () => {
-  it('uses mobile gutters matching prototype px-5 py-6', () => {
+  it('keeps numeric gutters for style overrides', () => {
     expect(workspacePageContentStyle(false)).toMatchObject({
       maxWidth: layout.contentMaxWidth,
       paddingHorizontal: space[5],
       paddingTop: space[6],
       paddingBottom: space[10],
       alignSelf: 'center',
-    });
-  });
-
-  it('uses desktop gutters matching prototype md:px-10 md:py-10', () => {
-    expect(workspacePageContentStyle(true)).toMatchObject({
-      paddingHorizontal: space[10],
-      paddingTop: space[10],
-      paddingBottom: space[10],
     });
   });
 
@@ -31,4 +42,3 @@ describe('workspacePageContentStyle', () => {
     });
   });
 });
-

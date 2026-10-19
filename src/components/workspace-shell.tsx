@@ -4,7 +4,6 @@ import { router, usePathname, type Href } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import {
   Pressable,
-  StyleSheet,
   Text,
   useWindowDimensions,
   View,
@@ -24,8 +23,9 @@ import { countPendingSuggestions } from '@/features/notes/services/suggestions-s
 import { greetingName } from '@/features/settings/services/greeting-name';
 import { getOwnProfile } from '@/features/settings/services/profile-service';
 import { SaydoWordmark } from '@/components/saydo-mark';
+import { cn } from '@/lib/cn';
 import { useAuth } from '@/providers/auth-provider';
-import { colors, fonts, layout, radius, space } from '@/theme';
+import { colors, layout, space } from '@/theme';
 
 const NAV_ICONS: Record<
   WorkspaceNavItem,
@@ -78,17 +78,30 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
   };
 
   return (
-    <View style={[styles.root, { paddingTop: desktop ? 0 : insets.top }]}>
+    <View
+      className="flex-1 flex-row bg-paper"
+      style={{ paddingTop: desktop ? 0 : insets.top }}
+    >
       {desktop ? (
-        <View style={[styles.sidebar, collapsed && styles.sidebarCollapsed]}>
+        <View
+          className={cn(
+            'border-r border-white/12 bg-ink p-4',
+            collapsed
+              ? 'w-sidebar-collapsed items-center'
+              : 'w-sidebar',
+          )}
+        >
           <View
-            style={[styles.brandRow, collapsed && styles.brandRowCollapsed]}
+            className={cn(
+              'h-14 justify-center',
+              collapsed ? 'items-center px-0' : 'items-start px-2',
+            )}
           >
             <SaydoWordmark
               markSize={collapsed ? 32 : 34}
               showName={!collapsed}
               color={colors.paper}
-              nameStyle={styles.wordmark}
+              nameClassName="font-display-semibold text-2xl text-paper"
             />
           </View>
           <Button
@@ -96,18 +109,22 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
             size="lg"
             onPress={openCapture}
             accessibilityLabel="New voice note"
-            style={collapsed ? styles.sidebarIconBtn : styles.sidebarCta}
+            className={
+              collapsed
+                ? 'mt-6 w-12 self-center'
+                : 'mt-6 self-stretch'
+            }
           >
             {collapsed ? (
               <Ionicons name="add" size={22} color={colors.ink} />
             ) : (
-              <Text style={styles.limeLabel}>
+              <Text className="font-sans-medium text-sm text-ink">
                 <Ionicons name="add" size={18} color={colors.ink} /> New voice
                 note
               </Text>
             )}
           </Button>
-          <View style={styles.navBlock}>
+          <View className="mt-8 flex-1 gap-2">
             {WORKSPACE_NAV.map((item) => {
               const active = section === item;
               return (
@@ -116,11 +133,11 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
                   onPress={() => go(item)}
-                  style={[
-                    styles.navItem,
-                    collapsed && styles.navItemCollapsed,
-                    active && styles.navItemActive,
-                  ]}
+                  className={cn(
+                    'min-h-11 flex-row items-center gap-3 rounded-md px-3',
+                    collapsed && 'w-12 justify-center self-center px-0',
+                    active && 'bg-white/8',
+                  )}
                 >
                   <Ionicons
                     name={NAV_ICONS[item]}
@@ -130,15 +147,17 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                   {!collapsed ? (
                     <>
                       <Text
-                        style={[
-                          styles.navLabel,
-                          active && styles.navLabelActive,
-                        ]}
+                        className={cn(
+                          'flex-1 font-sans text-sm text-stone',
+                          active && 'text-lime',
+                        )}
                       >
                         {item}
                       </Text>
                       {item === 'Suggestions' ? (
-                        <Text style={styles.badge}>{pendingCount}</Text>
+                        <Text className="font-mono text-[11px] text-lime">
+                          {pendingCount}
+                        </Text>
                       ) : null}
                     </>
                   ) : null}
@@ -146,14 +165,14 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
               );
             })}
           </View>
-          <View style={styles.sidebarFooter}>
+          <View className="gap-3 border-t border-white/12 pt-4">
             <Pressable
               onPress={() => router.push('/(app)/settings' as Href)}
-              style={[
-                styles.navItem,
-                collapsed && styles.navItemCollapsed,
-                section === 'Settings' && styles.navItemActive,
-              ]}
+              className={cn(
+                'min-h-11 flex-row items-center gap-3 rounded-md px-3',
+                collapsed && 'w-12 justify-center self-center px-0',
+                section === 'Settings' && 'bg-white/8',
+              )}
               accessibilityLabel="Settings"
             >
               <Ionicons
@@ -165,21 +184,26 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
               />
               {!collapsed ? (
                 <Text
-                  style={[
-                    styles.navLabel,
-                    section === 'Settings' && styles.navLabelActive,
-                  ]}
+                  className={cn(
+                    'font-sans text-sm text-stone',
+                    section === 'Settings' && 'text-lime',
+                  )}
                 >
                   Settings
                 </Text>
               ) : null}
             </Pressable>
-            <View style={styles.avatarRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initial}</Text>
+            <View className="flex-row items-center gap-3 px-2 pt-2">
+              <View className="h-8 w-8 items-center justify-center rounded-pill bg-lavender">
+                <Text className="font-sans-medium text-xs text-ink">
+                  {initial}
+                </Text>
               </View>
               {!collapsed ? (
-                <Text style={styles.avatarName} numberOfLines={1}>
+                <Text
+                  className="flex-1 font-sans text-[13px] text-paper"
+                  numberOfLines={1}
+                >
                   {display}
                 </Text>
               ) : null}
@@ -188,17 +212,14 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
         </View>
       ) : null}
 
-      <View style={styles.main}>
+      <View className="min-w-0 flex-1">
         <View
-          style={[
-            styles.header,
-            desktop && {
-              minHeight: layout.headerHeightDesktop,
-              paddingHorizontal: layout.pagePadXDesktop,
-            },
-          ]}
+          className={cn(
+            'min-h-header flex-row items-center justify-between gap-3 border-b border-border bg-paper px-page-x',
+            desktop && 'min-h-header-desktop px-page-x-desktop',
+          )}
         >
-          <View style={styles.headerLeft}>
+          <View className="min-w-0 flex-1 flex-row items-center gap-3">
             {desktop ? (
               <Pressable
                 accessibilityLabel={
@@ -206,7 +227,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                 }
                 onPress={() => setCollapsed((c) => !c)}
                 hitSlop={12}
-                style={styles.collapseBtn}
+                className="h-10 w-10 items-center justify-center"
               >
                 <Ionicons
                   name={collapsed ? 'menu' : 'menu-outline'}
@@ -215,10 +236,13 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                 />
               </Pressable>
             ) : null}
-            <Text style={styles.crumb} numberOfLines={1}>
+            <Text
+              className="shrink font-sans text-[13px] text-stone"
+              numberOfLines={1}
+            >
               Workspace{' '}
-              <Text style={styles.crumbSep}>/</Text>{' '}
-              <Text style={styles.crumbCurrent}>{section}</Text>
+              <Text className="text-ink/30">/</Text>{' '}
+              <Text className="text-ink">{section}</Text>
             </Text>
           </View>
           <Button
@@ -229,22 +253,22 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
           >
             <Ionicons name="mic" size={18} color={colors.card} />
             {desktop || width > 400 ? (
-              <Text style={styles.ctaLabel}>Capture a thought</Text>
+              <Text className="font-sans-medium text-sm text-card">
+                Capture a thought
+              </Text>
             ) : null}
           </Button>
         </View>
 
         <View
-          style={[
-            styles.content,
-            !desktop && { paddingBottom: 72 + insets.bottom },
-          ]}
+          className="flex-1"
+          style={!desktop ? { paddingBottom: 72 + insets.bottom } : undefined}
         >
           <PageEnter animKey={pathname}>{children}</PageEnter>
           {!desktop ? (
             <Pressable
               onPress={() => router.push('/(app)/settings' as Href)}
-              style={styles.mobileSettings}
+              className="flex-row items-center gap-2 px-page-x py-3"
               accessibilityLabel="Settings"
               hitSlop={12}
             >
@@ -253,17 +277,17 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                 size={16}
                 color={colors.cobalt}
               />
-              <Text style={styles.mobileSettingsText}>Settings</Text>
+              <Text className="font-sans text-sm text-cobalt underline">
+                Settings
+              </Text>
             </Pressable>
           ) : null}
         </View>
 
         {!desktop ? (
           <View
-            style={[
-              styles.bottomNav,
-              { paddingBottom: Math.max(insets.bottom, space[2]) },
-            ]}
+            className="absolute bottom-0 left-0 right-0 flex-row border-t border-border bg-paper"
+            style={{ paddingBottom: Math.max(insets.bottom, space[2]) }}
           >
             {WORKSPACE_NAV.map((item) => {
               const active = section === item;
@@ -271,7 +295,10 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                 <Pressable
                   key={item}
                   onPress={() => go(item)}
-                  style={[styles.tab, active && styles.tabActive]}
+                  className={cn(
+                    'min-h-16 flex-1 items-center justify-center gap-1 px-0.5',
+                    active && 'bg-lavender',
+                  )}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
                   hitSlop={8}
@@ -282,7 +309,10 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                     color={active ? colors.cobalt : colors.stone}
                   />
                   <Text
-                    style={[styles.tabLabel, active && styles.tabLabelActive]}
+                    className={cn(
+                      'font-sans text-[10px] text-stone',
+                      active && 'text-cobalt',
+                    )}
                     numberOfLines={1}
                   >
                     {item === 'Voice notes' ? 'Notes' : item}
@@ -296,169 +326,3 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, flexDirection: 'row', backgroundColor: colors.paper },
-  sidebar: {
-    width: layout.sidebarWidth,
-    backgroundColor: colors.ink,
-    padding: space[4],
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.12)',
-  },
-  sidebarCollapsed: {
-    width: layout.sidebarCollapsedWidth,
-    alignItems: 'center',
-  },
-  brandRow: {
-    height: 56,
-    justifyContent: 'center',
-    paddingHorizontal: space[2],
-    alignItems: 'flex-start',
-  },
-  brandRowCollapsed: { alignItems: 'center', paddingHorizontal: 0 },
-  wordmark: {
-    fontFamily: fonts.displaySemibold,
-    fontSize: 24,
-    color: colors.paper,
-  },
-  sidebarCta: { marginTop: space[6], alignSelf: 'stretch' },
-  sidebarIconBtn: { marginTop: space[6], width: 48, alignSelf: 'center' },
-  limeLabel: {
-    fontFamily: fonts.sansMedium,
-    color: colors.ink,
-    fontSize: 14,
-  },
-  navBlock: { marginTop: space[8], gap: space[2], flex: 1 },
-  navItem: {
-    minHeight: 44,
-    borderRadius: radius.md,
-    paddingHorizontal: space[3],
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-  },
-  navItemCollapsed: { justifyContent: 'center', paddingHorizontal: 0, width: 48, alignSelf: 'center' },
-  navItemActive: { backgroundColor: 'rgba(255,255,255,0.08)' },
-  navLabel: {
-    flex: 1,
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.stone,
-  },
-  navLabelActive: { color: colors.lime },
-  badge: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    color: colors.lime,
-  },
-  sidebarFooter: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.12)',
-    paddingTop: space[4],
-    gap: space[3],
-  },
-  avatarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-    paddingHorizontal: space[2],
-    paddingTop: space[2],
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.pill,
-    backgroundColor: colors.lavender,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 12,
-    color: colors.ink,
-  },
-  avatarName: {
-    flex: 1,
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: colors.paper,
-  },
-  main: { flex: 1, minWidth: 0 },
-  header: {
-    minHeight: layout.headerHeight,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: layout.pagePadX,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space[3],
-    backgroundColor: colors.paper,
-  },
-  headerLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-    minWidth: 0,
-  },
-  collapseBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  crumb: {
-    fontFamily: fonts.sans,
-    fontSize: 13,
-    color: colors.stone,
-    flexShrink: 1,
-  },
-  crumbSep: { color: 'rgba(23,23,23,0.3)' },
-  crumbCurrent: { color: colors.ink },
-  ctaLabel: {
-    fontFamily: fonts.sansMedium,
-    color: colors.card,
-    fontSize: 14,
-  },
-  content: { flex: 1 },
-  mobileSettings: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[2],
-    paddingHorizontal: layout.pagePadX,
-    paddingVertical: space[3],
-  },
-  mobileSettingsText: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.cobalt,
-    textDecorationLine: 'underline',
-  },
-  bottomNav: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.paper,
-  },
-  tab: {
-    flex: 1,
-    minHeight: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingHorizontal: 2,
-  },
-  tabActive: { backgroundColor: colors.lavender },
-  tabLabel: {
-    fontFamily: fonts.sans,
-    fontSize: 10,
-    color: colors.stone,
-  },
-  tabLabelActive: { color: colors.cobalt },
-});

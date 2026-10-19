@@ -4,13 +4,13 @@
 import { type ReactNode } from 'react';
 import {
   ScrollView,
-  StyleSheet,
   useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 
-import { colors, layout, space, workspacePageContentStyle } from '@/theme';
+import { cn } from '@/lib/cn';
+import { layout, space, workspacePageContentClassName } from '@/theme';
 
 export function useWorkspaceDesktop() {
   const { width } = useWindowDimensions();
@@ -27,28 +27,27 @@ export function WorkspacePage({
   children,
   gap = space[4],
   contentStyle,
+  contentClassName,
   keyboardShouldPersistTaps = 'handled',
 }: {
   children: ReactNode;
   gap?: number;
   contentStyle?: StyleProp<ViewStyle>;
+  contentClassName?: string;
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
 }) {
   const desktop = useWorkspaceDesktop();
   return (
     <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[
-        workspacePageContentStyle(desktop, { gap }),
-        contentStyle,
-      ]}
+      className="flex-1 bg-paper"
+      contentContainerClassName={cn(
+        workspacePageContentClassName(desktop),
+        contentClassName,
+      )}
+      contentContainerStyle={[{ gap }, contentStyle]}
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}
     >
       {children}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: colors.paper },
-});

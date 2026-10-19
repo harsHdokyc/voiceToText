@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 
 import { Button, Sheet, TextField } from '@/components/ui';
 import {
@@ -14,7 +14,8 @@ import {
   REMINDER_HOUR_PRESETS,
   type ReminderHourPreset,
 } from '@/features/reminders/services/reminder-schedule';
-import { colors, fonts, radius, space } from '@/theme';
+import { cn } from '@/lib/cn';
+import { colors } from '@/theme';
 
 export type EditNextStepDraft = {
   title: string;
@@ -100,20 +101,20 @@ export function EditNextStepSheet({
           : 'Set a due date and a reminder so it doesn’t slip.'
       }
     >
-      <View style={styles.section}>
-        <Text style={styles.label}>Title</Text>
+      <View className="gap-2">
+        <Text className="font-sans text-sm text-ink">Title</Text>
         <TextField
           value={title}
           onChangeText={setTitle}
           editable={!busy}
           placeholder="Next step"
-          style={styles.field}
+          className="rounded-[14px] bg-card"
         />
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Due date</Text>
-        <View style={styles.chips}>
+      <View className="gap-2">
+        <Text className="font-sans text-sm text-ink">Due date</Text>
+        <View className="flex-row flex-wrap gap-2">
           {DUE_PRESETS.map((p) => {
             const key = dueDateKeyForPreset(p.id);
             const active = dueKey === key;
@@ -138,11 +139,11 @@ export function EditNextStepSheet({
               accessibilityLabel="Clear due date"
             >
               <Ionicons name="close" size={14} color={colors.ink} />
-              <Text style={styles.clearLabel}>Clear</Text>
+              <Text className="font-sans text-xs text-ink">Clear</Text>
             </Button>
           ) : null}
         </View>
-        <View style={styles.dateWrap}>
+        <View className="relative justify-center">
           <TextField
             value={dueKey ?? ''}
             onChangeText={(t) => setDueKey(t.trim() || null)}
@@ -151,26 +152,23 @@ export function EditNextStepSheet({
             accessibilityLabel="Due date"
             autoCapitalize="none"
             autoCorrect={false}
-            style={[styles.field, styles.dateField]}
+            className="rounded-[14px] bg-card pr-10"
             {...(Platform.OS === 'web'
               ? ({ type: 'date' } as object)
               : null)}
           />
-          <Ionicons
-            name="calendar-outline"
-            size={18}
-            color={colors.stone}
-            style={styles.dateIcon}
-          />
+          <View className="pointer-events-none absolute right-4">
+            <Ionicons name="calendar-outline" size={18} color={colors.stone} />
+          </View>
         </View>
         {!dueKey ? (
-          <Text style={styles.hint}>No due date · Anytime</Text>
+          <Text className="font-sans text-xs text-stone">No due date · Anytime</Text>
         ) : null}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Reminder</Text>
-        <View style={styles.chips}>
+      <View className="gap-2">
+        <Text className="font-sans text-sm text-ink">Reminder</Text>
+        <View className="flex-row flex-wrap gap-2">
           {REMINDER_HOUR_PRESETS.map((p) => {
             const active = reminderHours === p.hours;
             return (
@@ -189,10 +187,10 @@ export function EditNextStepSheet({
                   color={active ? colors.paper : colors.ink}
                 />
                 <Text
-                  style={[
-                    styles.chipText,
-                    active && styles.chipTextActive,
-                  ]}
+                  className={cn(
+                    'font-sans-medium text-xs',
+                    active ? 'text-paper' : 'text-ink',
+                  )}
                 >
                   {p.label}
                 </Text>
@@ -208,17 +206,17 @@ export function EditNextStepSheet({
               accessibilityLabel="Clear reminder"
             >
               <Ionicons name="close" size={14} color={colors.ink} />
-              <Text style={styles.clearLabel}>Clear</Text>
+              <Text className="font-sans text-xs text-ink">Clear</Text>
             </Button>
           ) : null}
         </View>
-        <Text style={styles.hint}>
+        <Text className="font-sans text-xs text-stone">
           Reminders use durable push scheduling (1h / 3h / 1d).
         </Text>
       </View>
 
       {error ? (
-        <Text style={styles.error} accessibilityRole="alert">
+        <Text className="font-sans text-sm text-destructive" accessibilityRole="alert">
           {error}
         </Text>
       ) : null}
@@ -228,72 +226,11 @@ export function EditNextStepSheet({
         size="lg"
         disabled={busy || !title.trim()}
         onPress={submit}
-        style={styles.submit}
+        className="mt-2 self-start rounded-pill px-6"
       >
-        <Text style={styles.submitLabel}>{submitLabel}</Text>
+        <Text className="font-sans-medium text-[15px] text-card">{submitLabel}</Text>
         <Ionicons name="checkmark" size={16} color={colors.card} />
       </Button>
     </Sheet>
   );
 }
-
-const styles = StyleSheet.create({
-  section: { gap: space[2] },
-  label: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.ink,
-  },
-  field: {
-    borderRadius: 14,
-    backgroundColor: colors.card,
-  },
-  chips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: space[2],
-  },
-  chipText: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 12,
-    color: colors.ink,
-  },
-  chipTextActive: { color: colors.paper },
-  clearLabel: {
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    color: colors.ink,
-  },
-  dateWrap: {
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  dateField: {
-    paddingRight: space[10],
-  },
-  dateIcon: {
-    position: 'absolute',
-    right: space[4],
-  },
-  hint: {
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    color: colors.stone,
-  },
-  error: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.destructive,
-  },
-  submit: {
-    alignSelf: 'flex-start',
-    marginTop: space[2],
-    borderRadius: radius.pill,
-    paddingHorizontal: space[6],
-  },
-  submitLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 15,
-    color: colors.card,
-  },
-});

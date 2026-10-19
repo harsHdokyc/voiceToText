@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui';
 import {
   dueLabel,
   isOverdueDueLabel,
 } from '@/features/tasks/services/task-due-label';
-import { colors, fonts, space } from '@/theme';
+import { cn } from '@/lib/cn';
+import { colors } from '@/theme';
 
 type BaseProps = {
   title: string;
@@ -26,9 +27,9 @@ function SourceNoteLink({ noteId }: { noteId: string }) {
           params: { noteId },
         })
       }
-      style={styles.sourceLink}
+      className="ml-1 flex-row items-center gap-0.5"
     >
-      <Text style={styles.sourceText}>Source note</Text>
+      <Text className="font-sans text-xs text-stone">Source note</Text>
       <Ionicons name="chevron-forward" size={12} color={colors.stone} />
     </Pressable>
   );
@@ -50,27 +51,30 @@ export function SuggestionReviewRow({
 }) {
   const due = dueLabel(dueAt);
   return (
-    <View style={styles.row}>
-      <View style={styles.sparkle}>
+    <View className="flex-row flex-wrap items-start gap-3 border-b border-border py-5">
+      <View className="mt-0.5 h-8 w-8 items-center justify-center rounded-full bg-lavender">
         <Ionicons name="sparkles" size={16} color={colors.cobalt} />
       </View>
-      <View style={styles.body}>
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.kind}>{kindLabel}</Text>
-          <Text style={styles.dot}>·</Text>
+      <View className="min-w-[140px] flex-1 gap-2">
+        <Text className="font-sans-medium text-[15px] text-ink">{title}</Text>
+        <View className="flex-row flex-wrap items-center gap-1">
+          <Text className="font-sans text-xs text-cobalt">{kindLabel}</Text>
+          <Text className="font-sans text-xs text-stone">·</Text>
           <Text
-            style={[styles.due, isOverdueDueLabel(due) && styles.dueOverdue]}
+            className={cn(
+              'font-sans text-xs text-stone',
+              isOverdueDueLabel(due) && 'text-destructive',
+            )}
           >
             {due}
           </Text>
           {sourceNoteId ? <SourceNoteLink noteId={sourceNoteId} /> : null}
         </View>
       </View>
-      <View style={styles.actions}>
+      <View className="ml-auto flex-row items-center gap-1">
         <Button variant="cta" size="sm" disabled={busy} onPress={onApprove}>
           <Ionicons name="checkmark" size={14} color={colors.card} />
-          <Text style={styles.approveLabel}>Approve</Text>
+          <Text className="font-sans-medium text-[13px] text-card">Approve</Text>
         </Button>
         {onEdit ? (
           <Button
@@ -115,12 +119,12 @@ export function TaskProgressRow({
 }) {
   const due = dueLabel(dueAt);
   return (
-    <View style={styles.row}>
+    <View className="flex-row flex-wrap items-start gap-3 border-b border-border py-5">
       <Pressable
         accessibilityLabel={done ? `Reopen ${title}` : `Complete ${title}`}
         disabled={busy}
         onPress={onToggleDone}
-        style={styles.check}
+        className="mt-0.5 p-0.5"
       >
         <Ionicons
           name={done ? 'checkmark-circle' : 'ellipse-outline'}
@@ -128,27 +132,34 @@ export function TaskProgressRow({
           color={done ? colors.cobalt : colors.stone}
         />
       </Pressable>
-      <View style={styles.body}>
-        <Text style={[styles.title, done && styles.titleDone]}>{title}</Text>
-        <View style={styles.metaRow}>
+      <View className="min-w-[140px] flex-1 gap-2">
+        <Text
+          className={cn(
+            'font-sans-medium text-[15px] text-ink',
+            done && 'text-stone line-through',
+          )}
+        >
+          {title}
+        </Text>
+        <View className="flex-row flex-wrap items-center gap-1">
           {kindLabel ? (
             <>
-              <Text style={styles.kind}>{kindLabel}</Text>
-              <Text style={styles.dot}>·</Text>
+              <Text className="font-sans text-xs text-cobalt">{kindLabel}</Text>
+              <Text className="font-sans text-xs text-stone">·</Text>
             </>
           ) : null}
           <Text
-            style={[
-              styles.due,
-              isOverdueDueLabel(due) && !done && styles.dueOverdue,
-            ]}
+            className={cn(
+              'font-sans text-xs text-stone',
+              isOverdueDueLabel(due) && !done && 'text-destructive',
+            )}
           >
             {due}
           </Text>
           {sourceNoteId ? <SourceNoteLink noteId={sourceNoteId} /> : null}
         </View>
       </View>
-      <View style={styles.actions}>
+      <View className="ml-auto flex-row items-center gap-1">
         {onEdit ? (
           <Button
             variant="ghost"
@@ -173,67 +184,3 @@ export function TaskProgressRow({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    gap: space[3],
-    paddingVertical: space[5],
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  sparkle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.lavender,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  check: { marginTop: 2, padding: 2 },
-  body: { flex: 1, minWidth: 140, gap: space[2] },
-  title: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 15,
-    color: colors.ink,
-  },
-  titleDone: {
-    textDecorationLine: 'line-through',
-    color: colors.stone,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: space[1],
-  },
-  kind: { fontFamily: fonts.sans, fontSize: 12, color: colors.cobalt },
-  dot: { fontFamily: fonts.sans, fontSize: 12, color: colors.stone },
-  due: { fontFamily: fonts.sans, fontSize: 12, color: colors.stone },
-  dueOverdue: { color: colors.destructive },
-  sourceLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    marginLeft: 4,
-  },
-  sourceText: {
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    color: colors.stone,
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[1],
-    marginLeft: 'auto',
-  },
-  approveLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 13,
-    color: colors.card,
-  },
-});

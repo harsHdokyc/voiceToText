@@ -24,6 +24,7 @@ export {
   radius,
   space,
   type,
+  workspacePageContentClassName,
   workspacePageContentStyle,
   type ColorName,
 } from '@/theme-tokens';

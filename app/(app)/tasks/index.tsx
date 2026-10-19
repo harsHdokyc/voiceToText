@@ -1,12 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { Button, EmptyState, Eyebrow } from '@/components/ui';
@@ -26,7 +21,7 @@ import {
   type TaskListFilter,
 } from '@/features/tasks/services/task-due-label';
 import { errorMessageForUi } from '@/lib/api-error';
-import { colors, fonts, space } from '@/theme';
+import { colors } from '@/theme';
 
 export default function TasksScreen() {
   const queryClient = useQueryClient();
@@ -72,11 +67,11 @@ export default function TasksScreen() {
   return (
     <WorkspacePage>
       <Eyebrow>The things you chose</Eyebrow>
-      <Text style={styles.title}>
-        Make <Text style={styles.accent}>progress.</Text>
+      <Text className="font-display text-4xl text-ink">
+        Make <Text className="font-sans-italic text-cobalt">progress.</Text>
       </Text>
 
-      <View style={styles.filters}>
+      <View className="flex-row flex-wrap gap-2">
         {TASK_LIST_FILTERS.map((f) => (
           <Button
             key={f}
@@ -92,7 +87,7 @@ export default function TasksScreen() {
       <Button
         variant="quiet"
         size="sm"
-        style={styles.newBtn}
+        className="self-start"
         onPress={() => router.push('/(app)/tasks/new' as Href)}
       >
         New task
@@ -101,11 +96,11 @@ export default function TasksScreen() {
       {tasks.isLoading ? (
         <ActivityIndicator color={colors.cobalt} />
       ) : tasks.isError ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-destructive">
           {errorMessageForUi(tasks.error, 'Failed to load tasks')}
         </Text>
       ) : rows.length ? (
-        <View style={styles.list}>
+        <View className="border-t border-border">
           {rows.map((task) => (
             <TaskProgressRow
               key={task.id}
@@ -137,7 +132,7 @@ export default function TasksScreen() {
       )}
 
       {toggleComplete.error || remove.error ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-destructive">
           {errorMessageForUi(
             toggleComplete.error ?? remove.error,
             'Update failed',
@@ -172,22 +167,3 @@ export default function TasksScreen() {
     </WorkspacePage>
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 36,
-    color: colors.ink,
-  },
-  accent: {
-    fontFamily: fonts.sansItalic,
-    color: colors.cobalt,
-  },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: space[2] },
-  newBtn: { alignSelf: 'flex-start' },
-  list: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  error: { fontFamily: fonts.sans, color: colors.destructive },
-});

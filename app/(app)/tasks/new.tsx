@@ -1,18 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
+import { Button, TextField } from '@/components/ui';
 import { createManualTask } from '@/features/tasks/services/tasks-service';
 import { type TaskPriority } from '@/features/tasks/services/task-status';
 import { errorMessageForUi } from '@/lib/api-error';
-
 export default function NewTaskScreen() {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
@@ -40,99 +34,60 @@ export default function NewTaskScreen() {
   });
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Title</Text>
-      <TextInput
-        style={styles.input}
+    <ScrollView
+      className="flex-1 bg-paper"
+      contentContainerClassName="gap-2.5 p-6"
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text className="font-sans-medium text-xs text-stone">Title</Text>
+      <TextField
         value={title}
         onChangeText={setTitle}
         editable={!create.isPending}
       />
-      <Text style={styles.label}>Details</Text>
-      <TextInput
-        style={[styles.input, styles.multiline]}
+      <Text className="font-sans-medium text-xs text-stone">Details</Text>
+      <TextField
+        className="min-h-20 align-top"
         value={details}
         onChangeText={setDetails}
         editable={!create.isPending}
         multiline
+        textAlignVertical="top"
       />
-      <Text style={styles.label}>Due (YYYY-MM-DD)</Text>
-      <TextInput
-        style={styles.input}
+      <Text className="font-sans-medium text-xs text-stone">Due (YYYY-MM-DD)</Text>
+      <TextField
         value={dueLocal}
         onChangeText={setDueLocal}
         editable={!create.isPending}
         autoCapitalize="none"
       />
-      <Text style={styles.label}>Priority</Text>
-      <View style={styles.filters}>
+      <Text className="font-sans-medium text-xs text-stone">Priority</Text>
+      <View className="flex-row flex-wrap gap-2">
         {([null, 'low', 'normal', 'high'] as const).map((key) => (
-          <Pressable
+          <Button
             key={key ?? 'none'}
-            style={[styles.chip, priority === key && styles.chipActive]}
+            variant={priority === key ? 'ink' : 'quiet'}
+            size="sm"
             disabled={create.isPending}
             onPress={() => setPriority(key)}
           >
-            <Text
-              style={[
-                styles.chipText,
-                priority === key && styles.chipTextActive,
-              ]}
-            >
-              {key ?? 'none'}
-            </Text>
-          </Pressable>
+            {key ?? 'none'}
+          </Button>
         ))}
       </View>
-      <Pressable
-        style={styles.button}
+      <Button
+        variant="cta"
+        className="mt-2"
         disabled={create.isPending}
         onPress={() => create.mutate()}
       >
-        <Text style={styles.buttonText}>
-          {create.isPending ? 'Creating…' : 'Create task'}
-        </Text>
-      </Pressable>
+        {create.isPending ? 'Creating…' : 'Create task'}
+      </Button>
       {create.error ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-destructive">
           {errorMessageForUi(create.error, 'Create failed')}
         </Text>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 10, backgroundColor: '#f7f7f5' },
-  label: { fontSize: 12, fontWeight: '600', color: '#555' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d0d0d0',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
-    fontSize: 15,
-  },
-  multiline: { minHeight: 80, textAlignVertical: 'top' },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#ccc',
-  },
-  chipActive: { backgroundColor: '#1f4b3a', borderColor: '#1f4b3a' },
-  chipText: { color: '#555', fontSize: 13, fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
-  button: {
-    marginTop: 8,
-    backgroundColor: '#1f4b3a',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  buttonText: { color: '#fff', fontWeight: '600' },
-  error: { color: '#7a2e0b' },
-});

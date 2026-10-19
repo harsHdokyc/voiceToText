@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   useWindowDimensions,
   View,
@@ -15,7 +14,8 @@ import {
 
 import { SaydoMark } from '@/components/saydo-mark';
 import { Eyebrow, TextField, VoiceRibbon } from '@/components/ui';
-import { colors, fonts, radius, space } from '@/theme';
+import { cn } from '@/lib/cn';
+import { colors } from '@/theme';
 
 const WIDE = 900;
 
@@ -37,16 +37,25 @@ export function AuthScreen({
   const wide = width >= WIDE;
 
   return (
-    <View style={[styles.root, wide && styles.rootWide]}>
+    <View
+      className={cn(
+        'flex-1 bg-paper',
+        wide && 'flex-row items-stretch gap-10 p-6',
+      )}
+    >
       {wide ? <AuthBrandPanel /> : null}
       <ScrollView
-        style={styles.formScroll}
-        contentContainerStyle={styles.form}
+        className="flex-1"
+        contentContainerClassName="w-full max-w-md flex-grow items-center justify-center gap-3 self-center px-6 py-6"
         keyboardShouldPersistTaps="handled"
       >
         <Eyebrow color={colors.cobalt}>{eyebrow}</Eyebrow>
-        <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        <Text className="mb-1 font-display text-[40px] leading-[46px] text-ink">
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text className="mb-2 font-sans text-[15px] text-stone">{subtitle}</Text>
+        ) : null}
         {tabs}
         {children}
       </ScrollView>
@@ -57,65 +66,96 @@ export function AuthScreen({
 /** Left feature card — matches marketing SignInPage brand panel. */
 export function AuthBrandPanel() {
   return (
-    <View style={styles.inkPanel} accessibilityElementsHidden>
-      <View style={styles.inkTop}>
-        <View style={styles.inkBrand}>
+    <View
+      className="min-h-[640px] max-w-[560px] flex-1 justify-between overflow-hidden rounded-xl bg-ink p-10"
+      accessibilityElementsHidden
+    >
+      <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-3">
           <SaydoMark size={34} />
-          <Text style={styles.inkEyebrow}>Said → sorted</Text>
+          <Text className="font-mono text-[11px] uppercase tracking-[1.5px] text-lime">
+            Said → sorted
+          </Text>
         </View>
-        <Text style={styles.inkArrow} accessibilityElementsHidden>
+        <Text
+          className="font-sans-medium text-xl leading-[22px] text-lime"
+          accessibilityElementsHidden
+        >
           ↗
         </Text>
       </View>
 
-      <View style={styles.inkMid}>
-        <Text style={styles.inkHeadline}>
+      <View className="gap-6 py-8">
+        <Text className="font-display text-[48px] leading-[52px] text-paper">
           Good thoughts.{'\n'}
-          Clearer <Text style={styles.inkAccent}>next steps.</Text>
+          Clearer <Text className="font-sans-italic text-lime">next steps.</Text>
         </Text>
-        <View style={styles.ribbonWrap}>
+        <View className="mt-2">
           <VoiceRibbon live color={colors.lime} />
         </View>
-        <View style={styles.quoteCard}>
-          <Text style={styles.quoteEyebrow}>From your voice note</Text>
-          <Text style={styles.quoteBody}>
+        <View
+          className="rounded-lg bg-lavender p-6"
+          style={{ transform: [{ rotate: '-2deg' }] }}
+        >
+          <Text className="font-mono text-[11px] uppercase tracking-[1.5px] text-ink/55">
+            From your voice note
+          </Text>
+          <Text className="mt-4 font-display text-[22px] leading-[30px] text-ink">
             “Send the revised proposal to Maya by Thursday.”
           </Text>
-          <View style={styles.quoteFooter}>
-            <Text style={styles.quoteMeta}>One clear next step.</Text>
-            <View style={styles.quoteApproved}>
+          <View className="mt-6 flex-row items-center justify-between border-t border-ink/15 pt-4">
+            <Text className="font-sans text-sm text-ink">One clear next step.</Text>
+            <View className="flex-row items-center gap-2">
               <Ionicons name="checkmark" size={16} color={colors.ink} />
-              <Text style={styles.quoteMeta}>Approved</Text>
+              <Text className="font-sans text-sm text-ink">Approved</Text>
             </View>
           </View>
         </View>
       </View>
 
-      <Text style={styles.inkFooter}>AI proposes. You decide.</Text>
+      <Text className="font-mono text-[11px] uppercase tracking-[1.5px] text-paper/55">
+        AI proposes. You decide.
+      </Text>
     </View>
   );
 }
 
 export function AuthTabs({ active }: { active: 'signin' | 'signup' }) {
   return (
-    <View style={styles.tabs}>
+    <View className="mb-2 flex-row border-b border-border">
       <Link
         href="/(auth)/sign-in"
-        style={active === 'signin' ? styles.tabOn : styles.tab}
+        className={cn(
+          'min-h-[48px] flex-1 items-center justify-center border-b-2',
+          active === 'signin' ? 'border-cobalt' : 'border-transparent',
+        )}
         accessibilityRole="tab"
         accessibilityState={{ selected: active === 'signin' }}
       >
-        <Text style={active === 'signin' ? styles.tabLabelOn : styles.tabLabel}>
+        <Text
+          className={cn(
+            'font-sans-medium text-[15px]',
+            active === 'signin' ? 'text-cobalt' : 'text-stone',
+          )}
+        >
           Sign in
         </Text>
       </Link>
       <Link
         href="/(auth)/sign-up"
-        style={active === 'signup' ? styles.tabOn : styles.tab}
+        className={cn(
+          'min-h-[48px] flex-1 items-center justify-center border-b-2',
+          active === 'signup' ? 'border-cobalt' : 'border-transparent',
+        )}
         accessibilityRole="tab"
         accessibilityState={{ selected: active === 'signup' }}
       >
-        <Text style={active === 'signup' ? styles.tabLabelOn : styles.tabLabel}>
+        <Text
+          className={cn(
+            'font-sans-medium text-[15px]',
+            active === 'signup' ? 'text-cobalt' : 'text-stone',
+          )}
+        >
           Sign up
         </Text>
       </Link>
@@ -132,9 +172,9 @@ export function AuthLabeledField({
   trailing?: ReactNode;
 }) {
   return (
-    <View style={styles.labeledField}>
-      <View style={styles.labelRow}>
-        <Text style={styles.fieldLabel}>{label}</Text>
+    <View className="mt-1 gap-2">
+      <View className="flex-row items-center justify-between gap-3">
+        <Text className="font-sans text-sm text-ink">{label}</Text>
         {trailing}
       </View>
       <AuthField {...props} />
@@ -152,23 +192,24 @@ export function AuthPasswordField({
 }) {
   const [show, setShow] = useState(false);
   return (
-    <View style={styles.labeledField}>
-      <View style={styles.labelRow}>
-        <Text style={styles.fieldLabel}>{label}</Text>
+    <View className="mt-1 gap-2">
+      <View className="flex-row items-center justify-between gap-3">
+        <Text className="font-sans text-sm text-ink">{label}</Text>
         {trailing}
       </View>
-      <View style={styles.passwordWrap}>
+      <View className="relative justify-center">
         <AuthField
           {...props}
           secureTextEntry={!show}
-          style={[styles.passwordField, props.style]}
+          className="pr-12"
+          style={props.style}
         />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={show ? 'Hide password' : 'Show password'}
           hitSlop={8}
           onPress={() => setShow((v) => !v)}
-          style={styles.eyeBtn}
+          className="absolute right-2 h-11 w-11 items-center justify-center"
         >
           <Ionicons
             name={show ? 'eye-off-outline' : 'eye-outline'}
@@ -181,8 +222,18 @@ export function AuthPasswordField({
   );
 }
 
-export function AuthField(props: TextInputProps) {
-  return <TextField {...props} style={[styles.field, props.style]} />;
+export function AuthField({
+  className,
+  style,
+  ...props
+}: TextInputProps & { className?: string }) {
+  return (
+    <TextField
+      {...props}
+      style={style}
+      className={cn('min-h-[52px]', className)}
+    />
+  );
 }
 
 export function AuthButton({
@@ -204,18 +255,26 @@ export function AuthButton({
       disabled={busy}
       onPress={onPress}
       hitSlop={8}
-      style={({ pressed }) => [
-        styles.button,
-        isSecondary && styles.secondary,
-        isGhost && styles.ghost,
-        busy && styles.disabled,
-        pressed && !busy ? { opacity: 0.9 } : null,
-      ]}
+      className={cn(
+        'mt-2 min-h-[52px] items-center justify-center rounded-pill px-6 py-3.5',
+        isGhost
+          ? 'border border-border bg-transparent'
+          : isSecondary
+            ? 'bg-cobalt-deep'
+            : 'bg-cobalt',
+        busy && 'opacity-55',
+        !busy && 'active:opacity-90',
+      )}
     >
       {busy ? (
         <ActivityIndicator color={isGhost ? colors.cobalt : colors.card} />
       ) : (
-        <Text style={[styles.buttonText, isGhost && styles.ghostText]}>
+        <Text
+          className={cn(
+            'font-sans-medium text-[15px]',
+            isGhost ? 'text-ink' : 'text-card',
+          )}
+        >
           {label}
         </Text>
       )}
@@ -226,7 +285,7 @@ export function AuthButton({
 export function AuthMessage({ children }: { children: ReactNode }) {
   if (!children) return null;
   return (
-    <Text style={styles.message} accessibilityRole="alert">
+    <Text className="font-sans text-sm text-destructive" accessibilityRole="alert">
       {children}
     </Text>
   );
@@ -234,233 +293,15 @@ export function AuthMessage({ children }: { children: ReactNode }) {
 
 export function AuthLink({ href, label }: { href: Href; label: string }) {
   return (
-    <Link href={href} style={styles.link}>
+    <Link
+      href={href}
+      className="min-h-[44px] py-2 text-center font-sans-medium text-cobalt"
+    >
       {label}
     </Link>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.paper },
-  rootWide: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    padding: space[6],
-    gap: space[10],
-  },
-  inkPanel: {
-    flex: 1,
-    maxWidth: 560,
-    backgroundColor: colors.ink,
-    borderRadius: radius.xl,
-    padding: space[10],
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-    minHeight: 640,
-  },
-  inkTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  inkBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[3],
-  },
-  inkEyebrow: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    color: colors.lime,
-  },
-  inkArrow: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 20,
-    color: colors.lime,
-    lineHeight: 22,
-  },
-  inkMid: { gap: space[6], paddingVertical: space[8] },
-  inkHeadline: {
-    fontFamily: fonts.display,
-    fontSize: 48,
-    lineHeight: 52,
-    color: colors.paper,
-  },
-  inkAccent: {
-    fontFamily: fonts.sansItalic,
-    color: colors.lime,
-  },
-  ribbonWrap: { marginTop: space[2] },
-  quoteCard: {
-    backgroundColor: colors.lavender,
-    borderRadius: radius.lg,
-    padding: space[6],
-    transform: [{ rotate: '-2deg' }],
-  },
-  quoteEyebrow: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    color: 'rgba(23, 23, 23, 0.55)',
-  },
-  quoteBody: {
-    fontFamily: fonts.display,
-    fontSize: 22,
-    lineHeight: 30,
-    color: colors.ink,
-    marginTop: space[4],
-  },
-  quoteFooter: {
-    marginTop: space[6],
-    paddingTop: space[4],
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(23, 23, 23, 0.15)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  quoteMeta: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.ink,
-  },
-  quoteApproved: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space[2],
-  },
-  inkFooter: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    color: 'rgba(246, 244, 239, 0.55)',
-  },
-  formScroll: { flex: 1 },
-  form: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingVertical: space[6],
-    paddingHorizontal: space[6],
-    gap: space[3],
-    maxWidth: 448,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 40,
-    lineHeight: 46,
-    color: colors.ink,
-    marginBottom: space[1],
-  },
-  subtitle: {
-    fontFamily: fonts.sans,
-    fontSize: 15,
-    color: colors.stone,
-    marginBottom: space[2],
-  },
-  tabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: space[2],
-  },
-  tab: {
-    flex: 1,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabOn: {
-    flex: 1,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: colors.cobalt,
-  },
-  tabLabel: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 15,
-    color: colors.stone,
-  },
-  tabLabelOn: {
-    fontFamily: fonts.sansMedium,
-    fontSize: 15,
-    color: colors.cobalt,
-  },
-  labeledField: { gap: space[2], marginTop: space[1] },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space[3],
-  },
-  fieldLabel: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.ink,
-  },
-  field: { minHeight: 52 },
-  passwordWrap: { position: 'relative', justifyContent: 'center' },
-  passwordField: { paddingRight: 48 },
-  eyeBtn: {
-    position: 'absolute',
-    right: 8,
-    height: 44,
-    width: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  button: {
-    backgroundColor: colors.cobalt,
-    borderRadius: radius.pill,
-    paddingVertical: 14,
-    paddingHorizontal: space[6],
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 52,
-    marginTop: space[2],
-  },
-  secondary: { backgroundColor: colors.cobaltDeep },
-  ghost: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  disabled: { opacity: 0.55 },
-  buttonText: {
-    fontFamily: fonts.sansMedium,
-    color: colors.card,
-    fontSize: 15,
-  },
-  ghostText: { color: colors.ink },
-  message: {
-    fontFamily: fonts.sans,
-    color: colors.destructive,
-    fontSize: 14,
-  },
-  link: {
-    fontFamily: fonts.sansMedium,
-    color: colors.cobalt,
-    textAlign: 'center',
-    paddingVertical: space[2],
-    minHeight: 44,
-  },
-  inlineLink: {
-    fontFamily: fonts.sansMedium,
-    color: colors.cobalt,
-    fontSize: 14,
-    minHeight: 44,
-    textAlignVertical: 'center',
-    paddingVertical: 10,
-  },
-});
-
-export const authInlineLinkStyle = styles.inlineLink;
+/** Inline link beside field labels (e.g. Forgot password). */
+export const authInlineLinkClassName =
+  'min-h-[44px] py-2.5 text-center font-sans-medium text-sm text-cobalt';

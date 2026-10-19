@@ -1,5 +1,4 @@
 import { type ReactNode, useEffect } from 'react';
-import { StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -40,9 +39,5 @@ export function PageEnter({
     transform: [{ translateY: translateY.value }],
   }));
 
-  return <Animated.View style={[styles.wrap, style]}>{children}</Animated.View>;
+  return <Animated.View style={style}>{children}</Animated.View>;
 }
-
-const styles = StyleSheet.create({
-  wrap: { flex: 1 },
-});

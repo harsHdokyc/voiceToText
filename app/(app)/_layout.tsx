@@ -18,14 +18,7 @@ export default function AppLayout() {
 
   if (isLoading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: colors.paper,
-        }}
-      >
+      <View className="flex-1 items-center justify-center bg-paper">
         <ActivityIndicator color={colors.cobalt} />
       </View>
     );

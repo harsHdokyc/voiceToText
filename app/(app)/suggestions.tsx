@@ -1,12 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { Button, EmptyState, Eyebrow } from '@/components/ui';
@@ -24,7 +19,7 @@ import {
   type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
 import { errorMessageForUi } from '@/lib/api-error';
-import { colors, fonts, space } from '@/theme';
+import { colors } from '@/theme';
 
 export default function SuggestionsScreen() {
   const queryClient = useQueryClient();
@@ -80,12 +75,12 @@ export default function SuggestionsScreen() {
   return (
     <WorkspacePage>
       <Eyebrow>Possibilities, not commitments</Eyebrow>
-      <Text style={styles.title}>
-        Your <Text style={styles.accent}>call.</Text>
+      <Text className="font-display text-4xl text-ink">
+        Your <Text className="font-sans-italic text-cobalt">call.</Text>
       </Text>
 
-      <View style={styles.toolbar}>
-        <Text style={styles.countLine}>
+      <View className="flex-row flex-wrap items-center justify-between gap-3">
+        <Text className="min-w-[160px] flex-1 font-sans text-sm text-stone">
           {ids.length} suggestion{ids.length === 1 ? '' : 's'} waiting for a
           decision.
         </Text>
@@ -104,11 +99,11 @@ export default function SuggestionsScreen() {
       {pending.isLoading ? (
         <ActivityIndicator color={colors.cobalt} />
       ) : pending.isError ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-destructive">
           {errorMessageForUi(pending.error, 'Failed to load suggestions')}
         </Text>
       ) : ids.length ? (
-        <View style={styles.list}>
+        <View className="border-t border-border">
           {rows.map((s) => (
             <SuggestionReviewRow
               key={s.id}
@@ -139,7 +134,7 @@ export default function SuggestionsScreen() {
       )}
 
       {approve.error || reject.error || approveAll.error ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-destructive">
           {errorMessageForUi(
             approve.error ?? reject.error ?? approveAll.error,
             'Update failed',
@@ -174,34 +169,3 @@ export default function SuggestionsScreen() {
     </WorkspacePage>
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    fontFamily: fonts.display,
-    fontSize: 36,
-    color: colors.ink,
-  },
-  accent: {
-    fontFamily: fonts.sansItalic,
-    color: colors.cobalt,
-  },
-  toolbar: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space[3],
-  },
-  countLine: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.stone,
-    flex: 1,
-    minWidth: 160,
-  },
-  list: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  error: { fontFamily: fonts.sans, color: colors.destructive },
-});

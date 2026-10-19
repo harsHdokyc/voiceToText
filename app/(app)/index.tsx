@@ -2,13 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { useCapture } from '@/components/capture-sheet';
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
@@ -45,7 +39,8 @@ import {
 } from '@/features/tasks/services/tasks-service';
 import { errorMessageForUi } from '@/lib/api-error';
 import { useAuth } from '@/providers/auth-provider';
-import { colors, fonts, radius, space } from '@/theme';
+import { cn } from '@/lib/cn';
+import { colors, space } from '@/theme';
 
 /**
  * Overview — layout mirrored from ui/goals-in-motion-55 Workspace.tsx Overview,
@@ -140,74 +135,95 @@ export default function OverviewScreen() {
   return (
     <WorkspacePage gap={space[6]}>
       {/* Greeting + counts — lg:grid-cols-[1fr_auto] */}
-      <View style={[styles.greetingRow, wide && styles.greetingRowWide]}>
-        <View style={styles.greetingCopy}>
+      <View className={cn('gap-6', wide && 'flex-row items-end justify-between')}>
+        <View className="min-w-0 flex-1 gap-3">
           <Eyebrow>A little room to think</Eyebrow>
-          <Text style={[styles.greeting, desktop && styles.greetingLg]}>
+          <Text
+            className={cn(
+              'font-display text-[32px] font-medium leading-[38px] text-ink',
+              desktop && 'text-[48px] leading-[54px]',
+            )}
+          >
             Good to see you,{' '}
-            <Text style={styles.greetingName}>{name}.</Text>
+            <Text className="font-sans-italic text-cobalt">{name}.</Text>
           </Text>
-          <Text style={styles.sub}>Your thoughts have somewhere to go.</Text>
+          <Text className="font-sans text-base text-stone">
+            Your thoughts have somewhere to go.
+          </Text>
         </View>
-        <View style={styles.counts}>
+        <View className="flex-row gap-8">
           <View>
-            <Text style={styles.countNum}>
+            <Text className="font-display text-[32px] text-ink">
               {String(pendingRows.length).padStart(2, '0')}
             </Text>
-            <Text style={styles.countLabel}>To review</Text>
+            <Text className="mt-1 font-sans text-xs text-stone">To review</Text>
           </View>
           <View>
-            <Text style={styles.countNum}>
+            <Text className="font-display text-[32px] text-ink">
               {String(openTasks.length).padStart(2, '0')}
             </Text>
-            <Text style={styles.countLabel}>Next steps</Text>
+            <Text className="mt-1 font-sans text-xs text-stone">Next steps</Text>
           </View>
         </View>
       </View>
 
       {/* Cobalt band — md: two columns copy | lime ribbon */}
-      <View style={[styles.cobalt, desktop && styles.cobaltDesktop]}>
-        <View style={styles.cobaltCopy}>
+      <View
+        className={cn(
+          'gap-4 overflow-hidden rounded-lg bg-cobalt p-5',
+          desktop && 'flex-row items-center gap-6 p-8',
+        )}
+      >
+        <View className="min-w-0 flex-1 gap-3">
           <Eyebrow color="rgba(255,255,255,0.7)">
             From thought to follow-through
           </Eyebrow>
-          <Text style={[styles.cobaltTitle, desktop && styles.cobaltTitleLg]}>
+          <Text
+            className={cn(
+              'font-display text-[28px] font-medium text-card',
+              desktop && 'text-[40px]',
+            )}
+          >
             What’s on your mind?
           </Text>
-          <Text style={styles.cobaltBody}>
+          <Text className="max-w-xs font-sans text-sm text-white/75">
             The first version doesn’t need to be perfect.
           </Text>
           <Button
             variant="lime"
             size="lg"
-            style={styles.cobaltBtn}
+            className="mt-3 self-start"
             onPress={openCapture}
           >
             <Ionicons name="mic" size={18} color={colors.ink} />
-            <Text style={styles.cobaltBtnText}>New voice note</Text>
+            <Text className="font-sans-medium text-sm text-ink">New voice note</Text>
             <Ionicons name="arrow-forward" size={16} color={colors.ink} />
           </Button>
         </View>
-        <View style={[styles.ribbonWrap, desktop && styles.ribbonWrapDesktop]}>
+        <View
+          className={cn('min-h-[72px]', desktop && 'min-w-0 flex-[0.7]')}
+        >
           <VoiceRibbon color={colors.lime} />
         </View>
       </View>
 
       {/* Recent thoughts */}
-      <View style={styles.recentHead}>
-        <Text style={styles.sectionTitle}>Recent thoughts</Text>
+      <View className="mt-2 flex-row items-center justify-between">
+        <Text className="font-display text-xl font-medium text-ink">
+          Recent thoughts
+        </Text>
         <Pressable
           onPress={() => router.push('/(app)/notes' as Href)}
-          style={styles.allNotes}
+          className="flex-row items-center gap-1"
         >
-          <Text style={styles.allNotesText}>All notes</Text>
+          <Text className="font-sans text-sm text-cobalt">All notes</Text>
           <Ionicons name="arrow-forward" size={14} color={colors.cobalt} />
         </Pressable>
       </View>
       {notes.isLoading ? (
         <ActivityIndicator color={colors.cobalt} />
       ) : notes.isError ? (
-        <Text style={styles.error}>
+        <Text className="font-sans text-destructive">
           {errorMessageForUi(notes.error, 'Failed to load notes')}
         </Text>
       ) : recent.length ? (
@@ -223,12 +239,14 @@ export default function OverviewScreen() {
       )}
 
       {/* Waiting + next steps — lg: 2 cols */}
-      <View style={[styles.columns, wide && styles.columnsWide]}>
-        <View style={styles.column}>
-          <View style={styles.columnHead}>
-            <Text style={styles.sectionTitle}>
+      <View className={cn('mt-2 gap-10', wide && 'flex-row')}>
+        <View className="min-w-0 flex-1">
+          <View className="mb-1 flex-row items-center justify-between border-b border-border pb-4">
+            <Text className="font-display text-xl font-medium text-ink">
               Waiting for your call{' '}
-              <Text style={styles.pendingCount}>{pendingRows.length}</Text>
+              <Text className="font-sans text-sm text-cobalt">
+                {pendingRows.length}
+              </Text>
             </Text>
             <Pressable
               accessibilityLabel="All suggestions"
@@ -241,7 +259,7 @@ export default function OverviewScreen() {
           {pending.isLoading ? (
             <ActivityIndicator color={colors.cobalt} />
           ) : pending.isError ? (
-            <Text style={styles.error}>
+            <Text className="font-sans text-destructive">
               {errorMessageForUi(pending.error, 'Failed to load suggestions')}
             </Text>
           ) : pendingRows.length ? (
@@ -266,9 +284,11 @@ export default function OverviewScreen() {
           )}
         </View>
 
-        <View style={styles.column}>
-          <View style={styles.columnHead}>
-            <Text style={styles.sectionTitle}>Your next steps</Text>
+        <View className="min-w-0 flex-1">
+          <View className="mb-1 flex-row items-center justify-between border-b border-border pb-4">
+            <Text className="font-display text-xl font-medium text-ink">
+              Your next steps
+            </Text>
             <Pressable
               accessibilityLabel="All tasks"
               onPress={() => router.push('/(app)/tasks' as Href)}
@@ -280,7 +300,7 @@ export default function OverviewScreen() {
           {tasks.isLoading ? (
             <ActivityIndicator color={colors.cobalt} />
           ) : tasks.isError ? (
-            <Text style={styles.error}>
+            <Text className="font-sans text-destructive">
               {errorMessageForUi(tasks.error, 'Failed to load tasks')}
             </Text>
           ) : openTasks.length ? (
@@ -358,113 +378,3 @@ export default function OverviewScreen() {
     </WorkspacePage>
   );
 }
-
-const styles = StyleSheet.create({
-  greetingRow: { gap: space[6] },
-  greetingRowWide: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  greetingCopy: { flex: 1, minWidth: 0, gap: space[3] },
-  greeting: {
-    fontFamily: fonts.display,
-    fontSize: 32,
-    fontWeight: '500',
-    color: colors.ink,
-    lineHeight: 38,
-  },
-  greetingLg: { fontSize: 48, lineHeight: 54 },
-  greetingName: {
-    fontFamily: fonts.sansItalic,
-    color: colors.cobalt,
-  },
-  sub: { fontFamily: fonts.sans, fontSize: 16, color: colors.stone },
-  counts: { flexDirection: 'row', gap: space[8] },
-  countNum: {
-    fontFamily: fonts.display,
-    fontSize: 32,
-    color: colors.ink,
-  },
-  countLabel: {
-    marginTop: 4,
-    fontFamily: fonts.sans,
-    fontSize: 12,
-    color: colors.stone,
-  },
-  cobalt: {
-    backgroundColor: colors.cobalt,
-    borderRadius: radius.lg,
-    padding: space[5],
-    gap: space[4],
-    overflow: 'hidden',
-  },
-  cobaltDesktop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: space[8],
-    gap: space[6],
-  },
-  cobaltCopy: { flex: 1, minWidth: 0, gap: space[3] },
-  cobaltTitle: {
-    fontFamily: fonts.display,
-    fontSize: 28,
-    fontWeight: '500',
-    color: colors.card,
-  },
-  cobaltTitleLg: { fontSize: 40 },
-  cobaltBody: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.75)',
-    maxWidth: 320,
-  },
-  cobaltBtn: { alignSelf: 'flex-start', marginTop: space[3] },
-  cobaltBtnText: {
-    fontFamily: fonts.sansMedium,
-    color: colors.ink,
-    fontSize: 14,
-  },
-  ribbonWrap: { minHeight: 72 },
-  ribbonWrapDesktop: { flex: 0.7, minWidth: 0 },
-  recentHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: space[2],
-  },
-  sectionTitle: {
-    fontFamily: fonts.display,
-    fontSize: 20,
-    fontWeight: '500',
-    color: colors.ink,
-  },
-  allNotes: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  allNotesText: {
-    fontFamily: fonts.sans,
-    fontSize: 14,
-    color: colors.cobalt,
-  },
-  pendingCount: {
-    color: colors.cobalt,
-    fontSize: 14,
-    fontFamily: fonts.sans,
-  },
-  columns: { gap: space[10], marginTop: space[2] },
-  columnsWide: { flexDirection: 'row' },
-  column: { flex: 1, minWidth: 0 },
-  columnHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: space[4],
-    marginBottom: space[1],
-  },
-  error: { fontFamily: fonts.sans, color: colors.destructive },
-});
