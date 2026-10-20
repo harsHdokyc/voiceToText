@@ -43,8 +43,9 @@ export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | 'icon';
  * Shared press/hover chrome for bare icon Pressables (matches prototype ghost icon).
  * Use on menu, close, checkbox, and toolbar icons outside Button.
  */
+// Prototype ghost/icon accent = lime (styles.css --accent: var(--lime)).
 export const iconPressClassName =
-  'items-center justify-center rounded-md p-2 transition-colors duration-200 hover:bg-muted active:bg-muted/80';
+  'items-center justify-center rounded-md p-2 transition-colors duration-200 hover:bg-lime active:bg-lime/80';
 
 /** Soft row/nav hover (sidebar + list chrome). */
 export const navPressClassName =
@@ -58,7 +59,7 @@ const variantClass: Record<ButtonVariant, string> = {
   quiet:
     'group bg-transparent border border-border rounded-pill transition-colors duration-300 hover:bg-ink active:bg-ink',
   ghost:
-    'bg-transparent rounded-md transition-colors duration-200 hover:bg-muted active:bg-muted/80',
+    'bg-transparent rounded-md transition-colors duration-200 hover:bg-lime active:bg-lime/80',
   destructive:
     'bg-destructive rounded-md transition-colors duration-200 hover:bg-destructive/90 active:opacity-90',
   link: 'bg-transparent transition-opacity duration-200 hover:opacity-80 active:opacity-70',

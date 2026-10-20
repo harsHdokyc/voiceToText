@@ -126,7 +126,7 @@ export function AuthTabs({ active }: { active: 'signin' | 'signup' }) {
       <Link
         href="/(auth)/sign-in"
         className={cn(
-          'min-h-[48px] flex-1 items-center justify-center border-b-2 transition-colors duration-200 hover:bg-muted/50',
+          'min-h-[48px] flex-1 items-center justify-center border-b-2 transition-colors duration-200 hover:bg-lime/50',
           active === 'signin' ? 'border-cobalt' : 'border-transparent',
         )}
         accessibilityRole="tab"
@@ -144,7 +144,7 @@ export function AuthTabs({ active }: { active: 'signin' | 'signup' }) {
       <Link
         href="/(auth)/sign-up"
         className={cn(
-          'min-h-[48px] flex-1 items-center justify-center border-b-2 transition-colors duration-200 hover:bg-muted/50',
+          'min-h-[48px] flex-1 items-center justify-center border-b-2 transition-colors duration-200 hover:bg-lime/50',
           active === 'signup' ? 'border-cobalt' : 'border-transparent',
         )}
         accessibilityRole="tab"
@@ -209,7 +209,7 @@ export function AuthPasswordField({
           accessibilityLabel={show ? 'Hide password' : 'Show password'}
           hitSlop={8}
           onPress={() => setShow((v) => !v)}
-          className="absolute right-2 h-11 w-11 items-center justify-center rounded-md transition-colors duration-200 hover:bg-muted active:bg-muted/80"
+          className="absolute right-2 h-11 w-11 items-center justify-center rounded-md transition-colors duration-200 hover:bg-lime active:bg-lime/80"
         >
           <Ionicons
             name={show ? 'eye-off-outline' : 'eye-outline'}
