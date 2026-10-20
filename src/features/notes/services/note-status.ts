@@ -62,6 +62,28 @@ export function noteStatusLabel(status: NoteStatus) {
   return status.replaceAll('_', ' ');
 }
 
+/** Short card-stat label — fits a tight 3-up column. */
+export function noteStatusShort(status: NoteStatus) {
+  if (status === 'review_ready') return 'Ready';
+  if (
+    status === 'upload_failed' ||
+    status === 'transcription_failed' ||
+    status === 'extraction_failed'
+  ) {
+    return 'Fail';
+  }
+  if (
+    status === 'uploading' ||
+    status === 'queued' ||
+    status === 'transcribing' ||
+    status === 'extracting'
+  ) {
+    return 'Live';
+  }
+  if (status === 'archived') return 'Arch';
+  return 'Draft';
+}
+
 /** Prefer user-edited transcript when present. */
 export function displayTranscript(note: {
   transcript: string | null;

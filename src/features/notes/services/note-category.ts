@@ -36,24 +36,61 @@ export function noteCardTone(index: number): NoteCardTone {
   return CARD_TONES[((index % CARD_TONES.length) + CARD_TONES.length) % CARD_TONES.length]!;
 }
 
-/** Relative-ish label for note timestamps (local display). */
-export function formatNoteTime(iso: string, nowMs = Date.now()): string {
+/** Two-letter mark from a note title for card watermark / avatar. */
+export function noteTitleInitials(title: string | null | undefined): string {
+  const parts = (title?.trim() || 'Note').split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]![0] ?? ''}${parts[1]![0] ?? ''}`.toUpperCase();
+  }
+  return (parts[0] ?? 'N').slice(0, 2).toUpperCase();
+}
+
+/** Whole seconds for note audio length (max clip is 60s); em dash when missing. */
+export function formatNoteDuration(seconds: number | null | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return '—';
+  return `${Math.floor(seconds)}s`;
+}
+
+function noteDayDiff(iso: string, nowMs: number) {
   const then = new Date(iso).getTime();
-  if (!Number.isFinite(then)) return '';
+  if (!Number.isFinite(then)) return null;
   const startToday = new Date(nowMs);
   startToday.setHours(0, 0, 0, 0);
   const startThen = new Date(then);
   startThen.setHours(0, 0, 0, 0);
-  const dayDiff = Math.round(
+  return Math.round(
     (startThen.getTime() - startToday.getTime()) / 86_400_000,
   );
-  const time = new Date(then).toLocaleTimeString(undefined, {
+}
+
+/** Relative-ish label for note timestamps (local display). */
+export function formatNoteTime(iso: string, nowMs = Date.now()): string {
+  const dayDiff = noteDayDiff(iso, nowMs);
+  if (dayDiff == null) return '';
+  const time = new Date(iso).toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
   });
   if (dayDiff === 0) return `Today · ${time}`;
   if (dayDiff === -1) return `Yesterday · ${time}`;
-  return new Date(then).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/** Compact time for note-card stats — time today, Yday, or short date. */
+export function formatNoteTimeShort(iso: string, nowMs = Date.now()): string {
+  const dayDiff = noteDayDiff(iso, nowMs);
+  if (dayDiff == null) return '—';
+  if (dayDiff === 0) {
+    return new Date(iso).toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+  if (dayDiff === -1) return 'Yday';
+  return new Date(iso).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
   });

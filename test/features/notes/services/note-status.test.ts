@@ -11,6 +11,7 @@ import {
     isRetryableProcessing,
     noteMatchesSearch,
     noteStatusLabel,
+    noteStatusShort,
 } from '@/features/notes/services/note-status';
 
 describe('canTransitionNoteStatus', () => {
@@ -80,6 +81,16 @@ describe('noteStatusLabel', () => {
   it('replaces underscores for display', () => {
     expect(noteStatusLabel('transcription_failed')).toBe('transcription failed');
     expect(noteStatusLabel('queued')).toBe('queued');
+  });
+});
+
+describe('noteStatusShort', () => {
+  it('maps statuses to short card labels', () => {
+    expect(noteStatusShort('review_ready')).toBe('Ready');
+    expect(noteStatusShort('transcribing')).toBe('Live');
+    expect(noteStatusShort('transcription_failed')).toBe('Fail');
+    expect(noteStatusShort('draft')).toBe('Draft');
+    expect(noteStatusShort('archived')).toBe('Arch');
   });
 });
 

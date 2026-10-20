@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_NOTE_CATEGORY,
+  formatNoteDuration,
   formatNoteTime,
+  formatNoteTimeShort,
   isNoteCategory,
   noteCardTone,
   noteMatchesCategoryFilter,
+  noteTitleInitials,
   normalizeNoteCategory,
 } from '@/features/notes/services/note-category';
 
@@ -64,5 +67,44 @@ describe('formatNoteTime', () => {
     expect(
       formatNoteTime(new Date(2026, 9, 1, 12, 0, 0).toISOString()),
     ).not.toMatch(/Today|Yesterday/);
+  });
+});
+
+describe('formatNoteTimeShort', () => {
+  it('uses time today, Yday yesterday, and short date otherwise', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 10, 15, 0, 0));
+    expect(
+      formatNoteTimeShort(new Date(2026, 9, 10, 8, 42, 0).toISOString()),
+    ).toMatch(/\d/);
+    expect(
+      formatNoteTimeShort(new Date(2026, 9, 10, 8, 42, 0).toISOString()),
+    ).not.toMatch(/Today|Yesterday/);
+    expect(
+      formatNoteTimeShort(new Date(2026, 9, 9, 18, 15, 0).toISOString()),
+    ).toBe('Yday');
+    expect(
+      formatNoteTimeShort(new Date(2026, 9, 1, 12, 0, 0).toISOString()),
+    ).toMatch(/Oct/);
+  });
+});
+
+describe('noteTitleInitials', () => {
+  it('takes first letters of two words or first two chars of one', () => {
+    expect(noteTitleInitials('A few things')).toBe('AF');
+    expect(noteTitleInitials('Walk')).toBe('WA');
+    expect(noteTitleInitials(null)).toBe('NO');
+    expect(noteTitleInitials('  ')).toBe('NO');
+  });
+});
+
+describe('formatNoteDuration', () => {
+  it('formats whole seconds with s suffix and uses em dash when missing', () => {
+    expect(formatNoteDuration(20)).toBe('20s');
+    expect(formatNoteDuration(60)).toBe('60s');
+    expect(formatNoteDuration(20.7)).toBe('20s');
+    expect(formatNoteDuration(0)).toBe('—');
+    expect(formatNoteDuration(null)).toBe('—');
+    expect(formatNoteDuration(undefined)).toBe('—');
   });
 });
