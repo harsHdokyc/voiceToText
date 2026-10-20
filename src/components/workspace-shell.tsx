@@ -1,13 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router, usePathname, type Href } from 'expo-router';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CaptureProvider, useCapture } from '@/components/capture-sheet';
@@ -16,6 +23,9 @@ import { Button, iconPressClassName, navPressClassName } from '@/components/ui';
 import {
   hrefForWorkspaceNav,
   WORKSPACE_NAV,
+  WORKSPACE_NAV_ITEM_H,
+  workspaceNavIndex,
+  workspaceNavPillOffset,
   workspaceSectionFromPath,
   type WorkspaceNavItem,
 } from '@/components/workspace-nav';
@@ -36,6 +46,10 @@ const NAV_ICONS: Record<
   Suggestions: 'sparkles-outline',
   Tasks: 'checkbox-outline',
 };
+
+/** Prototype `--ease-out`: cubic-bezier(0.22, 1, 0.36, 1). */
+const NAV_PILL_EASE = Easing.bezier(0.22, 1, 0.36, 1);
+const NAV_PILL_MS = 420;
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   return (
@@ -72,9 +86,46 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
     staleTime: 15_000,
   });
   const pendingCount = pending.data ?? 0;
+  const reducedMotion = useReducedMotion();
+  const routeIndex = workspaceNavIndex(section);
+  // Ref tracks intent so route sync doesn't reverse an in-flight click tween.
+  const pillRef = useRef(routeIndex);
+  const [pillIndex, setPillIndex] = useState(routeIndex);
+  const pillY = useSharedValue(workspaceNavPillOffset(Math.max(routeIndex, 0)));
+  const pillOpacity = useSharedValue(routeIndex >= 0 ? 1 : 0);
+  const tween = { duration: NAV_PILL_MS, easing: NAV_PILL_EASE };
 
-  const go = (item: WorkspaceNavItem) => {
-    router.push(hrefForWorkspaceNav(item) as Href);
+  const setPill = (index: number) => {
+    pillRef.current = index;
+    setPillIndex(index);
+    const show = index >= 0;
+    if (reducedMotion) {
+      pillY.value = workspaceNavPillOffset(index);
+      pillOpacity.value = show ? 1 : 0;
+      return;
+    }
+    if (show) {
+      pillOpacity.value = 1;
+      pillY.value = withTiming(workspaceNavPillOffset(index), tween);
+    } else {
+      pillOpacity.value = withTiming(0, tween);
+    }
+  };
+
+  useEffect(() => {
+    if (routeIndex === pillRef.current) return;
+    setPill(routeIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- route sync only
+  }, [routeIndex, reducedMotion]);
+
+  const pillStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: pillY.value }],
+    opacity: pillOpacity.value,
+  }));
+
+  const open = (index: number, href: Href) => {
+    if (index !== pillRef.current) setPill(index);
+    router.push(href);
   };
 
   return (
@@ -104,40 +155,42 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
               nameClassName="font-display-semibold text-2xl text-paper"
             />
           </View>
-          <Button
-            variant="lime"
-            size="lg"
-            onPress={openCapture}
-            accessibilityLabel="New voice note"
-            className={
-              collapsed
-                ? 'mt-6 w-12 self-center'
-                : 'mt-6 self-stretch'
-            }
-          >
-            {collapsed ? (
-              <Ionicons name="add" size={22} color={colors.ink} />
-            ) : (
-              <Text className="font-sans-medium text-sm text-ink">
-                <Ionicons name="add" size={18} color={colors.ink} /> New voice
-                note
-              </Text>
+          <View
+            className={cn(
+              'relative mt-4 flex-1',
+              collapsed && 'w-12 self-center',
             )}
-          </Button>
-          <View className="mt-8 flex-1 gap-2">
-            {WORKSPACE_NAV.map((item) => {
-              const active = section === item;
+          >
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                {
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: WORKSPACE_NAV_ITEM_H,
+                  borderRadius: 8,
+                  backgroundColor: 'rgba(255, 255, 255, 0.14)',
+                },
+                pillStyle,
+              ]}
+            />
+            {WORKSPACE_NAV.map((item, index) => {
+              const active = pillIndex === index;
               return (
                 <Pressable
                   key={item}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  onPress={() => go(item)}
+                  onPress={() =>
+                    open(index, hrefForWorkspaceNav(item) as Href)
+                  }
                   className={cn(
-                    'min-h-11 flex-row items-center gap-3 rounded-md px-3',
-                    navPressClassName,
-                    collapsed && 'w-12 justify-center self-center px-0',
-                    active && 'bg-white/8',
+                    'z-[1] h-11 w-full flex-row items-center gap-3 rounded-md px-3',
+                    index < WORKSPACE_NAV.length - 1 && 'mb-2',
+                    collapsed && 'justify-center px-0',
+                    !active && 'hover:bg-white/10 active:bg-white/12',
                   )}
                 >
                   <Ionicons
@@ -148,10 +201,10 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                   {!collapsed ? (
                     <>
                       <Text
-                        className={cn(
-                          'flex-1 font-sans text-sm text-stone',
-                          active && 'text-lime',
-                        )}
+                        className="flex-1 font-sans text-sm"
+                        style={{
+                          color: active ? colors.lime : colors.stone,
+                        }}
                       >
                         {item}
                       </Text>
@@ -168,7 +221,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
           </View>
           <View className="gap-3 border-t border-white/12 pt-4">
             <Pressable
-              onPress={() => router.push('/(app)/settings' as Href)}
+              onPress={() => open(-1, '/(app)/settings' as Href)}
               className={cn(
                 'min-h-11 flex-row items-center gap-3 rounded-md px-3',
                 navPressClassName,
@@ -291,12 +344,14 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
             className="absolute bottom-0 left-0 right-0 flex-row border-t border-border bg-paper"
             style={{ paddingBottom: Math.max(insets.bottom, space[2]) }}
           >
-            {WORKSPACE_NAV.map((item) => {
+            {WORKSPACE_NAV.map((item, index) => {
               const active = section === item;
               return (
                 <Pressable
                   key={item}
-                  onPress={() => go(item)}
+                  onPress={() =>
+                    open(index, hrefForWorkspaceNav(item) as Href)
+                  }
                   className={cn(
                     'min-h-16 flex-1 items-center justify-center gap-1 px-0.5 transition-colors duration-200 hover:bg-lavender/60 active:bg-lavender',
                     active && 'bg-lavender',

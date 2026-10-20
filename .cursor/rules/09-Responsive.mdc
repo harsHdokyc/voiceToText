@@ -1,0 +1,124 @@
+---
+alwaysApply: true
+---
+
+---
+name: Responsive UI Design Standards
+description: Build genuinely responsive, polished interfaces for mobile, tablet, laptop, and desktop. Adapt layouts, navigation, components, spacing, typography, and interactions to each screen instead of merely shrinking desktop designs. Use whenever creating, modifying, or reviewing frontend UI.
+---
+
+# Responsive UI Design Standards
+
+## Core Rule
+
+**Design for every screen size, not just desktop.**
+
+Every UI you create or modify must work naturally on mobile, tablet, laptop, and desktop.
+
+Responsive design does NOT mean scaling down the desktop layout. It means adapting the layout, components, spacing, navigation, typography, and interactions to provide the best experience on each device.
+
+## 1. Adapt the Entire UI
+
+Whenever you build or modify a UI, consider every part of the interface:
+
+- Page layout and content structure
+- Navigation, sidebars, headers, and footers
+- Cards, grids, tables, and lists
+- Forms, inputs, buttons, and dialogs
+- Typography, spacing, and alignment
+- Icons, images, and other visual elements
+- Dropdowns, menus, tooltips, and interactive components
+
+Do not fix one responsive issue while ignoring the rest of the page. Check how all related components work together.
+
+## 2. Redesign, Don't Just Shrink
+
+Desktop and mobile can require different layouts.
+
+- Convert multi-column layouts into well-structured single-column layouts when appropriate.
+- Turn desktop sidebars into drawers, compact navigation, or mobile bottom navigation when suitable.
+- Make cards and grids adapt naturally to available space.
+- Reorganize complex forms into logical, readable sections.
+- Make wide tables usable through responsive alternatives, such as carefully designed mobile cards or contained horizontal scrolling.
+- Move secondary information into collapsible sections when it improves usability.
+- Resize and reposition dialogs, menus, and overlays so they fit the available screen.
+- Keep primary actions easy to find and use.
+
+Do not simply reduce widths, font sizes, padding, or component sizes until everything fits.
+
+## 3. Use Mobile-First, Flexible Layouts
+
+- Start with a usable mobile layout, then enhance it for larger screens.
+- Use the project's existing breakpoints and design system.
+- Prefer Flexbox, Grid, flexible widths, `minmax()`, and `max-width` over rigid dimensions.
+- Use fluid spacing and typography where appropriate.
+- Avoid fixed widths and heights that cause clipping or overflow.
+- Prevent text, buttons, images, and content from overlapping or being cut off.
+- Use fixed positioning only when it genuinely improves the experience.
+
+Never introduce arbitrary breakpoints or unnecessary CSS overrides when existing project patterns solve the problem.
+
+## 4. Preserve Design Quality
+
+Responsive UI must look intentionally designed at every size.
+
+- Maintain visual hierarchy, readable typography, consistent spacing, and balanced proportions.
+- Keep important content visible and easy to scan.
+- Avoid cramped layouts, oversized empty spaces, awkward wrapping, and unnecessarily tall pages.
+- Use consistent alignment and spacing across related components.
+- Preserve the existing product's visual style and design system.
+- Do not hide important content or functionality just to make a layout fit.
+- Avoid unnecessary redesigns unrelated to the responsive task.
+
+## 5. Make Every Interaction Device-Friendly
+
+- Make buttons, links, inputs, and icon controls comfortable to tap.
+- Aim for touch targets of at least 44 × 44 CSS pixels.
+- Provide enough spacing between interactive elements.
+- Ensure menus, dropdowns, popovers, and dialogs work on touchscreens, not only with a mouse.
+- Prevent hover-only interactions from blocking mobile users.
+- Keep forms, validation messages, and keyboard interactions usable on small screens.
+- Respect mobile safe areas when using fixed headers, footers, or bottom navigation.
+
+## 6. Use Real Responsive Behavior
+
+- Let content determine component height whenever possible.
+- Allow text to wrap naturally without breaking layouts.
+- Use appropriate image sizing and cropping for different screen shapes.
+- Prevent horizontal page scrolling unless a specific component intentionally needs it.
+- Account for long labels, empty states, loading states, errors, and unusually large content.
+- Make sure sticky elements and fixed navigation do not cover important content.
+
+## 7. Check Before Finishing
+
+After making UI changes, review the affected page and its related components at these viewport widths:
+
+- Mobile: 320–375px
+- Large mobile: 414px
+- Tablet: 768px
+- Laptop: 1024px
+- Desktop: 1440px and above
+
+Check that:
+
+- The layout adapts rather than simply shrinking.
+- Navigation and all important actions remain usable.
+- No content overlaps, clips, or becomes inaccessible.
+- Text and forms remain readable.
+- Cards, grids, tables, dialogs, and menus behave correctly.
+- There is no accidental horizontal scrolling.
+- The UI looks intentional at intermediate widths, not just at the listed sizes.
+
+Use browser tools or existing project tests when available. Do not claim to have tested viewports you did not actually verify.
+
+## 8. Rules for Cursor
+
+Whenever creating, modifying, or fixing a frontend component:
+
+1. Inspect the existing component, its parent layout, and related responsive styles.
+2. Identify how the complete UI should behave on mobile, tablet, and desktop.
+3. Implement the smallest clean change that delivers a genuinely responsive experience.
+4. Check related components for layout conflicts or regressions.
+5. Verify the result across screen sizes when tools are available.
+
+**Final standard:** Every screen size must feel like a deliberately designed version of the product. Never treat responsiveness as an optional polish step or a task limited to reducing element sizes.

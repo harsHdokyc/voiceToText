@@ -1,9 +1,6 @@
 ---
-description: Behavior-driven Vitest unit tests — real business rules, not mocks
-globs: "**/*.{test,spec}.{ts,tsx,js,jsx}"
-alwaysApply: false
+alwaysApply: true
 ---
-
 # Vitest Unit Testing — Real Behavior, Real Business Rules
 
 You are writing **unit tests** that still prove **business behavior**. A unit test is useless if it only proves mocks.
