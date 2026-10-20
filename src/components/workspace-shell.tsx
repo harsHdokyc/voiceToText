@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CaptureProvider, useCapture } from '@/components/capture-sheet';
 import { PageEnter } from '@/components/page-enter';
-import { Button } from '@/components/ui';
+import { Button, iconPressClassName, navPressClassName } from '@/components/ui';
 import {
   hrefForWorkspaceNav,
   WORKSPACE_NAV,
@@ -135,6 +135,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                   onPress={() => go(item)}
                   className={cn(
                     'min-h-11 flex-row items-center gap-3 rounded-md px-3',
+                    navPressClassName,
                     collapsed && 'w-12 justify-center self-center px-0',
                     active && 'bg-white/8',
                   )}
@@ -170,6 +171,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
               onPress={() => router.push('/(app)/settings' as Href)}
               className={cn(
                 'min-h-11 flex-row items-center gap-3 rounded-md px-3',
+                navPressClassName,
                 collapsed && 'w-12 justify-center self-center px-0',
                 section === 'Settings' && 'bg-white/8',
               )}
@@ -227,7 +229,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                 }
                 onPress={() => setCollapsed((c) => !c)}
                 hitSlop={12}
-                className="h-10 w-10 items-center justify-center"
+                className={cn('h-10 w-10', iconPressClassName)}
               >
                 <Ionicons
                   name={collapsed ? 'menu' : 'menu-outline'}
@@ -268,7 +270,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
           {!desktop ? (
             <Pressable
               onPress={() => router.push('/(app)/settings' as Href)}
-              className="flex-row items-center gap-2 px-page-x py-3"
+              className="flex-row items-center gap-2 rounded-md px-page-x py-3 transition-opacity duration-200 hover:opacity-80 active:opacity-70"
               accessibilityLabel="Settings"
               hitSlop={12}
             >
@@ -296,7 +298,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                   key={item}
                   onPress={() => go(item)}
                   className={cn(
-                    'min-h-16 flex-1 items-center justify-center gap-1 px-0.5',
+                    'min-h-16 flex-1 items-center justify-center gap-1 px-0.5 transition-colors duration-200 hover:bg-lavender/60 active:bg-lavender',
                     active && 'bg-lavender',
                   )}
                   accessibilityRole="button"

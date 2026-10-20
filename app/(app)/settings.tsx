@@ -199,7 +199,7 @@ export default function SettingsScreen() {
       <Pressable
         onPress={() => setDevOpen((v) => !v)}
         hitSlop={8}
-        className="mt-6 min-h-[44px] justify-center"
+        className="mt-6 min-h-[44px] justify-center rounded-md px-2 transition-colors duration-200 hover:bg-muted active:bg-muted/80"
         accessibilityRole="button"
         accessibilityState={{ expanded: devOpen }}
       >

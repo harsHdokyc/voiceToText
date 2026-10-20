@@ -180,3 +180,69 @@ export function mimeTypeForAudioFile(file: {
   if (name.endsWith(".aiff") || name.endsWith(".aif")) return "audio/aiff";
   return "audio/mp3";
 }
+
+/** Clamp/clean AI note titles — never a raw transcript prefix paste. */
+export function sanitizeNoteTitle(
+  raw: string | null | undefined,
+  maxLen = 80,
+): string {
+  const cleaned = (raw ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/^["'`]+|["'`]+$/g, "")
+    .replace(/[.!?…]+$/g, "")
+    .trim();
+  if (!cleaned) return "Voice note";
+  if (cleaned.length <= maxLen) return cleaned;
+  const sliced = cleaned.slice(0, maxLen);
+  const lastSpace = sliced.lastIndexOf(" ");
+  return (lastSpace > 24 ? sliced.slice(0, lastSpace) : sliced).trim();
+}
+
+/** Default stale window for wall-clock-killed `extracting` notes. */
+export const STUCK_EXTRACTING_MS = 3 * 60 * 1000;
+
+/** Pure: true when status is extracting and updatedAt is older than staleMs. */
+export function isStuckExtracting(
+  status: string | null | undefined,
+  updatedAt: string | null | undefined,
+  nowMs: number = Date.now(),
+  staleMs: number = STUCK_EXTRACTING_MS,
+): boolean {
+  if (status !== "extracting" || !updatedAt) return false;
+  const updatedMs = Date.parse(updatedAt);
+  if (Number.isNaN(updatedMs)) return false;
+  return updatedMs < nowMs - staleMs;
+}
+
+/** Flip stuck `extracting` (>3 min) → `extraction_failed` so extract can reclaim. */
+// deno-lint-ignore no-explicit-any
+export async function reclaimStuckExtracting(
+  supabase: any,
+  noteId: string,
+  userId: string,
+  nowMs: number = Date.now(),
+): Promise<boolean> {
+  const { data: note } = await supabase
+    .from("notes")
+    .select("status, updated_at")
+    .eq("id", noteId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!isStuckExtracting(note?.status, note?.updated_at, nowMs)) {
+    return false;
+  }
+
+  const { error } = await supabase
+    .from("notes")
+    .update({
+      status: "extraction_failed",
+      last_error_code: "stuck_extracting",
+      updated_at: new Date(nowMs).toISOString(),
+    })
+    .eq("id", noteId)
+    .eq("user_id", userId)
+    .eq("status", "extracting");
+
+  return !error;
+}

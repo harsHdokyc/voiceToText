@@ -7,10 +7,13 @@ import {
   isRetiredModelError,
   isRetryableHttpStatus,
   isRetryableUpstream,
+  isStuckExtracting,
   messageContentToText,
   mimeTypeForAudioFile,
   parseModelJson,
   publicAiConfigView,
+  sanitizeNoteTitle,
+  STUCK_EXTRACTING_MS,
   uniqueChatModels,
   upstreamHttpStatus,
 } from '@supabaseShared/ai/provider-utils';
@@ -188,5 +191,40 @@ describe('parseModelJson', () => {
 
   it('throws on non-JSON', () => {
     expect(() => parseModelJson('not-json')).toThrow();
+  });
+});
+
+describe('isStuckExtracting', () => {
+  const now = Date.parse('2026-10-20T17:00:00.000Z');
+
+  it('is true only for extracting older than the stale window', () => {
+    const staleAt = new Date(now - STUCK_EXTRACTING_MS - 1).toISOString();
+    expect(isStuckExtracting('extracting', staleAt, now)).toBe(true);
+  });
+
+  it('is false when still fresh, wrong status, or bad timestamp', () => {
+    const freshAt = new Date(now - 30_000).toISOString();
+    expect(isStuckExtracting('extracting', freshAt, now)).toBe(false);
+    expect(isStuckExtracting('review_ready', freshAt, now)).toBe(false);
+    expect(isStuckExtracting('extracting', 'not-a-date', now)).toBe(false);
+    expect(isStuckExtracting(null, null, now)).toBe(false);
+  });
+});
+
+describe('sanitizeNoteTitle', () => {
+  it('trims, strips quotes/trailing punctuation, and falls back', () => {
+    expect(sanitizeNoteTitle('  "Q3 pricing brainstorm."  ')).toBe(
+      'Q3 pricing brainstorm',
+    );
+    expect(sanitizeNoteTitle('   ')).toBe('Voice note');
+  });
+
+  it('truncates long titles on a word boundary', () => {
+    const long =
+      'Alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike';
+    const out = sanitizeNoteTitle(long, 40);
+    expect(out.length).toBeLessThanOrEqual(40);
+    expect(out.endsWith(' ')).toBe(false);
+    expect(out).not.toContain('mike');
   });
 });

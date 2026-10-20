@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
@@ -9,33 +9,26 @@ import {
   Button,
   EmptyState,
   Eyebrow,
-  Sheet,
-  TextField,
-  VoiceRibbon,
+  VoiceRibbon
 } from '@/components/ui';
+import { SuggestionReviewRow } from '@/components/work-row';
 import {
   useWorkspaceWide,
   WorkspacePage,
 } from '@/components/workspace-page';
-import { SuggestionReviewRow } from '@/components/work-row';
 import {
-  NOTE_CATEGORIES,
   formatNoteTime,
-  normalizeNoteCategory,
-  type NoteCategory,
+  normalizeNoteCategory
 } from '@/features/notes/services/note-category';
 import {
-  archiveNote,
-  getNote,
-  retryTranscription,
-  updateNoteContent,
-} from '@/features/notes/services/notes-service';
-import {
-  canTransitionNoteStatus,
   displayTranscript,
   isRetryableProcessing,
   noteStatusLabel,
 } from '@/features/notes/services/note-status';
+import {
+  getNote,
+  retryTranscription,
+} from '@/features/notes/services/notes-service';
 import { suggestionKindLabel } from '@/features/notes/services/pending-suggestions';
 import { approveSuggestionWithEdit } from '@/features/notes/services/suggestion-edit-save';
 import {
@@ -45,7 +38,6 @@ import {
   rejectSuggestion,
   type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
-import { deleteNote } from '@/features/settings/services/account-service';
 import { errorMessageForUi } from '@/lib/api-error';
 import { cn } from '@/lib/cn';
 import { colors } from '@/theme';
@@ -61,7 +53,6 @@ export default function NoteDetailScreen() {
   const wide = useWorkspaceWide();
   const [editingSuggestion, setEditingSuggestion] =
     useState<TaskSuggestion | null>(null);
-  const [editOpen, setEditOpen] = useState(false);
 
   const note = useQuery({
     queryKey: ['notes', noteId],
@@ -81,17 +72,6 @@ export default function NoteDetailScreen() {
     },
   });
 
-  const [title, setTitle] = useState('');
-  const [transcriptDraft, setTranscriptDraft] = useState('');
-  const [category, setCategory] = useState<NoteCategory>('Ideas');
-
-  useEffect(() => {
-    if (!note.data) return;
-    setTitle(note.data.title ?? '');
-    setTranscriptDraft(displayTranscript(note.data) ?? '');
-    setCategory(normalizeNoteCategory(note.data.category));
-  }, [note.data]);
-
   const suggestions = useQuery({
     queryKey: ['suggestions', noteId],
     queryFn: () => getSuggestions(noteId),
@@ -105,32 +85,6 @@ export default function NoteDetailScreen() {
     await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
     await queryClient.invalidateQueries({ queryKey: ['tasks'] });
   };
-
-  const saveContent = useMutation({
-    mutationFn: async () => {
-      if (!noteId) throw new Error('Note missing');
-      return updateNoteContent(noteId, {
-        title,
-        edited_transcript: transcriptDraft,
-        category,
-      });
-    },
-    onSuccess: async () => {
-      setEditOpen(false);
-      await invalidate();
-    },
-  });
-
-  const archive = useMutation({
-    mutationFn: async () => {
-      if (!note.data) throw new Error('Note missing');
-      await archiveNote(note.data);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['notes'] });
-      router.replace('/(app)/notes' as Href);
-    },
-  });
 
   const retry = useMutation({
     mutationFn: async () => {
@@ -161,18 +115,6 @@ export default function NoteDetailScreen() {
     },
   });
 
-  const removeNote = useMutation({
-    mutationFn: async () => {
-      if (!noteId) throw new Error('Note missing');
-      await deleteNote(noteId);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['notes'] });
-      await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
-      router.replace('/(app)/notes' as Href);
-    },
-  });
-
   if (note.isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-paper">
@@ -196,16 +138,12 @@ export default function NoteDetailScreen() {
   const busy =
     approve.isPending ||
     reject.isPending ||
-    saveContent.isPending ||
-    archive.isPending ||
-    saveSuggestionEdit.isPending ||
-    removeNote.isPending;
+    saveSuggestionEdit.isPending;
   const processing =
     row.status === 'queued' ||
     row.status === 'transcribing' ||
     row.status === 'extracting' ||
     row.status === 'uploading';
-  const canArchive = canTransitionNoteStatus(row.status, 'archived');
   const pendingSuggestions = (suggestions.data ?? []).filter((s) =>
     isPendingSuggestion(s.status),
   );
@@ -314,16 +252,6 @@ export default function NoteDetailScreen() {
       </View>
 
       <View className="mt-10 flex-row flex-wrap items-center gap-2">
-        {row.status !== 'archived' ? (
-          <Button
-            variant="quiet"
-            size="sm"
-            disabled={busy}
-            onPress={() => setEditOpen(true)}
-          >
-            Edit note
-          </Button>
-        ) : null}
         {isRetryableProcessing(row.status) ? (
           <Button
             variant="quiet"
@@ -334,40 +262,10 @@ export default function NoteDetailScreen() {
             {retry.isPending ? 'Retrying…' : 'Retry processing'}
           </Button>
         ) : null}
-        {canArchive ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            onPress={() => archive.mutate()}
-          >
-            Archive
-          </Button>
-        ) : null}
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={removeNote.isPending}
-          onPress={() => removeNote.mutate()}
-          accessibilityLabel="Delete note"
-        >
-          <Ionicons name="trash-outline" size={16} color={colors.destructive} />
-          <Text className="font-sans text-[13px] text-destructive">Delete</Text>
-        </Button>
       </View>
       {retry.error ? (
         <Text className="mt-2 font-sans text-destructive">
           {errorMessageForUi(retry.error, 'Retry failed')}
-        </Text>
-      ) : null}
-      {removeNote.error ? (
-        <Text className="mt-2 font-sans text-destructive">
-          {errorMessageForUi(removeNote.error, 'Delete failed')}
-        </Text>
-      ) : null}
-      {archive.error ? (
-        <Text className="mt-2 font-sans text-destructive">
-          {errorMessageForUi(archive.error, 'Archive failed')}
         </Text>
       ) : null}
 
@@ -395,58 +293,6 @@ export default function NoteDetailScreen() {
           });
         }}
       />
-
-      <Sheet
-        open={editOpen}
-        onClose={() => {
-          if (!saveContent.isPending) setEditOpen(false);
-        }}
-        title="Edit note"
-        description="Update title, category, or transcript."
-      >
-        <Text className="font-sans-medium text-xs text-stone">Category</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {NOTE_CATEGORIES.map((c) => (
-            <Button
-              key={c}
-              variant={category === c ? 'ink' : 'quiet'}
-              size="sm"
-              disabled={saveContent.isPending}
-              onPress={() => setCategory(c)}
-            >
-              {c}
-            </Button>
-          ))}
-        </View>
-        <Text className="font-sans-medium text-xs text-stone">Title</Text>
-        <TextField
-          value={title}
-          onChangeText={setTitle}
-          editable={!saveContent.isPending}
-          placeholder="Voice note"
-        />
-        <Text className="font-sans-medium text-xs text-stone">Transcript</Text>
-        <TextField
-          className="min-h-[120px] align-top"
-          value={transcriptDraft}
-          onChangeText={setTranscriptDraft}
-          editable={!saveContent.isPending}
-          multiline
-          placeholder="No transcript yet."
-        />
-        <Button
-          variant="cta"
-          disabled={saveContent.isPending}
-          onPress={() => saveContent.mutate()}
-        >
-          {saveContent.isPending ? 'Saving…' : 'Save changes'}
-        </Button>
-        {saveContent.error ? (
-          <Text className="mt-2 font-sans text-destructive">
-            {errorMessageForUi(saveContent.error, 'Save failed')}
-          </Text>
-        ) : null}
-      </Sheet>
     </WorkspacePage>
   );
 }

@@ -3,6 +3,8 @@
  * Never pass transcripts, audio, passwords, OTP, tokens, or signed URLs.
  */
 
+import { Platform } from 'react-native';
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export type LogFields = Record<string, unknown>;
@@ -57,10 +59,12 @@ export function formatLogLine(
 
 function write(level: LogLevel, scope: string, fields?: LogFields) {
   const line = formatLogLine(level, scope, fields);
-  // Metro / Expo terminal
-  // eslint-disable-next-line no-console
-  const sink = level === 'debug' ? console.log : console[level];
-  sink(line);
+  // Metro / Expo terminal only (not browser console)
+  if (Platform.OS !== 'web') {
+    // eslint-disable-next-line no-console
+    const sink = level === 'debug' ? console.log : console[level];
+    sink(line);
+  }
 }
 
 export const logger = {

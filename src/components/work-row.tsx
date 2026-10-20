@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
-import { Button } from '@/components/ui';
+import { Button, iconPressClassName } from '@/components/ui';
 import {
   dueLabel,
   isOverdueDueLabel,
@@ -27,7 +27,7 @@ function SourceNoteLink({ noteId }: { noteId: string }) {
           params: { noteId },
         })
       }
-      className="ml-1 flex-row items-center gap-0.5"
+      className="ml-1 flex-row items-center gap-0.5 rounded-sm px-1 py-0.5 transition-colors duration-200 hover:bg-muted active:bg-muted/80"
     >
       <Text className="font-sans text-xs text-stone">Source note</Text>
       <Ionicons name="chevron-forward" size={12} color={colors.stone} />
@@ -124,7 +124,7 @@ export function TaskProgressRow({
         accessibilityLabel={done ? `Reopen ${title}` : `Complete ${title}`}
         disabled={busy}
         onPress={onToggleDone}
-        className="mt-0.5 p-0.5"
+        className={cn('mt-0.5', iconPressClassName)}
       >
         <Ionicons
           name={done ? 'checkmark-circle' : 'ellipse-outline'}

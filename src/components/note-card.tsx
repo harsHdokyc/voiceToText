@@ -9,7 +9,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 
-import { Button, Eyebrow } from '@/components/ui';
+import { Button, Eyebrow, iconPressClassName } from '@/components/ui';
 import {
   formatNoteTime,
   noteCardTone,
@@ -54,7 +54,7 @@ export function NoteCard({
   return (
     <View
       className={cn(
-        'min-h-[220px] min-w-0 max-w-full gap-3 overflow-hidden rounded-lg p-6',
+        'min-h-[220px] min-w-0 max-w-full gap-3 overflow-hidden rounded-lg p-6 transition-transform duration-300 hover:-translate-y-1',
         TONE_CLASS[tone],
         className,
       )}
@@ -69,6 +69,7 @@ export function NoteCard({
             accessibilityLabel={`Options for ${note.title ?? 'note'}`}
             onPress={() => setMenuOpen((v) => !v)}
             hitSlop={12}
+            className={cn('-mr-2', iconPressClassName)}
           >
             <Ionicons name="ellipsis-horizontal" size={18} color={colors.ink} />
           </Pressable>
@@ -110,6 +111,7 @@ export function NoteCard({
           accessibilityLabel={`Open ${note.title ?? 'note'}`}
           onPress={open}
           hitSlop={12}
+          className={iconPressClassName}
         >
           <Ionicons name="arrow-forward" size={18} color={colors.ink} />
         </Pressable>

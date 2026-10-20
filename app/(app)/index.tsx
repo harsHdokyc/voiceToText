@@ -7,7 +7,13 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useCapture } from '@/components/capture-sheet';
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { NoteCardGrid } from '@/components/note-card';
-import { Button, EmptyState, Eyebrow, VoiceRibbon } from '@/components/ui';
+import {
+  Button,
+  EmptyState,
+  Eyebrow,
+  iconPressClassName,
+  VoiceRibbon,
+} from '@/components/ui';
 import {
   useWorkspaceDesktop,
   useWorkspaceWide,
@@ -214,7 +220,7 @@ export default function OverviewScreen() {
         </Text>
         <Pressable
           onPress={() => router.push('/(app)/notes' as Href)}
-          className="flex-row items-center gap-1"
+          className="flex-row items-center gap-1 rounded-md px-2 py-1 transition-colors duration-200 hover:bg-muted active:bg-muted/80"
         >
           <Text className="font-sans text-sm text-cobalt">All notes</Text>
           <Ionicons name="arrow-forward" size={14} color={colors.cobalt} />
@@ -252,6 +258,7 @@ export default function OverviewScreen() {
               accessibilityLabel="All suggestions"
               onPress={() => router.push('/(app)/suggestions' as Href)}
               hitSlop={8}
+              className={iconPressClassName}
             >
               <Ionicons name="arrow-forward" size={20} color={colors.ink} />
             </Pressable>
@@ -293,6 +300,7 @@ export default function OverviewScreen() {
               accessibilityLabel="All tasks"
               onPress={() => router.push('/(app)/tasks' as Href)}
               hitSlop={8}
+              className={iconPressClassName}
             >
               <Ionicons name="arrow-forward" size={20} color={colors.ink} />
             </Pressable>

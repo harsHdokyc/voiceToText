@@ -360,7 +360,7 @@ function CaptureSheet({
               disabled={busy}
               accessibilityLabel="Close"
               hitSlop={12}
-              className="absolute right-4 top-4 z-[2] p-1 opacity-70"
+              className="absolute right-4 top-4 z-[2] items-center justify-center rounded-md p-2 opacity-70 transition-all duration-200 hover:bg-muted hover:opacity-100 active:bg-muted/80"
             >
               <Ionicons name="close" size={18} color={colors.ink} />
             </Pressable>

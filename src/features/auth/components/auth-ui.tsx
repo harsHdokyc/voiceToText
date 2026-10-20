@@ -126,7 +126,7 @@ export function AuthTabs({ active }: { active: 'signin' | 'signup' }) {
       <Link
         href="/(auth)/sign-in"
         className={cn(
-          'min-h-[48px] flex-1 items-center justify-center border-b-2',
+          'min-h-[48px] flex-1 items-center justify-center border-b-2 transition-colors duration-200 hover:bg-muted/50',
           active === 'signin' ? 'border-cobalt' : 'border-transparent',
         )}
         accessibilityRole="tab"
@@ -144,7 +144,7 @@ export function AuthTabs({ active }: { active: 'signin' | 'signup' }) {
       <Link
         href="/(auth)/sign-up"
         className={cn(
-          'min-h-[48px] flex-1 items-center justify-center border-b-2',
+          'min-h-[48px] flex-1 items-center justify-center border-b-2 transition-colors duration-200 hover:bg-muted/50',
           active === 'signup' ? 'border-cobalt' : 'border-transparent',
         )}
         accessibilityRole="tab"
@@ -209,7 +209,7 @@ export function AuthPasswordField({
           accessibilityLabel={show ? 'Hide password' : 'Show password'}
           hitSlop={8}
           onPress={() => setShow((v) => !v)}
-          className="absolute right-2 h-11 w-11 items-center justify-center"
+          className="absolute right-2 h-11 w-11 items-center justify-center rounded-md transition-colors duration-200 hover:bg-muted active:bg-muted/80"
         >
           <Ionicons
             name={show ? 'eye-off-outline' : 'eye-outline'}
@@ -256,14 +256,13 @@ export function AuthButton({
       onPress={onPress}
       hitSlop={8}
       className={cn(
-        'mt-2 min-h-[52px] items-center justify-center rounded-pill px-6 py-3.5',
+        'mt-2 min-h-[52px] items-center justify-center rounded-pill px-6 py-3.5 transition-[background-color,transform,opacity] duration-300',
         isGhost
-          ? 'border border-border bg-transparent'
+          ? 'group border border-border bg-transparent hover:bg-ink active:bg-ink'
           : isSecondary
-            ? 'bg-cobalt-deep'
-            : 'bg-cobalt',
+            ? 'bg-cobalt-deep hover:opacity-90 active:scale-[0.98]'
+            : 'bg-cobalt hover:bg-cobalt-deep active:scale-[0.98]',
         busy && 'opacity-55',
-        !busy && 'active:opacity-90',
       )}
     >
       {busy ? (
@@ -272,7 +271,9 @@ export function AuthButton({
         <Text
           className={cn(
             'font-sans-medium text-[15px]',
-            isGhost ? 'text-ink' : 'text-card',
+            isGhost
+              ? 'text-ink group-hover:text-paper group-active:text-paper'
+              : 'text-card',
           )}
         >
           {label}

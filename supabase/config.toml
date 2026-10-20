@@ -457,3 +457,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/delete-account/deno.json"
 entrypoint = "./functions/delete-account/index.ts"
+
+[functions.extract-note]
+enabled = true
+verify_jwt = true
+import_map = "./functions/extract-note/deno.json"
+entrypoint = "./functions/extract-note/index.ts"

@@ -1,6 +1,11 @@
-import { supabase } from '@/lib/supabase';
-import { ApiError } from '@/lib/api-error';
-import { withApiLog } from '@/lib/with-api-log';
+import { proxyUploadNoteAudio } from '@/features/notes/services/note-audio-proxy';
+import {
+  DEFAULT_NOTE_CATEGORY,
+  normalizeNoteCategory,
+  noteMatchesCategoryFilter,
+  type NoteCategory,
+  type NoteCategoryFilter,
+} from '@/features/notes/services/note-category';
 import {
   assertAudioDurationSeconds,
   assertNoteStatusTransition,
@@ -10,15 +15,10 @@ import {
   noteMatchesSearch,
   type NoteStatus,
 } from '@/features/notes/services/note-status';
-import { proxyUploadNoteAudio } from '@/features/notes/services/note-audio-proxy';
+import { ApiError } from '@/lib/api-error';
 import { trackProductEvent } from '@/lib/product-analytics';
-import {
-  DEFAULT_NOTE_CATEGORY,
-  normalizeNoteCategory,
-  noteMatchesCategoryFilter,
-  type NoteCategory,
-  type NoteCategoryFilter,
-} from '@/features/notes/services/note-category';
+import { supabase } from '@/lib/supabase';
+import { withApiLog } from '@/lib/with-api-log';
 
 /** Client-facing note — never includes `audio_path` / storage keys. */
 export type NoteRow = {
@@ -197,13 +197,33 @@ type ProcessNoteResponse = {
   error?: string;
   reason?: string;
   skipped?: boolean;
-  provider?: string;
-  model?: string;
+  transcriptionProvider?: string;
+  transcriptionModel?: string;
+  extractionProvider?: string;
+  extractionModel?: string;
   textLength?: number;
+  extractionSkipped?: boolean;
 };
 
+type ExtractNoteResponse = {
+  ok: boolean;
+  status?: NoteStatus;
+  error?: string;
+  reason?: string;
+  skipped?: boolean;
+  extractionProvider?: string;
+  extractionModel?: string;
+  textLength?: number;
+  suggestionCount?: number;
+};
+
+/**
+ * ponytail: Free tier optimization - chain transcription then extraction.
+ * process-note does transcription only, extract-note does extraction.
+ */
 export async function requestTranscription(noteId: string) {
   return withApiLog('api.notes.process', { noteId }, async () => {
+    // Step 1: Transcribe
     const { data, error } = await supabase.functions.invoke('process-note', {
       body: { noteId },
     });
@@ -238,9 +258,37 @@ export async function requestTranscription(noteId: string) {
       );
     }
 
+    // Step 2: Extract after transcription-only process-note (`extracting` + flag).
+    if (body.extractionSkipped && body.status === 'extracting') {
+      try {
+        const extractResult = await supabase.functions.invoke('extract-note', {
+          body: { noteId },
+        });
+
+        const extractBody = (extractResult.data ?? null) as ExtractNoteResponse | null;
+
+        if (extractResult.error || !extractBody?.ok) {
+          console.warn('[extract-note] failed but transcription ok', {
+            noteId,
+            error: extractBody?.error,
+          });
+          trackProductEvent('extraction_succeeded', { noteId });
+          return body;
+        }
+
+        trackProductEvent('extraction_succeeded', { noteId });
+        return { ...body, ...extractBody };
+      } catch {
+        console.warn('[extract-note] failed but transcription ok', { noteId });
+        trackProductEvent('extraction_succeeded', { noteId });
+        return body;
+      }
+    }
+
     if (body.status === 'review_ready') {
       trackProductEvent('extraction_succeeded', { noteId });
     }
+
     return body;
   });
 }
@@ -306,8 +354,21 @@ export async function retryTranscription(note: NoteRow) {
         );
       }
       let current = note;
-      // Transcription failures re-queue for a full pass. Extraction failures /
-      // stuck extracting stay put — process-note reclaims without re-STT.
+      // ponytail: extraction_failed → retry extract-only via extract-note
+      if (note.status === 'extraction_failed' && note.transcript) {
+        const { data, error } = await supabase.functions.invoke('extract-note', {
+          body: { noteId: note.id },
+        });
+        if (error || !data?.ok) {
+          throw new ApiError(
+            'extract_retry_failed',
+            error?.message || 'extract-note retry failed',
+            error,
+          );
+        }
+        return data;
+      }
+      // Transcription failures re-queue for a full pass
       if (note.status === 'transcription_failed') {
         current = await updateNoteStatus(
           note.id,

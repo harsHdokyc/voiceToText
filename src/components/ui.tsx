@@ -39,21 +39,36 @@ export type ButtonVariant =
   | 'link';
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | 'icon';
 
+/**
+ * Shared press/hover chrome for bare icon Pressables (matches prototype ghost icon).
+ * Use on menu, close, checkbox, and toolbar icons outside Button.
+ */
+export const iconPressClassName =
+  'items-center justify-center rounded-md p-2 transition-colors duration-200 hover:bg-muted active:bg-muted/80';
+
+/** Soft row/nav hover (sidebar + list chrome). */
+export const navPressClassName =
+  'transition-colors duration-200 hover:bg-white/8 active:bg-white/12';
+
+// Hover / active mirror ui/goals-in-motion-55 button.tsx (+ NativeWind web hover).
 const variantClass: Record<ButtonVariant, string> = {
-  cta: 'bg-cobalt rounded-pill',
-  ink: 'bg-ink rounded-pill',
-  lime: 'bg-lime rounded-pill',
-  quiet: 'bg-transparent border border-border rounded-pill',
-  ghost: 'bg-transparent',
-  destructive: 'bg-destructive rounded-md',
-  link: 'bg-transparent',
+  cta: 'bg-cobalt rounded-pill transition-[background-color,transform] duration-300 hover:bg-cobalt-deep active:scale-[0.98]',
+  ink: 'bg-ink rounded-pill transition-[opacity,transform] duration-300 hover:opacity-85 active:scale-[0.98]',
+  lime: 'bg-lime rounded-pill transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98]',
+  quiet:
+    'group bg-transparent border border-border rounded-pill transition-colors duration-300 hover:bg-ink active:bg-ink',
+  ghost:
+    'bg-transparent rounded-md transition-colors duration-200 hover:bg-muted active:bg-muted/80',
+  destructive:
+    'bg-destructive rounded-md transition-colors duration-200 hover:bg-destructive/90 active:opacity-90',
+  link: 'bg-transparent transition-opacity duration-200 hover:opacity-80 active:opacity-70',
 };
 
 const variantTextClass: Record<ButtonVariant, string> = {
   cta: 'text-card',
   ink: 'text-paper',
   lime: 'text-ink',
-  quiet: 'text-ink',
+  quiet: 'text-ink group-hover:text-paper group-active:text-paper',
   ghost: 'text-ink',
   destructive: 'text-card',
   link: 'text-cobalt underline',
@@ -105,7 +120,7 @@ export function Button({
       disabled={disabled}
       onPress={onPress}
       className={cn(
-        'flex-row items-center justify-center gap-2 active:opacity-90',
+        'flex-row items-center justify-center gap-2',
         variantClass[variant],
         sizeClass[size],
         disabled && 'opacity-50',
@@ -336,7 +351,10 @@ export function Sheet({
           <Pressable
             onPress={onClose}
             hitSlop={12}
-            className="absolute right-4 top-4 z-[2] h-8 w-8 items-center justify-center rounded-sm"
+            className={cn(
+              'absolute right-4 top-4 z-[2] h-8 w-8 opacity-70 hover:opacity-100',
+              iconPressClassName,
+            )}
             accessibilityLabel="Close"
             accessibilityRole="button"
           >
