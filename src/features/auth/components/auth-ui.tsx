@@ -46,7 +46,7 @@ export function AuthScreen({
       {wide ? <AuthBrandPanel /> : null}
       <ScrollView
         className="flex-1"
-        contentContainerClassName="w-full max-w-md flex-grow items-center justify-center gap-3 self-center px-6 py-6"
+        contentContainerClassName="w-full max-w-md flex-grow justify-center gap-3 self-center px-6 py-6"
         keyboardShouldPersistTaps="handled"
       >
         <Eyebrow color={colors.cobalt}>{eyebrow}</Eyebrow>
@@ -57,7 +57,7 @@ export function AuthScreen({
           <Text className="mb-2 font-sans text-[15px] text-stone">{subtitle}</Text>
         ) : null}
         {tabs}
-        {children}
+        <View className="w-full gap-3">{children}</View>
       </ScrollView>
     </View>
   );
@@ -120,45 +120,52 @@ export function AuthBrandPanel() {
   );
 }
 
+function AuthTabLink({
+  href,
+  label,
+  selected,
+}: {
+  href: Href;
+  label: string;
+  selected: boolean;
+}) {
+  return (
+    <Link href={href} asChild>
+      <Pressable
+        accessibilityRole="tab"
+        accessibilityState={{ selected }}
+        className={cn(
+          'min-h-[48px] flex-1 items-center justify-center border-b-2 px-2 transition-colors duration-200 hover:bg-lime/50',
+          selected ? 'border-cobalt' : 'border-transparent',
+        )}
+      >
+        <Text
+          numberOfLines={1}
+          className={cn(
+            'font-sans-medium text-[15px]',
+            selected ? 'text-cobalt' : 'text-stone',
+          )}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </Link>
+  );
+}
+
 export function AuthTabs({ active }: { active: 'signin' | 'signup' }) {
   return (
-    <View className="mb-2 flex-row border-b border-border">
-      <Link
+    <View className="mb-2 w-full flex-row border-b border-border">
+      <AuthTabLink
         href="/(auth)/sign-in"
-        className={cn(
-          'min-h-[48px] flex-1 items-center justify-center border-b-2 transition-colors duration-200 hover:bg-lime/50',
-          active === 'signin' ? 'border-cobalt' : 'border-transparent',
-        )}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: active === 'signin' }}
-      >
-        <Text
-          className={cn(
-            'font-sans-medium text-[15px]',
-            active === 'signin' ? 'text-cobalt' : 'text-stone',
-          )}
-        >
-          Sign in
-        </Text>
-      </Link>
-      <Link
+        label="Sign in"
+        selected={active === 'signin'}
+      />
+      <AuthTabLink
         href="/(auth)/sign-up"
-        className={cn(
-          'min-h-[48px] flex-1 items-center justify-center border-b-2 transition-colors duration-200 hover:bg-lime/50',
-          active === 'signup' ? 'border-cobalt' : 'border-transparent',
-        )}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: active === 'signup' }}
-      >
-        <Text
-          className={cn(
-            'font-sans-medium text-[15px]',
-            active === 'signup' ? 'text-cobalt' : 'text-stone',
-          )}
-        >
-          Sign up
-        </Text>
-      </Link>
+        label="Sign up"
+        selected={active === 'signup'}
+      />
     </View>
   );
 }
@@ -294,15 +301,34 @@ export function AuthMessage({ children }: { children: ReactNode }) {
 
 export function AuthLink({ href, label }: { href: Href; label: string }) {
   return (
-    <Link
-      href={href}
-      className="min-h-[44px] py-2 text-center font-sans-medium text-cobalt"
-    >
-      {label}
+    <Link href={href} asChild>
+      <Pressable
+        accessibilityRole="link"
+        className="min-h-[44px] items-center justify-center py-2"
+      >
+        <Text className="text-center font-sans-medium text-cobalt">{label}</Text>
+      </Pressable>
     </Link>
   );
 }
 
 /** Inline link beside field labels (e.g. Forgot password). */
-export const authInlineLinkClassName =
-  'min-h-[44px] py-2.5 text-center font-sans-medium text-sm text-cobalt';
+export function AuthInlineLink({
+  href,
+  label,
+}: {
+  href: Href;
+  label: string;
+}) {
+  return (
+    <Link href={href} asChild>
+      <Pressable
+        accessibilityRole="link"
+        hitSlop={8}
+        className="min-h-[44px] justify-center py-2.5"
+      >
+        <Text className="font-sans-medium text-sm text-cobalt">{label}</Text>
+      </Pressable>
+    </Link>
+  );
+}

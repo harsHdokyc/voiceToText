@@ -1,17 +1,16 @@
-import { Link, Redirect } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { useState } from 'react';
 import { Text } from 'react-native';
 
 import {
   AuthButton,
+  AuthInlineLink,
   AuthLabeledField,
   AuthMessage,
   AuthPasswordField,
   AuthScreen,
   AuthTabs,
-  authInlineLinkClassName,
 } from '@/features/auth/components/auth-ui';
-import { cn } from '@/lib/cn';
 import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { signInWithPassword } from '@/features/auth/services/auth-service';
 import { useAuth } from '@/providers/auth-provider';
@@ -49,9 +48,10 @@ export default function SignInScreen() {
       <AuthPasswordField
         label="Password"
         trailing={
-          <Link href="/(auth)/forgot-password" className={cn(authInlineLinkClassName)}>
-            Forgot password?
-          </Link>
+          <AuthInlineLink
+            href="/(auth)/forgot-password"
+            label="Forgot password?"
+          />
         }
         autoCapitalize="none"
         autoComplete="password"
