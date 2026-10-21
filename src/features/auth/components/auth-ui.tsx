@@ -135,7 +135,7 @@ function AuthTabLink({
         accessibilityRole="tab"
         accessibilityState={{ selected }}
         className={cn(
-          'min-h-[48px] flex-1 items-center justify-center border-b-2 px-2 transition-colors duration-200 hover:bg-lime/50',
+          'min-h-[48px] flex-1 items-center justify-center border-b-2 px-2 hover:bg-lime/50 active:bg-lime/40',
           selected ? 'border-cobalt' : 'border-transparent',
         )}
       >
@@ -216,7 +216,7 @@ export function AuthPasswordField({
           accessibilityLabel={show ? 'Hide password' : 'Show password'}
           hitSlop={8}
           onPress={() => setShow((v) => !v)}
-          className="absolute right-2 h-11 w-11 items-center justify-center rounded-md transition-colors duration-200 hover:bg-lime active:bg-lime/80"
+          className="absolute right-2 h-11 w-11 items-center justify-center rounded-md hover:bg-lime active:bg-lime/80"
         >
           <Ionicons
             name={show ? 'eye-off-outline' : 'eye-outline'}
@@ -263,12 +263,14 @@ export function AuthButton({
       onPress={onPress}
       hitSlop={8}
       className={cn(
-        'mt-2 min-h-[52px] items-center justify-center rounded-pill px-6 py-3.5 transition-[background-color,transform,opacity] duration-300',
+        // No transition-* here: css-interop processTransition crashes on native
+        // ("cannot add a new property") when busy/opacity updates.
+        'mt-2 min-h-[52px] items-center justify-center rounded-pill px-6 py-3.5',
         isGhost
           ? 'group border border-border bg-transparent hover:bg-ink active:bg-ink'
           : isSecondary
-            ? 'bg-cobalt-deep hover:opacity-90 active:scale-[0.98]'
-            : 'bg-cobalt hover:bg-cobalt-deep active:scale-[0.98]',
+            ? 'bg-cobalt-deep active:opacity-90'
+            : 'bg-cobalt hover:bg-cobalt-deep active:opacity-90',
         busy && 'opacity-55',
       )}
     >
