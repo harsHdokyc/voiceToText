@@ -1,30 +1,56 @@
 /**
  * Shared dashboard page chrome — same gutters as ui/goals-in-motion-55 Workspace.
  */
-import { Children, isValidElement, type ReactNode } from 'react';
+import { Children, isValidElement, type ReactNode, useEffect } from 'react';
 import {
   ScrollView,
   useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, { Easing, FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { cn } from '@/lib/cn';
 import { layout, space, workspacePageContentClassName } from '@/theme';
 
-/** Same ease-out as the sidenav pill — long, soft settle. */
-const REVEAL_EASE = Easing.bezier(0.22, 1, 0.36, 1);
-const REVEAL_MS = 560;
-const STAGGER_MS = 55;
+/** Ease-out cubic — gentle start, unhurried settle (no snap). */
+const REVEAL_EASE = Easing.bezier(0.33, 1, 0.68, 1);
+const REVEAL_MS = 850;
+const REVEAL_RISE = 18;
+const STAGGER_MS = 90;
 /** Late sections share the last delay so long pages don't feel slow. */
 const MAX_STAGGER_STEPS = 5;
 
-function revealAt(index: number) {
-  return FadeInDown.duration(REVEAL_MS)
-    .delay(Math.min(index, MAX_STAGGER_STEPS) * STAGGER_MS)
-    .easing(REVEAL_EASE)
-    .withInitialValues({ transform: [{ translateY: 14 }] });
+/**
+ * Opacity + translate only (never layout). Starts hidden on the first frame,
+ * so there's no post-paint flash.
+ */
+function Reveal({ index, children }: { index: number; children: ReactNode }) {
+  const reduced = useReducedMotion();
+  const progress = useSharedValue(reduced ? 1 : 0);
+
+  useEffect(() => {
+    if (reduced) return;
+    progress.value = withDelay(
+      Math.min(index, MAX_STAGGER_STEPS) * STAGGER_MS,
+      withTiming(1, { duration: REVEAL_MS, easing: REVEAL_EASE }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only reveal
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ translateY: (1 - progress.value) * REVEAL_RISE }],
+  }));
+
+  return <Animated.View style={style}>{children}</Animated.View>;
 }
 
 export function useWorkspaceDesktop() {
@@ -66,12 +92,9 @@ export function WorkspacePage({
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}
     >
       {Children.toArray(children).map((child, index) => (
-        <Animated.View
-          key={isValidElement(child) ? child.key : index}
-          entering={revealAt(index)}
-        >
+        <Reveal key={isValidElement(child) ? child.key : index} index={index}>
           {child}
-        </Animated.View>
+        </Reveal>
       ))}
     </ScrollView>
   );
