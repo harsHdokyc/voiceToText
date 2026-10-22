@@ -10,7 +10,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "Saydo needs the microphone to record voice notes."
+        "NSMicrophoneUsageDescription": "Allow Saydo to record voice notes.",
+        "NSSpeechRecognitionUsageDescription": "Allow Saydo to show your words live while you speak."
       }
     },
     "android": {
@@ -21,9 +22,14 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "permissions": [
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ],
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.fanggore.voicetowork"
     },
     "web": {
       "bundler": "metro",
@@ -45,6 +51,13 @@
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
           "backgroundColor": "#f6f4ef"
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Saydo to record voice notes.",
+          "speechRecognitionPermission": "Allow Saydo to show your words live while you speak."
         }
       ]
     ],

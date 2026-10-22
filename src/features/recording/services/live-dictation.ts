@@ -1,7 +1,7 @@
 /**
  * Best-effort live transcript preview (prototype “Your thought”).
- * Web Speech only — product capture still records via expo-audio.
- * Native returns null (type into the field instead).
+ * Web Speech here; native uses live-dictation.native.ts. Product capture
+ * still records via expo-audio.
  */
 
 type SpeechResultLike = { 0?: { transcript?: string } };
