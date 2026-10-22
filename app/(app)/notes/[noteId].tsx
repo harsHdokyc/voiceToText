@@ -190,7 +190,7 @@ export default function NoteDetailScreen() {
 
       {/* Prototype: mt-10 grid gap-10 lg:grid-cols-2 */}
       <View className={cn('mt-10 gap-10', wide && 'flex-row items-start')}>
-        <View className="min-w-0 flex-1 border-t border-border pt-6">
+        <View className={cn('min-w-0 border-t border-border pt-6', wide && 'flex-1')}>
           <Eyebrow>Transcript</Eyebrow>
           <View className="my-5 w-full min-w-0">
             {audioPurged ? (
@@ -223,7 +223,7 @@ export default function NoteDetailScreen() {
           )}
         </View>
 
-        <View className="min-w-0 flex-1 border-t border-border pt-6">
+        <View className={cn('min-w-0 border-t border-border pt-6', wide && 'flex-1')}>
           <Eyebrow>Suggestions</Eyebrow>
           {row.status === 'review_ready' ? (
             suggestions.isLoading ? (

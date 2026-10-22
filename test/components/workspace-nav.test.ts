@@ -28,6 +28,7 @@ describe('hrefForWorkspaceNav', () => {
     expect(hrefForWorkspaceNav('Voice notes')).toBe('/(app)/notes');
     expect(hrefForWorkspaceNav('Suggestions')).toBe('/(app)/suggestions');
     expect(hrefForWorkspaceNav('Tasks')).toBe('/(app)/tasks');
+    expect(hrefForWorkspaceNav('Settings')).toBe('/(app)/settings');
   });
 });
 
@@ -35,7 +36,7 @@ describe('workspaceNavIndex', () => {
   it('returns nav slot or -1 for chrome-only sections', () => {
     expect(workspaceNavIndex('Overview')).toBe(0);
     expect(workspaceNavIndex('Tasks')).toBe(3);
-    expect(workspaceNavIndex('Settings')).toBe(-1);
+    expect(workspaceNavIndex('Settings')).toBe(4);
     expect(workspaceNavIndex('Capture')).toBe(-1);
   });
 });

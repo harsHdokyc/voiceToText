@@ -142,7 +142,7 @@ export default function OverviewScreen() {
     <WorkspacePage gap={space[6]}>
       {/* Greeting + counts — lg:grid-cols-[1fr_auto] */}
       <View className={cn('gap-6', wide && 'flex-row items-end justify-between')}>
-        <View className="min-w-0 flex-1 gap-3">
+        <View className={cn('min-w-0 gap-3', wide && 'flex-1')}>
           <Eyebrow>A little room to think</Eyebrow>
           <Text
             className={cn(
@@ -180,7 +180,7 @@ export default function OverviewScreen() {
           desktop && 'flex-row items-center gap-6 p-8',
         )}
       >
-        <View className="min-w-0 flex-1 gap-3">
+        <View className={cn('min-w-0 gap-3', desktop && 'flex-1')}>
           <Eyebrow color="rgba(255,255,255,0.7)">
             From thought to follow-through
           </Eyebrow>
@@ -246,7 +246,7 @@ export default function OverviewScreen() {
 
       {/* Waiting + next steps — lg: 2 cols */}
       <View className={cn('mt-2 gap-10', wide && 'flex-row')}>
-        <View className="min-w-0 flex-1">
+        <View className={cn('min-w-0', wide && 'flex-1')}>
           <View className="mb-1 flex-row items-center justify-between border-b border-border pb-4">
             <Text className="font-display text-xl font-medium text-ink">
               Waiting for your call{' '}
@@ -291,7 +291,7 @@ export default function OverviewScreen() {
           )}
         </View>
 
-        <View className="min-w-0 flex-1">
+        <View className={cn('min-w-0', wide && 'flex-1')}>
           <View className="mb-1 flex-row items-center justify-between border-b border-border pb-4">
             <Text className="font-display text-xl font-medium text-ink">
               Your next steps

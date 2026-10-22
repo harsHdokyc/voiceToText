@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CaptureProvider, useCapture } from '@/components/capture-sheet';
 import { PageEnter } from '@/components/page-enter';
-import { Button, iconPressClassName, navPressClassName } from '@/components/ui';
+import { Button, iconPressClassName } from '@/components/ui';
 import {
   hrefForWorkspaceNav,
   WORKSPACE_NAV,
@@ -45,6 +45,7 @@ const NAV_ICONS: Record<
   'Voice notes': 'mic-outline',
   Suggestions: 'sparkles-outline',
   Tasks: 'checkbox-outline',
+  Settings: 'settings-outline',
 };
 
 /** Prototype `--ease-out`: cubic-bezier(0.22, 1, 0.36, 1). */
@@ -219,36 +220,13 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
               );
             })}
           </View>
-          <View className="gap-3 border-t border-white/12 pt-4">
-            <Pressable
-              onPress={() => open(-1, '/(app)/settings' as Href)}
+          <View className="border-t border-white/12 pt-4">
+            <View
               className={cn(
-                'min-h-11 flex-row items-center gap-3 rounded-md px-3',
-                navPressClassName,
-                collapsed && 'w-12 justify-center self-center px-0',
-                section === 'Settings' && 'bg-white/8',
+                'flex-row items-center gap-3 px-2',
+                collapsed && 'justify-center px-0',
               )}
-              accessibilityLabel="Settings"
             >
-              <Ionicons
-                name="settings-outline"
-                size={20}
-                color={
-                  section === 'Settings' ? colors.lime : colors.stone
-                }
-              />
-              {!collapsed ? (
-                <Text
-                  className={cn(
-                    'font-sans text-sm text-stone',
-                    section === 'Settings' && 'text-lime',
-                  )}
-                >
-                  Settings
-                </Text>
-              ) : null}
-            </Pressable>
-            <View className="flex-row items-center gap-3 px-2 pt-2">
               <View className="h-8 w-8 items-center justify-center rounded-pill bg-lavender">
                 <Text className="font-sans-medium text-xs text-ink">
                   {initial}
@@ -320,23 +298,6 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
           style={!desktop ? { paddingBottom: 72 + insets.bottom } : undefined}
         >
           <PageEnter animKey={pathname}>{children}</PageEnter>
-          {!desktop ? (
-            <Pressable
-              onPress={() => router.push('/(app)/settings' as Href)}
-              className="flex-row items-center gap-2 rounded-md px-page-x py-3 transition-opacity duration-200 hover:opacity-80 active:opacity-70"
-              accessibilityLabel="Settings"
-              hitSlop={12}
-            >
-              <Ionicons
-                name="settings-outline"
-                size={16}
-                color={colors.cobalt}
-              />
-              <Text className="font-sans text-sm text-cobalt underline">
-                Settings
-              </Text>
-            </Pressable>
-          ) : null}
         </View>
 
         {!desktop ? (
@@ -352,6 +313,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                   onPress={() =>
                     open(index, hrefForWorkspaceNav(item) as Href)
                   }
+                  accessibilityLabel={item}
                   className={cn(
                     'min-h-16 flex-1 items-center justify-center gap-1 px-0.5 transition-colors duration-200 hover:bg-lavender/60 active:bg-lavender',
                     active && 'bg-lavender',

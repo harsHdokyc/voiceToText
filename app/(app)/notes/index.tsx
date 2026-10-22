@@ -58,7 +58,7 @@ export default function VoiceNotesScreen() {
       <View
         className={cn('my-8 gap-4', wide && 'flex-row items-center gap-4')}
       >
-        <View className="min-w-0 flex-1 flex-row flex-wrap gap-2">
+        <View className={cn('min-w-0 flex-row flex-wrap gap-2', wide && 'flex-1')}>
           {NOTE_CATEGORY_FILTERS.map((c) => (
             <Button
               key={c}

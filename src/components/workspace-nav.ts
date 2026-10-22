@@ -3,10 +3,11 @@ export const WORKSPACE_NAV = [
   'Voice notes',
   'Suggestions',
   'Tasks',
+  'Settings',
 ] as const;
 
 export type WorkspaceNavItem = (typeof WORKSPACE_NAV)[number];
-export type WorkspaceSection = WorkspaceNavItem | 'Settings' | 'Capture';
+export type WorkspaceSection = WorkspaceNavItem | 'Capture';
 
 /** Desktop sidenav row: `h-11` + `mb-2`. */
 export const WORKSPACE_NAV_ITEM_H = 44;
@@ -43,5 +44,7 @@ export function hrefForWorkspaceNav(item: WorkspaceNavItem): string {
       return '/(app)/suggestions';
     case 'Tasks':
       return '/(app)/tasks';
+    case 'Settings':
+      return '/(app)/settings';
   }
 }
