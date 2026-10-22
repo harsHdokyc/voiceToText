@@ -65,6 +65,7 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 |---|---|
 | Resend transactional email channel | Needs `RESEND_API_KEY` + domain; schema has `email` channel |
 | Reminder quiet hours / disable push UI | `profiles.push_enabled` column exists (default true); UI + dispatcher check not wired |
+| Sentry client crash/error + performance monitoring | Before beta/store builds — [24_SENTRY_PLAN.md](./24_SENTRY_PLAN.md) |
 | Cost/latency dashboard or billing alerts | `ai_usage_events` rows exist; no BI UI |
 | Formal privacy policy URL / legal review | In-app disclosure exists |
 | Server FTS (Postgres) | In-memory note/task search is enough for V1 volume |

@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, TextField, VoiceRibbon } from '@/components/ui';
 import { formatCaptureTimer } from '@/features/recording/services/capture-timer';
 import {
+  isLiveDictationAvailable,
   startLiveDictation,
   type LiveDictationSession,
 } from '@/features/recording/services/live-dictation';
@@ -101,14 +102,17 @@ function CaptureSheet({
   const autoStopped = useRef(false);
   const dictationRef = useRef<LiveDictationSession | null>(null);
   const thoughtRef = useRef('');
+  const [livePreview] = useState(isLiveDictationAvailable);
 
   const isRecording = state.isRecording;
   const durationSeconds = Math.floor((state.durationMillis ?? 0) / 1000);
   const displaySeconds = isRecording ? durationSeconds : readyDuration;
   const hasClip = Boolean(readyUri) && !isRecording;
-  // Prototype Workspace.tsx: disabled={!draft.trim() || thinking}
   const hasDraft = draftThought.trim().length > 0;
-  const canProcess = hasDraft && !busy;
+  // Audio alone is enough: process-note transcribes it server-side.
+  const canProcess = (hasDraft || isRecording || hasClip) && !busy;
+  const showTranscribeHint =
+    !livePreview && (isRecording || hasClip) && !hasDraft;
   // Prototype: disabled={!draft.trim() || recording || thinking}
   const canJustSave = hasDraft && !isRecording && !busy;
   const maxCardH = Math.min(
@@ -226,7 +230,7 @@ function CaptureSheet({
 
   /** Prototype “Turn into next steps” — stop listening, then upload + process. */
   async function turnIntoNextSteps() {
-    if (!hasDraft || busy) return;
+    if (!canProcess) return;
     setBusy(true);
     setError(null);
     try {
@@ -451,6 +455,12 @@ function CaptureSheet({
               scrollEnabled
               textAlignVertical="top"
             />
+            {showTranscribeHint ? (
+              <Text className="font-sans text-[13px] leading-5 text-stone">
+                Live text isn’t available on this device. Saydo transcribes
+                your voice when you tap Turn into next steps.
+              </Text>
+            ) : null}
 
             {error ? (
               <Text
