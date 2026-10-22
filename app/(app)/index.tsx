@@ -220,7 +220,7 @@ export default function OverviewScreen() {
         </Text>
         <Pressable
           onPress={() => router.push('/(app)/notes' as Href)}
-          className="flex-row items-center gap-1 rounded-md px-2 py-1 transition-colors duration-200 hover:bg-lime active:bg-lime/80"
+          className="flex-row items-center gap-1 rounded-md px-2 py-1 web:transition-colors web:duration-200 hover:bg-lime active:bg-lime/80"
         >
           <Text className="font-sans text-sm text-cobalt">All notes</Text>
           <Ionicons name="arrow-forward" size={14} color={colors.cobalt} />

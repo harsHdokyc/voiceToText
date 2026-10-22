@@ -44,25 +44,27 @@ export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | 'icon';
  * Use on menu, close, checkbox, and toolbar icons outside Button.
  */
 // Prototype ghost/icon accent = lime (styles.css --accent: var(--lime)).
+// Every `transition-*` / `duration-*` in the app must be `web:`-prefixed: on native,
+// css-interop's processTransition crashes with Reanimated 4 ("cannot add a new property").
 export const iconPressClassName =
-  'items-center justify-center rounded-md p-2 transition-colors duration-200 hover:bg-lime active:bg-lime/80';
+  'items-center justify-center rounded-md p-2 web:transition-colors web:duration-200 hover:bg-lime active:bg-lime/80';
 
 /** Soft row/nav hover (sidebar + list chrome). */
 export const navPressClassName =
-  'transition-colors duration-200 hover:bg-white/8 active:bg-white/12';
+  'web:transition-colors web:duration-200 hover:bg-white/8 active:bg-white/12';
 
 // Hover / active mirror ui/goals-in-motion-55 button.tsx (+ NativeWind web hover).
 const variantClass: Record<ButtonVariant, string> = {
-  cta: 'bg-cobalt rounded-pill transition-[background-color,transform] duration-300 hover:bg-cobalt-deep active:scale-[0.98]',
-  ink: 'bg-ink rounded-pill transition-[opacity,transform] duration-300 hover:opacity-85 active:scale-[0.98]',
-  lime: 'bg-lime rounded-pill transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.98]',
+  cta: 'bg-cobalt rounded-pill web:transition-[background-color,transform] web:duration-300 hover:bg-cobalt-deep active:scale-[0.98]',
+  ink: 'bg-ink rounded-pill web:transition-[opacity,transform] web:duration-300 hover:opacity-85 active:scale-[0.98]',
+  lime: 'bg-lime rounded-pill web:transition-transform web:duration-300 hover:-translate-y-0.5 active:scale-[0.98]',
   quiet:
-    'group bg-transparent border border-border rounded-pill transition-colors duration-300 hover:bg-ink active:bg-ink',
+    'bg-transparent border border-border rounded-pill web:transition-colors web:duration-300 hover:bg-ink active:bg-ink',
   ghost:
-    'bg-transparent rounded-md transition-colors duration-200 hover:bg-lime active:bg-lime/80',
+    'bg-transparent rounded-md web:transition-colors web:duration-200 hover:bg-lime active:bg-lime/80',
   destructive:
-    'bg-destructive rounded-md transition-colors duration-200 hover:bg-destructive/90 active:opacity-90',
-  link: 'bg-transparent transition-opacity duration-200 hover:opacity-80 active:opacity-70',
+    'bg-destructive rounded-md web:transition-colors web:duration-200 hover:bg-destructive/90 active:opacity-90',
+  link: 'bg-transparent web:transition-opacity web:duration-200 hover:opacity-80 active:opacity-70',
 };
 
 const variantTextClass: Record<ButtonVariant, string> = {
@@ -121,7 +123,9 @@ export function Button({
       disabled={disabled}
       onPress={onPress}
       className={cn(
-        'flex-row items-center justify-center gap-2',
+        // `group` on every variant: adding it later (ink ↔ quiet chips) makes NativeWind
+        // remount the button as a container, and its dev warning crashes on native.
+        'group flex-row items-center justify-center gap-2',
         variantClass[variant],
         sizeClass[size],
         disabled && 'opacity-50',

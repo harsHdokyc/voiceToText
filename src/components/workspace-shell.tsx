@@ -314,7 +314,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
                   }
                   accessibilityLabel={item}
                   className={cn(
-                    'min-h-16 flex-1 items-center justify-center gap-1 px-0.5 transition-colors duration-200 hover:bg-lavender/60 active:bg-lavender',
+                    'min-h-16 flex-1 items-center justify-center gap-1 px-0.5 web:transition-colors web:duration-200 hover:bg-lavender/60 active:bg-lavender',
                     active && 'bg-lavender',
                   )}
                   accessibilityRole="button"

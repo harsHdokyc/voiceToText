@@ -189,9 +189,9 @@ export function NoteCard({
         accessibilityRole="button"
         accessibilityLabel={`Open ${title}`}
         onPress={open}
-        className="group w-full items-center border-t-[5px] border-ink bg-ink py-3.5 transition-colors duration-150 hover:bg-lime active:bg-lime"
+        className="group w-full items-center border-t-[5px] border-ink bg-ink py-3.5 web:transition-colors web:duration-150 hover:bg-lime active:bg-lime"
       >
-        <Text className="font-display text-[17px] tracking-[3px] text-lime transition-colors duration-150 group-hover:text-ink group-active:text-ink">
+        <Text className="font-display text-[17px] tracking-[3px] text-lime web:transition-colors web:duration-150 group-hover:text-ink group-active:text-ink">
           OPEN NOTE
         </Text>
       </Pressable>

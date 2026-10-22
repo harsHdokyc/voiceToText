@@ -27,7 +27,7 @@ function SourceNoteLink({ noteId }: { noteId: string }) {
           params: { noteId },
         })
       }
-      className="ml-1 flex-row items-center gap-0.5 rounded-sm px-1 py-0.5 transition-colors duration-200 hover:bg-lime active:bg-lime/80"
+      className="ml-1 flex-row items-center gap-0.5 rounded-sm px-1 py-0.5 web:transition-colors web:duration-200 hover:bg-lime active:bg-lime/80"
     >
       <Text className="font-sans text-xs text-stone">Source note</Text>
       <Ionicons name="chevron-forward" size={12} color={colors.stone} />
