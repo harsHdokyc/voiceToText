@@ -24,6 +24,7 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | A9 | Redeploy Edge `purge-note-audio` (`verify_jwt` off) and `extract-note` after A11. `note-audio` / `process-note` have no further change for this rule | [ ] |
 | A10 | Schedule `purge-note-audio` hourly with header `x-cron-secret: <CRON_SECRET>` if it is not already scheduled. `pg_cron` is not installed; Dashboard Cron, or enable `pg_cron`+`pg_net` and store the secret in Vault (SQL example in [09_NOTIFICATIONS_EMAIL_CRON.md](./09_NOTIFICATIONS_EMAIL_CRON.md)). Do not commit the secret | [ ] |
 | A11 | Apply migration `20261022160000_audio_purge_any_status` (`list_orphan_note_audio` only). Do this before relying on orphan cleanup | [ ] |
+| A12 | Apply migration `20261022180000_count_ai_usage_ownership`. No function redeploy. Cross-user `count_ai_usage_today` must return `42501`, not the other user’s count | [ ] |
 
 ### B. Device smoke (blocks private beta confidence)
 
@@ -41,7 +42,7 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | # | Item | Done? |
 |---|---|---|
 | C1 | Run two-user deny cases (`supabase/tests/rls_phase6_phase7.sql`) on hosted/local | [ ] |
-| C2 | Cross-user zero access: notes, tasks, suggestions, reminders, audio, deliveries | [ ] |
+| C2 | Cross-user zero access: notes, tasks, suggestions, reminders, audio, deliveries, and `count_ai_usage_today` (`42501` for another user’s id) | [ ] |
 | C3 | Anon denied on user tables / claim-approve RPCs | [ ] |
 | C4 | Approve twice → one task; extraction retry no duplicate pendings (manual/integration) | [ ] |
 | C5 | Production/preview build + secret scan clean | [ ] |

@@ -14,6 +14,7 @@
 13. No broad `true` policies for private content.
 14. Keep service-role usage isolated to trusted server code; authorize first.
 15. Commit migrations and review grants/RLS together.
+16. `count_ai_usage_today` may be called by the signed-in user, and only for `auth.uid()`. `process-note` uses that user JWT for the 40/day cap. `service_role` may count any user. A mismatch raises `42501` and does not return the other count.
 
 Audio path pattern (server-only): `{user_id}/notes/{note_id}/original.ext`. Client never receives `audio_path` — use Edge `note-audio` proxy with `noteId` for upload/download. Storage policy validates bucket and first-folder ownership (`auth.uid()`); server checks object belongs to authenticated user and expected note. Use allowed MIME types/size limit. For deletion, coordinate DB and object cleanup with retries and orphan cleanup.
 
