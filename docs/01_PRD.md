@@ -24,7 +24,7 @@ Title, original transcript, status, duration, language if available, timestamps,
 ### AI extraction
 Schema-validated suggestions with title, optional details, kind, source quote, optional due date only when supported by the transcript, optional priority only when clear. Empty list if no tasks. Suggestions are not active tasks until approved.
 ### Tasks
-List, edit, complete/incomplete, delete/archive, link to source note, show source quote/context.
+List, edit, complete/incomplete, delete, link to source note, show source quote/context.
 ### Reminders
 User-created reminder; UTC storage and local display; durable in-app state; best-effort push; user preferences.
 ### Privacy

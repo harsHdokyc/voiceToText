@@ -396,7 +396,7 @@ Each step: **goal → do → do not → exit**.
 
 **Do**
 - Restyle `tasks/index` to prototype filters and row layout.
-- Complete toggle, edit entry, remove/archive per existing semantics.
+- Complete toggle, edit entry, remove (delete).
 - Source note link.
 - Due display: port `dueLabel` as a pure helper next to tasks feature (adapt to app’s date fields) + Vitest like `data.test.ts`.
 
@@ -407,7 +407,7 @@ Each step: **goal → do → do not → exit**.
 **Exit**
 - Filters behave; completion persists; tests cover `dueLabel` (and any new pure filter helper).
 
-**Status: done (2026-10-10).** Tasks Open/Completed/All; `dueLabel` + `taskListQueryForFilter`; complete/reopen, edit → detail, remove → archive; source note link.
+**Status: done (2026-10-10).** Tasks Open/Completed/All; `dueLabel` + `taskListQueryForFilter`; complete/reopen, edit → detail, remove → delete; source note link.
 
 ---
 

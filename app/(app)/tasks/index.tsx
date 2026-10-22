@@ -8,8 +8,8 @@ import { Button, EmptyState, Eyebrow } from '@/components/ui';
 import { WorkspacePage } from '@/components/workspace-page';
 import { TaskProgressRow } from '@/components/work-row';
 import {
-  archiveTask,
   completeTask,
+  deleteTask,
   listTasks,
   reopenTask,
   type TaskRow,
@@ -53,7 +53,7 @@ export default function TasksScreen() {
   });
 
   const remove = useMutation({
-    mutationFn: (taskId: string) => archiveTask(taskId),
+    mutationFn: (taskId: string) => deleteTask(taskId),
     onSuccess: invalidate,
   });
 

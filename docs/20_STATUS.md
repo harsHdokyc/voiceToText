@@ -92,7 +92,7 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | Capture | In-shell modal ≤60s `expo-audio` → upload → process-note (optional web live preview) |
 | Note detail | Transcript, suggestion approve/dismiss, retry, **delete note**, category |
 | Suggestions | Global pending inbox; Approve / Approve all / Edit (approve-with-edits) / Dismiss |
-| Tasks | Open/Completed/All; complete; edit sheet (due + 1h/3h/1d reminder); archive; source note |
+| Tasks | Open/Completed/All; complete; edit sheet (due + 1h/3h/1d reminder); delete; source note |
 | Settings | Display name persist; privacy; push; sign out; delete account; Developer collapsed |
 
 ## AI / Edge

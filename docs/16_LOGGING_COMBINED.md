@@ -124,7 +124,6 @@ Prefer these `code` values in DB `last_error_code`, JSON `error`, and logs `code
 | `suggestion_not_found_or_not_pending` | RPC: suggestion not found or not pending |
 | `title_required` | Approve edit/RPC: blank title after trim |
 | `task_not_found` | Task missing or not owned |
-| `task_archived` | Edit attempted on archived task |
 | `task_update_lost` | Conditional task update matched no row |
 | `task_status_transition_lost` | Complete/reopen matched no row |
 | `invalid_task_status_transition` | Illegal task status change |

@@ -10,23 +10,21 @@ export const NOTE_STATUSES = [
   'upload_failed',
   'transcription_failed',
   'extraction_failed',
-  'archived',
 ] as const;
 
 export type NoteStatus = (typeof NOTE_STATUSES)[number];
 
 const ALLOWED: Record<NoteStatus, readonly NoteStatus[]> = {
-  draft: ['uploading', 'archived'],
+  draft: ['uploading'],
   uploading: ['queued', 'upload_failed'],
-  upload_failed: ['uploading', 'archived'],
-  queued: ['transcribing', 'archived'],
+  upload_failed: ['uploading'],
+  queued: ['transcribing'],
   transcribing: ['extracting', 'review_ready', 'transcription_failed'],
-  transcription_failed: ['queued', 'archived'],
+  transcription_failed: ['queued'],
   extracting: ['review_ready', 'extraction_failed'],
   // queued = full reprocess; extracting = re-run extraction only (process-note)
-  extraction_failed: ['queued', 'extracting', 'archived'],
-  review_ready: ['archived'],
-  archived: [],
+  extraction_failed: ['queued', 'extracting'],
+  review_ready: [],
 };
 
 export function canTransitionNoteStatus(from: NoteStatus, to: NoteStatus) {
@@ -80,7 +78,6 @@ export function noteStatusShort(status: NoteStatus) {
   ) {
     return 'Live';
   }
-  if (status === 'archived') return 'Arch';
   return 'Draft';
 }
 

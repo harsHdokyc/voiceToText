@@ -11,7 +11,7 @@ Use UUID primary keys, UTC `timestamptz`, foreign keys, constraints, indexes, an
 `id`, `user_id`, `note_id`, `title`, `details`, `kind`, `due_at`, `priority`, `source_quote`, `confidence`, `status` (`pending/approved/rejected`), `created_task_id`, timestamps. Index `(user_id, note_id)`.
 
 ## tasks
-`id`, `user_id`, `source_note_id`, `source_suggestion_id`, `title`, `details`, `status` (`open/completed/archived`), `due_at`, `priority`, `completed_at`, timestamps. Unique partial index on non-null `source_suggestion_id` prevents duplicate approval. Index `(user_id, status, due_at)`.
+`id`, `user_id`, `source_note_id`, `source_suggestion_id`, `title`, `details`, `status` (`open/completed`), `due_at`, `priority`, `completed_at`, timestamps. Unique partial index on non-null `source_suggestion_id` prevents duplicate approval. Index `(user_id, status, due_at)`.
 
 ## reminders
 `id`, `user_id`, `task_id`, `scheduled_for`, `status` (`scheduled/claimed/sent/cancelled/failed`), unique `idempotency_key`, `attempt_count`, `last_error_code`, timestamps and `sent_at`. Index `(status, scheduled_for)`.

@@ -1,14 +1,13 @@
 import { ApiError } from '@/lib/api-error';
 
-export const TASK_STATUSES = ['open', 'completed', 'archived'] as const;
+export const TASK_STATUSES = ['open', 'completed'] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 export type TaskPriority = 'low' | 'normal' | 'high';
 
 const ALLOWED: Record<TaskStatus, readonly TaskStatus[]> = {
-  open: ['completed', 'archived'],
-  completed: ['open', 'archived'],
-  archived: [],
+  open: ['completed'],
+  completed: ['open'],
 };
 
 export function canTransitionTaskStatus(from: TaskStatus, to: TaskStatus) {

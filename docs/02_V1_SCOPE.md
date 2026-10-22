@@ -9,7 +9,7 @@ Reminders, Expo push registration/delivery, note/task search, transactional emai
 Widgets, Siri/Shortcuts, calendar/task integrations, semantic search, voice chat, teams, billing.
 
 ## Note states
-`draft -> uploading -> queued -> transcribing -> extracting -> review_ready`; failures: `upload_failed`, `transcription_failed`, `extraction_failed`; user may archive. Validate transitions; avoid an overly generic state machine.
+`draft -> uploading -> queued -> transcribing -> extracting -> review_ready`; failures: `upload_failed`, `transcription_failed`, `extraction_failed`. No archive state (removed). Validate transitions; avoid an overly generic state machine.
 
 ## Acceptance
 One valid upload creates one note and one private object. Processing moves through defined states without duplicate jobs. Transcript and suggestions persist on success. Model output is schema-validated. User can review suggestions. Approving a suggestion twice creates only one task. Cross-user note/task/audio access is denied. Retry after failure does not lose the original audio. Loading, empty, success, and error states exist.

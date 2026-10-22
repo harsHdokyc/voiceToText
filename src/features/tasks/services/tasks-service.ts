@@ -35,10 +35,9 @@ const TASK_PUBLIC_SELECT =
   'id, source_note_id, source_suggestion_id, title, details, kind, status, due_at, priority, completed_at, created_at, updated_at';
 
 export type ListTasksParams = {
-  /** When set, only that status. When omitted, open + completed unless includeArchived. */
+  /** When set, only that status. When omitted, all tasks. */
   status?: TaskStatus;
   query?: string;
-  includeArchived?: boolean;
 };
 
 async function loadTask(taskId: string) {
@@ -70,8 +69,6 @@ export async function listTasks(params: ListTasksParams = {}) {
 
       if (params.status) {
         q = q.eq('status', params.status);
-      } else if (!params.includeArchived) {
-        q = q.in('status', ['open', 'completed']);
       }
 
       const { data, error } = await q;
@@ -91,10 +88,6 @@ export async function getTask(taskId: string) {
 export async function updateTask(taskId: string, draft: TaskEditDraft) {
   return withApiLog('api.tasks.update', { taskId }, async () => {
     const current = await loadTask(taskId);
-    if (current.status === 'archived') {
-      throw new ApiError('task_archived', 'Archived tasks cannot be edited');
-    }
-
     const edits = buildTaskEdits(current, draft);
     if (!edits) return current;
 
@@ -169,31 +162,6 @@ export async function reopenTask(taskId: string) {
       throw new ApiError(
         'task_status_transition_lost',
         `Could not reopen task from ${current.status}`,
-      );
-    }
-    return data as TaskRow;
-  });
-}
-
-export async function archiveTask(taskId: string) {
-  return withApiLog('api.tasks.archive', { taskId }, async () => {
-    const current = await loadTask(taskId);
-    assertTaskStatusTransition(current.status, 'archived');
-    const { data, error } = await supabase
-      .from('tasks')
-      .update({
-        status: 'archived',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', taskId)
-      .eq('status', current.status)
-      .select(TASK_PUBLIC_SELECT)
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) {
-      throw new ApiError(
-        'task_status_transition_lost',
-        `Could not archive task from ${current.status}`,
       );
     }
     return data as TaskRow;

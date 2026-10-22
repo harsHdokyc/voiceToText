@@ -48,8 +48,6 @@ function asNoteRow(row: NoteRow): NoteRow {
 export type ListNotesParams = {
   query?: string;
   category?: NoteCategoryFilter;
-  /** When false, include archived. Default hides archived. */
-  includeArchived?: boolean;
 };
 
 export async function listNotes(params: ListNotesParams = {}) {
@@ -62,19 +60,12 @@ export async function listNotes(params: ListNotesParams = {}) {
     {
       hasQuery: !!search,
       category: params.category ?? 'All notes',
-      includeArchived: !!params.includeArchived,
     },
     async () => {
-      let q = supabase
+      const { data, error } = await supabase
         .from('notes')
         .select(NOTE_PUBLIC_SELECT)
         .order('created_at', { ascending: false });
-
-      if (!params.includeArchived) {
-        q = q.neq('status', 'archived');
-      }
-
-      const { data, error } = await q;
       if (error) throw error;
       let rows = ((data ?? []) as NoteRow[]).map(asNoteRow);
       if (params.category && params.category !== 'All notes') {
@@ -327,18 +318,6 @@ export async function updateNoteContent(
       throw new ApiError('note_update_lost', 'Note update matched no row');
     }
     return asNoteRow(data as NoteRow);
-  });
-}
-
-export async function archiveNote(note: NoteRow) {
-  return withApiLog('api.notes.archive', { noteId: note.id }, async () => {
-    if (!canTransitionNoteStatus(note.status, 'archived')) {
-      throw new ApiError(
-        'invalid_note_status_transition',
-        `Cannot archive from ${note.status}`,
-      );
-    }
-    return updateNoteStatus(note.id, note.status, 'archived');
   });
 }
 

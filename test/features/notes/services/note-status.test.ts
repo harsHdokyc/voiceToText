@@ -34,8 +34,8 @@ describe('canTransitionNoteStatus', () => {
 
 describe('assertNoteStatusTransition', () => {
   it('throws a clear error for illegal transitions', () => {
-    expect(() => assertNoteStatusTransition('archived', 'draft')).toThrow(
-      /Invalid note status transition: archived -> draft/,
+    expect(() => assertNoteStatusTransition('review_ready', 'draft')).toThrow(
+      /Invalid note status transition: review_ready -> draft/,
     );
   });
 });
@@ -90,7 +90,6 @@ describe('noteStatusShort', () => {
     expect(noteStatusShort('transcribing')).toBe('Live');
     expect(noteStatusShort('transcription_failed')).toBe('Fail');
     expect(noteStatusShort('draft')).toBe('Draft');
-    expect(noteStatusShort('archived')).toBe('Arch');
   });
 });
 

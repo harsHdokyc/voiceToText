@@ -37,8 +37,8 @@ import { greetingName } from '@/features/settings/services/greeting-name';
 import { getOwnProfile } from '@/features/settings/services/profile-service';
 import { saveTaskFromEditSheet } from '@/features/tasks/services/task-edit-save';
 import {
-  archiveTask,
   completeTask,
+  deleteTask,
   listTasks,
   reopenTask,
   type TaskRow,
@@ -107,7 +107,7 @@ export default function OverviewScreen() {
     },
   });
   const removeTask = useMutation({
-    mutationFn: (id: string) => archiveTask(id),
+    mutationFn: (id: string) => deleteTask(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },

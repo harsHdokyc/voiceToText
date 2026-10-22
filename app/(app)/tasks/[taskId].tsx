@@ -8,7 +8,6 @@ import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { Button, Eyebrow } from '@/components/ui';
 import { WorkspacePage } from '@/components/workspace-page';
 import {
-  archiveTask,
   completeTask,
   deleteTask,
   getTask,
@@ -69,17 +68,6 @@ export default function TaskDetailScreen() {
     onSuccess: invalidate,
   });
 
-  const archive = useMutation({
-    mutationFn: async () => {
-      if (!task.data) throw new Error('Task missing');
-      await archiveTask(task.data.id);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      router.back();
-    },
-  });
-
   const remove = useMutation({
     mutationFn: async () => {
       if (!task.data) throw new Error('Task missing');
@@ -114,9 +102,7 @@ export default function TaskDetailScreen() {
     saveEdit.isPending ||
     toggle.isPending ||
     cancelRemind.isPending ||
-    archive.isPending ||
     remove.isPending;
-  const editable = row.status !== 'archived';
   const scheduled = (reminders.data ?? []).filter(
     (r) => r.status === 'scheduled',
   );
@@ -180,34 +166,23 @@ export default function TaskDetailScreen() {
         </View>
       ) : null}
 
-      {editable ? (
-        <>
-          <Button
-            variant="cta"
-            disabled={busy}
-            onPress={() => setEditOpen(true)}
-          >
-            <Ionicons name="pencil" size={16} color={colors.card} />
-            <Text className="font-sans-medium text-[15px] text-card">
-              Edit your next step
-            </Text>
-          </Button>
-          <Button
-            variant="quiet"
-            disabled={busy}
-            onPress={() => toggle.mutate()}
-          >
-            {row.status === 'completed' ? 'Reopen task' : 'Mark complete'}
-          </Button>
-          <Button
-            variant="quiet"
-            disabled={busy}
-            onPress={() => archive.mutate()}
-          >
-            Archive task
-          </Button>
-        </>
-      ) : null}
+      <Button
+        variant="cta"
+        disabled={busy}
+        onPress={() => setEditOpen(true)}
+      >
+        <Ionicons name="pencil" size={16} color={colors.card} />
+        <Text className="font-sans-medium text-[15px] text-card">
+          Edit your next step
+        </Text>
+      </Button>
+      <Button
+        variant="quiet"
+        disabled={busy}
+        onPress={() => toggle.mutate()}
+      >
+        {row.status === 'completed' ? 'Reopen task' : 'Mark complete'}
+      </Button>
 
       <Button
         variant="destructive"
@@ -217,11 +192,10 @@ export default function TaskDetailScreen() {
         {remove.isPending ? 'Deleting…' : 'Delete task'}
       </Button>
 
-      {toggle.error || archive.error || remove.error || cancelRemind.error ? (
+      {toggle.error || remove.error || cancelRemind.error ? (
         <Text className="font-sans text-destructive">
           {errorMessageForUi(
             toggle.error ??
-              archive.error ??
               remove.error ??
               cancelRemind.error,
             'Update failed',

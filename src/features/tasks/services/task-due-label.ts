@@ -36,9 +36,8 @@ export const TASK_LIST_FILTERS: TaskListFilter[] = ['Open', 'Completed', 'All'];
 /** Map UI filter chips to listTasks params. */
 export function taskListQueryForFilter(filter: TaskListFilter): {
   status?: 'open' | 'completed';
-  includeArchived?: boolean;
 } {
   if (filter === 'Open') return { status: 'open' };
   if (filter === 'Completed') return { status: 'completed' };
-  return { includeArchived: false };
+  return {};
 }

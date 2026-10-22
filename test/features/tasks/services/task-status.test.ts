@@ -14,14 +14,13 @@ describe('canTransitionTaskStatus', () => {
   it('allows open -> completed and reopen', () => {
     expect(canTransitionTaskStatus('open', 'completed')).toBe(true);
     expect(canTransitionTaskStatus('completed', 'open')).toBe(true);
-    expect(canTransitionTaskStatus('open', 'archived')).toBe(true);
-    expect(canTransitionTaskStatus('archived', 'open')).toBe(false);
+    expect(canTransitionTaskStatus('open', 'open')).toBe(false);
   });
 });
 
 describe('assertTaskStatusTransition', () => {
   it('throws on illegal transitions', () => {
-    expect(() => assertTaskStatusTransition('archived', 'open')).toThrow(
+    expect(() => assertTaskStatusTransition('completed', 'completed')).toThrow(
       ApiError,
     );
   });

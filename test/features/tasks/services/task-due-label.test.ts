@@ -33,6 +33,6 @@ describe('taskListQueryForFilter', () => {
     expect(taskListQueryForFilter('Completed')).toEqual({
       status: 'completed',
     });
-    expect(taskListQueryForFilter('All')).toEqual({ includeArchived: false });
+    expect(taskListQueryForFilter('All')).toEqual({});
   });
 });

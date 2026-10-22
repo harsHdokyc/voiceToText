@@ -74,11 +74,11 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 |---|---|
 | Note title + transcript edit | Note detail save → `title` / `edited_transcript` |
 | Note search | Home search over title + display transcript |
-| Note archive | Archive action (status machine) |
 | Suggestion kind / due / priority edit | Pending suggestion card before approve |
 | Manual task create | `create_manual_task` RPC + `/(app)/tasks/new` |
 | Task due edit | YYYY-MM-DD on task detail |
-| Task archive / delete | Task detail actions + archived filter |
+| Task delete | Task detail + list trash icons hard-delete |
+| Archive removed | Migration `remove_archive` (applied on hosted): archived tasks → `completed`, archived notes → `review_ready`/`draft`; `archived` dropped from `task_status` / `note_status` |
 | Content-free analytics | `trackProductEvent` (approve, complete, reminder, extraction) — no transcript/audio |
 | Migration `leftover_polish` | Applied on hosted (`push_enabled`, `create_manual_task`) |
 
