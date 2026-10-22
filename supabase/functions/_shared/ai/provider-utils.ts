@@ -63,8 +63,15 @@ export function isRetiredModelError(error: unknown): boolean {
 export function isRetryableUpstream(error: unknown): boolean {
   return (
     isRetryableHttpStatus(upstreamHttpStatus(error)) ||
-    isRetiredModelError(error)
+    isRetiredModelError(error) ||
+    (error instanceof Error && error.message === "upstream_timeout")
   );
+}
+
+/** Split the remaining wall-clock budget evenly across the models still to try. */
+export function attemptTimeoutMs(remainingMs: number, modelsLeft: number) {
+  if (remainingMs <= 0 || modelsLeft <= 0) return 0;
+  return Math.floor(remainingMs / modelsLeft);
 }
 
 export type ProcessStage = "transcribing" | "extracting";

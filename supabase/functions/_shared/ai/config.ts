@@ -23,7 +23,10 @@ const DEFAULT_CHAT_MODEL = "gemini-3.8-flash";
  * Tried in order after the configured chat model on retryable upstream failures.
  * Keep on current Gemini 3.x Flash IDs — 2.5 Flash is shut down for new projects.
  */
-export const CHAT_MODEL_FALLBACKS = ["gemini-3.6-flash"] as const;
+export const CHAT_MODEL_FALLBACKS = [
+  "gemini-3.6-flash",
+  "gemini-3.1-flash-lite",
+] as const;
 
 function readGoogleApiKey(): string | null {
   // LangChain docs use GOOGLE_API_KEY; Google GenAI SDK also accepts GEMINI_API_KEY.

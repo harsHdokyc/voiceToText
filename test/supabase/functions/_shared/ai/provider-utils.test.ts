@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  attemptTimeoutMs,
   bytesToBase64,
   describeProcessError,
   failTargetForStage,
@@ -148,6 +149,24 @@ describe('isRetryableUpstream', () => {
     expect(isRetryableUpstream(new Error('schema_validation_failed'))).toBe(
       false,
     );
+  });
+
+  it('retries a per-model timeout so the next fallback model gets a turn', () => {
+    expect(isRetryableUpstream(new Error('upstream_timeout'))).toBe(true);
+  });
+});
+
+describe('attemptTimeoutMs', () => {
+  it('splits the remaining budget evenly across models left', () => {
+    expect(attemptTimeoutMs(28000, 3)).toBe(9333);
+    expect(attemptTimeoutMs(18000, 2)).toBe(9000);
+    expect(attemptTimeoutMs(9000, 1)).toBe(9000);
+  });
+
+  it('returns 0 when the budget is spent or no models remain', () => {
+    expect(attemptTimeoutMs(0, 2)).toBe(0);
+    expect(attemptTimeoutMs(-50, 1)).toBe(0);
+    expect(attemptTimeoutMs(5000, 0)).toBe(0);
   });
 });
 
