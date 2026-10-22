@@ -6,9 +6,9 @@ import { SAMPLE_DURATION, SAMPLE_SUGGESTIONS, SAMPLE_TRANSCRIPT } from "@/lib/co
 import { cn } from "@/lib/utils";
 
 const MODES = [
-  { name: "Capture", status: "Listening", title: "Less typing. More thinking.", copy: "Start naturally. A quick note or a whole train of thought — there’s no form to fill before your idea exists.", glow: "var(--cobalt)" },
-  { name: "Clarity", status: "Reading", title: "Find the thread in the thought.", copy: "A readable transcript keeps the context. Suggested actions bring the useful parts into focus.", glow: "var(--lime)" },
-  { name: "Control", status: "Your call", title: "Your work. Your call.", copy: "Approve, rewrite, or leave it behind. A suggestion only becomes a task when you choose it.", glow: "var(--lavender)" },
+  { name: "Capture", status: "Listening", title: "Less typing. More thinking.", copy: "Start naturally. A quick note or a whole train of thought — there’s no form to fill before your idea exists." },
+  { name: "Clarity", status: "Reading", title: "Find the thread in the thought.", copy: "A readable transcript keeps the context. Suggested actions bring the useful parts into focus." },
+  { name: "Control", status: "Your call", title: "Your work. Your call.", copy: "Approve, rewrite, or leave it behind. A suggestion only becomes a task when you choose it." },
 ];
 
 const WORDS = SAMPLE_TRANSCRIPT.map((s) => s.text).join("").split(" ");
@@ -22,28 +22,12 @@ export function ModeShowcase() {
   const mode = MODES[step];
 
   return (
-    <section ref={sectionRef} className="surface-ink relative overflow-x-clip">
+    <section ref={sectionRef} className="surface-ink overflow-x-clip">
       <div ref={stickyRef} className={PINNED_PANEL}>
-        <div
-          aria-hidden
-          className="pointer-events-none absolute right-[-10%] top-1/2 h-[28rem] w-[28rem] -translate-y-1/2 rounded-full opacity-25 blur-[120px] transition-colors duration-700 md:h-[40rem] md:w-[40rem]"
-          style={{ backgroundColor: mode.glow }}
-        />
-        <div className="container-site relative w-full py-6 md:py-10">
-          <div className="flex items-center justify-between gap-4">
+        <div className="container-site w-full py-6 md:py-10">
+          <div className="flex items-center justify-between gap-4 border-b border-paper/10 pb-5">
             <span className="eyebrow text-lime">One thought. More possibilities.</span>
             <span className="font-mono text-xs tabular-nums text-muted-foreground">0{step + 1} / 0{MODES.length}</span>
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-1.5" aria-hidden>
-            {MODES.map((m, i) => (
-              <span key={m.name} className="h-0.5 overflow-hidden rounded-full bg-paper/10">
-                <motion.span
-                  className="block h-full origin-left bg-lime"
-                  animate={{ scaleX: i <= step ? 1 : 0 }}
-                  transition={{ duration: 0.6, ease: EASE }}
-                />
-              </span>
-            ))}
           </div>
 
           <div className="mt-8 grid gap-8 lg:mt-12 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center lg:gap-16">
@@ -66,7 +50,7 @@ export function ModeShowcase() {
                       <motion.span
                         layoutId="mode-marker"
                         aria-hidden
-                        className="ml-auto hidden h-2.5 w-2.5 rounded-full bg-lime shadow-[0_0_18px_var(--lime)] lg:block"
+                        className="ml-auto hidden h-2.5 w-2.5 rounded-full bg-lime lg:block"
                       />
                     )}
                   </button>
@@ -87,8 +71,8 @@ export function ModeShowcase() {
               </AnimatePresence>
             </div>
 
-            <div className="stage-frame min-w-0 shadow-[0_40px_120px_-50px_var(--cobalt)]">
-              <div className="stage-grid relative flex min-h-[22rem] flex-col overflow-hidden rounded-[calc(1.75rem-1px)] bg-card/90 p-5 backdrop-blur md:min-h-[26rem] md:p-7">
+            <div className="stage-frame min-w-0">
+              <div className="relative flex min-h-[22rem] flex-col overflow-hidden rounded-[calc(1.75rem-1px)] bg-card p-5 md:min-h-[26rem] md:p-7">
                 <div className="flex items-center justify-between gap-3 border-b border-paper/10 pb-4">
                   <span className="eyebrow text-muted-foreground">Voice note / 01</span>
                   <span className="eyebrow flex items-center gap-2 rounded-full border border-paper/15 px-3 py-1 text-paper">
