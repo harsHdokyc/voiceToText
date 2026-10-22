@@ -11,8 +11,10 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Allow Saydo to record voice notes.",
-        "NSSpeechRecognitionUsageDescription": "Allow Saydo to show your words live while you speak."
-      }
+        "NSSpeechRecognitionUsageDescription": "Allow Saydo to show your words live while you speak.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.fanggore.voicetowork"
     },
     "android": {
       "adaptiveIcon": {
@@ -63,6 +65,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "129026b2-7ab8-4a3c-8410-a6d7bae8a475"
+      }
     }
   }
 }
