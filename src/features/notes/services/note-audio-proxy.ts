@@ -16,6 +16,17 @@ function noteAudioUrl(action: 'upload' | 'download') {
   return `${EXPO_PUBLIC_SUPABASE_URL}/functions/v1/note-audio?action=${action}`;
 }
 
+export function noteAudioDownloadUrl(noteId: string) {
+  return `${noteAudioUrl('download')}&noteId=${encodeURIComponent(noteId)}`;
+}
+
+export async function noteAudioAuthHeaders() {
+  return {
+    Authorization: `Bearer ${await accessToken()}`,
+    apikey: getPublicEnv().EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  };
+}
+
 export type NoteAudioUploadResult = {
   ok: true;
   note: {
@@ -52,7 +63,6 @@ export async function proxyUploadNoteAudio(params: {
       bytes: params.blob.size,
     },
     async () => {
-      const token = await accessToken();
       const form = new FormData();
       form.append('noteId', params.noteId);
       form.append('durationSeconds', String(params.durationSeconds));
@@ -61,10 +71,7 @@ export async function proxyUploadNoteAudio(params: {
 
       const response = await fetch(noteAudioUrl('upload'), {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          apikey: getPublicEnv().EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-        },
+        headers: await noteAudioAuthHeaders(),
         body: form,
       });
 
@@ -90,12 +97,10 @@ export async function proxyUploadNoteAudio(params: {
 /** Download via Edge proxy — returns audio bytes; storage key never leaves the server. */
 export async function proxyDownloadNoteAudio(noteId: string) {
   return withApiLog('api.notes.audio_download_proxy', { noteId }, async () => {
-    const token = await accessToken();
     const response = await fetch(noteAudioUrl('download'), {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
-        apikey: getPublicEnv().EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+        ...(await noteAudioAuthHeaders()),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ action: 'download', noteId }),

@@ -13,6 +13,7 @@ const NOTE_PUBLIC_COLUMNS =
  *
  * - POST multipart (?action=upload): noteId, durationSeconds, file, optional mimeType
  * - POST JSON `{ "action": "download", "noteId" }` → raw audio bytes
+ * - GET ?action=download&noteId=… → same bytes (native file download for playback)
  */
 export default {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
@@ -46,7 +47,8 @@ export default {
     };
     const action = body.action ?? actionParam ?? "download";
     if (action === "download") {
-      return handleDownload(ctx, userId, body.noteId?.trim() ?? "", started);
+      const noteId = body.noteId ?? url.searchParams.get("noteId") ?? "";
+      return handleDownload(ctx, userId, noteId.trim(), started);
     }
 
     edgeLog("error", "edge.note-audio", {

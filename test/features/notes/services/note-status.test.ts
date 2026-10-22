@@ -4,6 +4,7 @@ import {
     assertAudioDurationSeconds,
     assertNoteStatusTransition,
     buildNoteAudioPath,
+    canPlayNoteAudio,
     canTransitionNoteStatus,
     displayTranscript,
     isClaimableForExtraction,
@@ -151,6 +152,28 @@ describe('isNoteAudioPurged', () => {
       isNoteAudioPurged({ audio_purged_at: '2026-04-10T00:00:00.000Z' }),
     ).toBe(true);
     expect(AUDIO_DELETED_LABEL).toBe('Audio deleted after 3 days');
+  });
+});
+
+describe('canPlayNoteAudio', () => {
+  it('allows playback once upload stored audio and retention has not purged it', () => {
+    expect(
+      canPlayNoteAudio({ audio_mime_type: 'audio/mp4', audio_purged_at: null }),
+    ).toBe(true);
+  });
+
+  it('blocks playback before upload persisted audio (draft / upload_failed)', () => {
+    expect(canPlayNoteAudio({ audio_mime_type: null, audio_purged_at: null })).toBe(false);
+    expect(canPlayNoteAudio({ audio_mime_type: '  ', audio_purged_at: null })).toBe(false);
+  });
+
+  it('blocks playback after the 3-day retention purge', () => {
+    expect(
+      canPlayNoteAudio({
+        audio_mime_type: 'audio/webm',
+        audio_purged_at: '2026-04-10T00:00:00.000Z',
+      }),
+    ).toBe(false);
   });
 });
 

@@ -12,6 +12,7 @@ import {
   VoiceRibbon
 } from '@/components/ui';
 import { SuggestionReviewRow } from '@/components/work-row';
+import { NoteAudioPlayer } from '@/features/notes/components/note-audio-player';
 import {
   useWorkspaceWide,
   WorkspacePage,
@@ -22,6 +23,7 @@ import {
 } from '@/features/notes/services/note-category';
 import {
   AUDIO_DELETED_LABEL,
+  canPlayNoteAudio,
   displayTranscript,
   isNoteAudioPurged,
   isRetryableProcessing,
@@ -194,6 +196,12 @@ export default function NoteDetailScreen() {
               >
                 {AUDIO_DELETED_LABEL}
               </Text>
+            ) : canPlayNoteAudio(row) ? (
+              <NoteAudioPlayer
+                noteId={row.id}
+                mimeType={row.audio_mime_type}
+                durationSeconds={row.audio_duration_seconds}
+              />
             ) : (
               <VoiceRibbon live />
             )}

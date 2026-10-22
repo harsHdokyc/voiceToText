@@ -63,6 +63,14 @@ export function isNoteAudioPurged(note: { audio_purged_at?: string | null }) {
   return Boolean(note.audio_purged_at?.trim());
 }
 
+/** Audio exists once upload persisted its MIME type, until retention purges it. */
+export function canPlayNoteAudio(note: {
+  audio_mime_type: string | null;
+  audio_purged_at?: string | null;
+}) {
+  return Boolean(note.audio_mime_type?.trim()) && !isNoteAudioPurged(note);
+}
+
 export type RetryProcessingPlan = 'extract' | 'transcribe' | 'audio_gone';
 
 /**
