@@ -14,6 +14,11 @@
 -- User A cannot execute claim_due_reminders: fail
 -- service_role can execute claim_due_reminders: ok
 
+-- User A count_ai_usage_today(A, 'process_note'): own count (process-note cap)
+-- User A count_ai_usage_today(B, 'process_note'): error 42501 forbidden, not B's count
+-- service_role count_ai_usage_today(B, 'process_note'): B's count
+-- anon count_ai_usage_today: permission denied
+
 -- Cross-check indexes exist for policy columns:
 select indexname from pg_indexes
 where schemaname = 'public'

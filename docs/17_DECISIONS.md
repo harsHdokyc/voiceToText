@@ -5,6 +5,12 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-22 · Daily AI usage count is the caller’s own
+- **Context:** `public.count_ai_usage_today(p_user_id, p_kind)` is `security definer` and was granted to `authenticated` with no check that `p_user_id` is the caller. Any signed-in user could read another user’s daily count through the API.
+- **Alternatives:** Revoke `authenticated` and grant only `service_role`. That breaks the cap: `process-note` calls the RPC with the user JWT and `p_user_id` = that user’s id, and a failed count is logged then ignored.
+- **Decision:** Keep the `authenticated` grant. Non-service callers may count only `auth.uid()`; a mismatch raises `42501 forbidden`. `service_role` (and the DB owner roles) may still count any user. The UTC day filter is unchanged, so the 40/day cap still sees the same rows. `approve_suggestion`, `create_manual_task`, and `delete_own_app_data` already require `auth.uid()` and pin `search_path = public`; they are not replaced.
+- **Consequence:** Apply `20261022180000_count_ai_usage_ownership`. No Edge function redeploy. Do not edit `20261002184635_phase7_hardening`.
+
 ## 2026-10-22 · 3-day audio window is the retry window
 - **Context:** The first retention rule kept audio for in-progress notes, `transcription_failed`, and notes with no transcript. The owner set the opposite rule: 3 days is the only chance to retry from the recording.
 - **Alternatives:** Keep the status allowlist; purge `transcription_failed` only when a transcript exists; edit `20261022140000_audio_retention` in place.

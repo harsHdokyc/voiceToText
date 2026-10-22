@@ -82,7 +82,8 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 1. Edge secrets: `GOOGLE_API_KEY`, **`CRON_SECRET`** (optional model overrides `AI_*`)
 2. Schedule `dispatch-reminders` every minute with header `x-cron-secret: <CRON_SECRET>`
 3. Apply `20261022160000_audio_purge_any_status`, redeploy `purge-note-audio` and `extract-note`, schedule the purge hourly with the same `x-cron-secret` if it is not already scheduled
-4. Re-check Google Gemini + Supabase terms before public launch
+4. Apply `20261022180000_count_ai_usage_ownership`. No Edge function redeploy
+5. Re-check Google Gemini + Supabase terms before public launch
 
 ---
 
@@ -124,6 +125,7 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | Migrations through `phase7_hardening` + `waitlist` | Applied on hosted |
 | `20261022140000_audio_retention` | Applied (do not edit) |
 | `20261022160000_audio_purge_any_status` | **In repo only.** Not applied by this change |
+| `20261022180000_count_ai_usage_ownership` | **In repo only.** Not applied by this change. No function redeploy |
 | Edge functions above | ACTIVE except `purge-note-audio`, which is not deployed yet |
 | Marketing static site | Vercel ← `LandingPage/` (see Marketing deploy above) |
 
@@ -134,7 +136,7 @@ See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 | Command | Last result |
 |---|---|
 | `npm run typecheck` | Retention files clean (2026-10-22). Two pre-existing errors remain: `global.css` side-effect import, `note-card` `backgroundImage` |
-| `npm test` | Retention, retry-plan, and privacy tests: 41 passed (2026-10-22). Full run: 161 passed; 1 pre-existing `sanitizeNoteTitle` failure; 3 suites fail to load `react-native` under Vite 8 (`logger`, `product-analytics`, `suggestions-service`). No `lint` script |
+| `npm test` | Policy inventory 13 passed, including `count_ai_usage_today` ownership (2026-10-22). Full run: 169 passed; 1 pre-existing `sanitizeNoteTitle` failure; 3 suites fail to load `react-native` under Vite 8 (`logger`, `product-analytics`, `suggestions-service`). No `lint` script |
 
 **Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`). Behavior tests for pure helpers (greeting/display name, due presets, capture timer, live-dictation concat, dueLabel, etc.).
 

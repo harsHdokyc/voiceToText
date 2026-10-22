@@ -15,6 +15,26 @@ function migration(namePart: string) {
   return readFileSync(resolve(dir, file), 'utf8');
 }
 
+/** Latest `create or replace` body, grants included, later migrations win. */
+function latestFunctionSql(functionName: string) {
+  const dir = resolve(root, 'supabase/migrations');
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+  const marker = `create or replace function public.${functionName}`;
+  let hit: { file: string; sql: string } | null = null;
+  for (const file of files) {
+    const sql = readFileSync(resolve(dir, file), 'utf8');
+    const start = sql.lastIndexOf(marker);
+    if (start < 0) continue;
+    const rest = sql.slice(start);
+    const next = rest.indexOf('\ncreate or replace function ', marker.length);
+    hit = { file, sql: next === -1 ? rest : rest.slice(0, next) };
+  }
+  if (!hit) throw new Error(`Function not found: ${functionName}`);
+  return hit;
+}
+
 describe('phase6 reminders migration RLS', () => {
   const sql = migration('phase6_reminders');
 
@@ -55,6 +75,103 @@ describe('phase7 hardening migration', () => {
     expect(sql).toContain('delete_own_app_data');
     expect(sql).toContain(
       'grant execute on function public.delete_own_app_data() to authenticated',
+    );
+  });
+});
+
+describe('count_ai_usage_today ownership', () => {
+  const defined = latestFunctionSql('count_ai_usage_today');
+
+  it('is replaced after the applied retention migration', () => {
+    expect(defined.file).toBe('20261022180000_count_ai_usage_ownership.sql');
+    expect(defined.file > '20261022140000_audio_retention.sql').toBe(true);
+  });
+
+  it('returns another user’s count only for service_role', () => {
+    expect(defined.sql).toContain('p_user_id is distinct from auth.uid()');
+    expect(defined.sql).toContain("coalesce(auth.role(), '') <> 'service_role'");
+    expect(defined.sql).toContain("current_user not in ('service_role', 'postgres', 'supabase_admin')");
+    expect(defined.sql).toContain("raise exception 'forbidden'");
+    expect(defined.sql).toContain("errcode = '42501'");
+  });
+
+  it('keeps the UTC daily count the 40/day cap uses', () => {
+    expect(defined.sql).toContain('from public.ai_usage_events e');
+    expect(defined.sql).toContain('e.user_id = p_user_id');
+    expect(defined.sql).toContain('e.kind = p_kind');
+    expect(defined.sql).toContain(
+      "e.created_at >= date_trunc('day', now() at time zone 'utc')",
+    );
+    expect(defined.sql).toContain('set search_path = public');
+  });
+
+  it('stays executable by the user JWT and not by anon', () => {
+    expect(defined.sql).toContain(
+      'revoke all on function public.count_ai_usage_today(uuid, text) from public',
+    );
+    expect(defined.sql).toContain(
+      'revoke all on function public.count_ai_usage_today(uuid, text) from anon',
+    );
+    expect(defined.sql).toContain(
+      'grant execute on function public.count_ai_usage_today(uuid, text) to authenticated',
+    );
+    expect(defined.sql).toContain(
+      'grant execute on function public.count_ai_usage_today(uuid, text) to service_role',
+    );
+    expect(defined.sql).not.toContain(
+      'grant execute on function public.count_ai_usage_today(uuid, text) to anon',
+    );
+  });
+
+  it('process-note counts with the caller id on the user client', () => {
+    const src = readFileSync(
+      resolve(root, 'supabase/functions/process-note/index.ts'),
+      'utf8',
+    );
+    expect(src).toContain('const DAILY_PROCESS_NOTE_LIMIT = 40');
+    expect(src).toContain('ctx.supabase.rpc');
+    expect(src).toContain('"count_ai_usage_today"');
+    expect(src).toContain('p_user_id: userId');
+  });
+});
+
+describe('security definer RPCs that already check auth.uid()', () => {
+  it('approve_suggestion locks only the caller pending suggestion', () => {
+    const { file, sql } = latestFunctionSql('approve_suggestion');
+    expect(file).toBe('20261022100000_task_kind.sql');
+    expect(sql).toContain('set search_path = public');
+    expect(sql).toContain('and user_id = auth.uid()');
+    expect(sql).toContain("and status = 'pending'");
+    expect(sql).toContain('for update');
+    expect(sql).toContain('from anon');
+    expect(sql).toContain('to authenticated');
+  });
+
+  it('create_manual_task inserts a row only for auth.uid()', () => {
+    const { file, sql } = latestFunctionSql('create_manual_task');
+    expect(file).toBe('20261003165843_leftover_polish.sql');
+    expect(sql).toContain('set search_path = public');
+    expect(sql).toContain('v_uid uuid := auth.uid()');
+    expect(sql).toContain('if v_uid is null then');
+    expect(sql).toContain('v_uid,');
+    expect(sql).toContain('from anon');
+    expect(sql).toContain('to authenticated');
+  });
+
+  it('delete_own_app_data deletes only the caller rows', () => {
+    const { file, sql } = latestFunctionSql('delete_own_app_data');
+    expect(file).toBe('20261002184635_phase7_hardening.sql');
+    expect(sql).toContain('set search_path = public');
+    expect(sql).toContain('v_uid uuid := auth.uid()');
+    expect(sql).toContain('if v_uid is null then');
+    expect(sql).toContain('where user_id = v_uid');
+    expect(sql).toContain('where id = v_uid');
+    expect(sql).not.toContain('p_user_id');
+    expect(sql).toContain(
+      'grant execute on function public.delete_own_app_data() to authenticated',
+    );
+    expect(sql).toContain(
+      'revoke all on function public.delete_own_app_data() from anon',
     );
   });
 });
