@@ -59,6 +59,10 @@ export function isRetryableProcessing(status: NoteStatus) {
 /** Shown in place of the note waveform after retention removes the file. */
 export const AUDIO_DELETED_LABEL = 'Audio deleted after 3 days';
 
+/** Shown when the file is gone and there is nothing to re-extract. */
+export const AUDIO_RETRY_UNAVAILABLE_LABEL =
+  'Audio deleted after 3 days. There’s no transcript to retry from.';
+
 export function isNoteAudioPurged(note: { audio_purged_at?: string | null }) {
   return Boolean(note.audio_purged_at?.trim());
 }
@@ -73,19 +77,38 @@ export function canPlayNoteAudio(note: {
 
 export type RetryProcessingPlan = 'extract' | 'transcribe' | 'audio_gone';
 
-/**
- * extraction_failed with a stored transcript retries extract-note and does not
- * need the audio file. Any other retry after purge must not call process-note.
- */
-export function retryProcessingPlan(note: {
+type RetryNote = {
   status: NoteStatus;
   transcript: string | null;
   audio_purged_at?: string | null;
-}): RetryProcessingPlan {
-  const transcript = note.transcript?.trim();
-  if (note.status === 'extraction_failed' && transcript) return 'extract';
-  if (isNoteAudioPurged(note)) return 'audio_gone';
+};
+
+/**
+ * A stored transcript retries through extract-note and does not need the file.
+ * After purge, that includes transcription failures and stuck extracting notes.
+ * Purge with no transcript cannot call process-note.
+ */
+export function retryProcessingPlan(note: RetryNote): RetryProcessingPlan {
+  const transcript = Boolean(note.transcript?.trim());
+  const purged = isNoteAudioPurged(note);
+  if (transcript && (note.status === 'extraction_failed' || purged)) {
+    return 'extract';
+  }
+  if (purged) return 'audio_gone';
   return 'transcribe';
+}
+
+/** Retry control. Hidden once the file and the transcript are both gone. */
+export function showProcessingRetry(note: RetryNote): boolean {
+  const plan = retryProcessingPlan(note);
+  if (plan === 'audio_gone') return false;
+  if (isRetryableProcessing(note.status)) return true;
+  return plan === 'extract' && note.status === 'extracting';
+}
+
+export function audioRetryUnavailableLabel(note: RetryNote): string | null {
+  if (retryProcessingPlan(note) !== 'audio_gone') return null;
+  return AUDIO_RETRY_UNAVAILABLE_LABEL;
 }
 
 export function noteStatusLabel(status: NoteStatus) {

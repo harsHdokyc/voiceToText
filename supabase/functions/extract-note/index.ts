@@ -7,9 +7,7 @@ import {
 } from "../_shared/ai/provider-utils.ts";
 import { extractTasks } from "../_shared/ai/task-extraction-provider.ts";
 import { edgeLog } from "../_shared/log.ts";
-
-/** Reclaim stuck `extracting` notes. */
-const EXTRACT_CLAIMABLE = new Set(["extraction_failed", "extracting"]);
+import { reextractClaimStatuses } from "../_shared/storage/audio-retention.ts";
 
 function parseDueAt(raw: string | null): string | null {
   if (!raw) return null;
@@ -90,10 +88,6 @@ export default {
       });
     }
 
-    const hasTranscript = Boolean(
-      typeof existing.transcript === "string" && existing.transcript.trim(),
-    );
-
     // Flip stale wall-clock kills to extraction_failed, then continue claim.
     const reclaimed = await reclaimStuckExtracting(
       ctx.supabase,
@@ -110,8 +104,13 @@ export default {
       existing.status = "extraction_failed";
     }
 
-    const extractOnly = EXTRACT_CLAIMABLE.has(existing.status) && hasTranscript;
-    if (!extractOnly) {
+    const claimStatuses = reextractClaimStatuses({
+      status: existing.status,
+      transcript: existing.transcript,
+      audio_path: existing.audio_path,
+      audio_purged_at: existing.audio_purged_at,
+    });
+    if (!claimStatuses) {
       edgeLog("info", "edge.extract-note", {
         event: "skip",
         code: "not_claimable",
@@ -139,7 +138,7 @@ export default {
         })
         .eq("id", noteId)
         .eq("user_id", userId)
-        .in("status", ["extraction_failed", "extracting"])
+        .in("status", claimStatuses)
         .select("id, status")
         .maybeSingle();
 

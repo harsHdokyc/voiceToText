@@ -24,10 +24,11 @@ import {
 import {
   AUDIO_DELETED_LABEL,
   canPlayNoteAudio,
+  audioRetryUnavailableLabel,
   displayTranscript,
   isNoteAudioPurged,
-  isRetryableProcessing,
   noteStatusLabel,
+  showProcessingRetry,
 } from '@/features/notes/services/note-status';
 import {
   getNote,
@@ -152,6 +153,9 @@ export default function NoteDetailScreen() {
     isPendingSuggestion(s.status),
   );
   const displayTitle = row.title?.trim() || 'A new thought';
+  const audioPurged = isNoteAudioPurged(row);
+  const retryBlocked = audioRetryUnavailableLabel(row);
+  const showLiveProcessing = processing && !retryBlocked;
 
   return (
     <WorkspacePage gap={0}>
@@ -189,7 +193,7 @@ export default function NoteDetailScreen() {
         <View className="min-w-0 flex-1 border-t border-border pt-6">
           <Eyebrow>Transcript</Eyebrow>
           <View className="my-5 w-full min-w-0">
-            {isNoteAudioPurged(row) ? (
+            {audioPurged ? (
               <Text
                 className="py-3 font-sans text-sm leading-5 text-stone"
                 accessibilityRole="text"
@@ -206,7 +210,7 @@ export default function NoteDetailScreen() {
               <VoiceRibbon live />
             )}
           </View>
-          {processing ? (
+          {showLiveProcessing ? (
             <Text className="mt-3 font-sans text-sm text-stone">
               {row.status === 'extracting'
                 ? 'Extracting tasks…'
@@ -246,7 +250,7 @@ export default function NoteDetailScreen() {
                 body="Your note stays safe — no pending suggestions."
               />
             )
-          ) : processing ? (
+          ) : showLiveProcessing ? (
             <Text className="mt-3 font-sans text-sm text-stone">
               Suggestions appear when processing finishes.
             </Text>
@@ -269,16 +273,26 @@ export default function NoteDetailScreen() {
         </View>
       </View>
 
-      <View className="mt-10 flex-row flex-wrap items-center gap-2">
-        {isRetryableProcessing(row.status) ? (
-          <Button
-            variant="quiet"
-            size="sm"
-            disabled={retry.isPending}
-            onPress={() => retry.mutate()}
+      <View className="mt-10 w-full min-w-0 gap-2">
+        {showProcessingRetry(row) ? (
+          <View className="flex-row flex-wrap items-center gap-2">
+            <Button
+              variant="quiet"
+              size="sm"
+              disabled={retry.isPending}
+              onPress={() => retry.mutate()}
+            >
+              {retry.isPending ? 'Retrying…' : 'Retry processing'}
+            </Button>
+          </View>
+        ) : null}
+        {retryBlocked ? (
+          <Text
+            className="font-sans text-sm leading-5 text-stone"
+            accessibilityRole="text"
           >
-            {retry.isPending ? 'Retrying…' : 'Retry processing'}
-          </Button>
+            {retryBlocked}
+          </Text>
         ) : null}
       </View>
       {retry.error ? (

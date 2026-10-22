@@ -5,14 +5,24 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-22 · 3-day audio window is the retry window
+- **Context:** The first retention rule kept audio for in-progress notes, `transcription_failed`, and notes with no transcript. The owner set the opposite rule: 3 days is the only chance to retry from the recording.
+- **Alternatives:** Keep the status allowlist; purge `transcription_failed` only when a transcript exists; edit `20261022140000_audio_retention` in place.
+- **Decision:**
+  - Purge every `note-audio` object whose note `created_at` is at least 3 days ago, any status (including stuck `extracting` / `transcribing`, `draft`, `transcription_failed`, and a historical `archived` value), whether or not a transcript exists.
+  - `20261022140000_audio_retention` stays as applied. `notes_audio_retention_idx` already matches the wider predicate, so it is not replaced.
+  - New migration `20261022160000_audio_purge_any_status` adds service-role `list_orphan_note_audio`. The edge function deletes those objects with the Storage API. An object stays when a note still references it, or when `created_at` or `updated_at` is under 3 days (a same-key replace is not deleted).
+  - After purge, retry calls `extract-note` when a transcript exists (including `transcription_failed` and `queued` once the file is gone). With neither file nor transcript, the app hides retry and explains why.
+- **Consequence:** Redeploy `purge-note-audio` and `extract-note` after applying `20261022160000`. Do not edit `20261022140000`. Supersedes the eligibility bullet in “Voice-note audio deleted 3 days after recording” below.
+
 ## 2026-10-22 · Voice-note audio deleted 3 days after recording
 - **Context:** Private `note-audio` objects should not be kept indefinitely. Notes, transcripts, suggestions, tasks, and reminders stay. Hosted project does not have `pg_cron` installed. Deleting `storage.objects` rows does not remove the file.
 - **Alternatives:** Hard-delete the whole note; purge every status at 3 days including `transcription_failed`; schedule inside the migration with a secret; enable `pg_cron` in the same migration as the column.
 - **Decision:**
   - Column `notes.audio_purged_at`. Clients can read it. Only `service_role` (or the DB owner) can set it.
   - Edge `purge-note-audio` uses the service role and `x-cron-secret` (same `CRON_SECRET` as `dispatch-reminders`). `verify_jwt = false`.
-  - Eligible when `created_at` is at least 3 days ago, `audio_path` is set, `audio_purged_at` is null, status is `review_ready` or `extraction_failed`, and `transcript` is non-blank. `created_at` is the recording clock.
-  - In-progress statuses and `transcription_failed` keep the file so `process-note` can retry speech-to-text. `extraction_failed` with a transcript is purged; retry calls `extract-note` and does not need the file.
+  - Eligible when `created_at` is at least 3 days ago, `audio_path` is set, and `audio_purged_at` is null. Status and transcript do not keep the file (superseded the same day by “3-day audio window is the retry window”).
+  - `created_at` is the recording clock. Retry from a stored transcript uses `extract-note` and does not need the file.
   - Storage API `remove` per object. Clear `audio_path` and set `audio_purged_at` only after that call is confirmed. Reruns are safe. Batch 40.
   - No cron SQL in the migration. Schedule hourly in the dashboard, or with `pg_cron` + `pg_net` reading the secret from Vault. Do not hardcode the secret.
 - **Consequence:** Apply migration `20261022140000_audio_retention` before deploying `note-audio`, `process-note`, or an app build that selects `audio_purged_at`. Audio is not deleted until the function is deployed and scheduled. Playback of a purged note shows “Audio deleted after 3 days”.

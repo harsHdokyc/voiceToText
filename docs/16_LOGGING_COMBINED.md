@@ -88,7 +88,7 @@ Edge Function logs: Supabase Dashboard → Edge Functions → `process-note` →
 | `edge.reject-suggestion` | Reject suggestion |
 | `edge.register-push-token` | Upsert device token |
 | `edge.dispatch-reminders` | Claim due reminders + Expo push + ledger |
-| `edge.purge-note-audio` | Delete aged `note-audio` objects; stamp `audio_purged_at` (no path, no transcript) |
+| `edge.purge-note-audio` | Delete aged `note-audio` objects (any note status) and unreferenced orphans; stamp `audio_purged_at` (no path, no transcript) |
 | `edge.delete-note` | Delete note + audio |
 | `edge.delete-account` | Wipe app data + auth user |
 
@@ -110,6 +110,7 @@ Prefer these `code` values in DB `last_error_code`, JSON `error`, and logs `code
 | `audio_purged` | Audio removed after the 3-day retention window |
 | `storage_delete_failed` | Storage API remove failed; `audio_path` left in place |
 | `purge_mark_failed` / `purge_mark_lost` | File removed but the note row was not stamped |
+| `orphan_query_failed` | Could not list unreferenced `note-audio` objects; note purge still proceeds |
 | `audio_fetch_failed` | Client could not read local recording URI |
 | `audio_download_failed` | Edge could not download from `note-audio` |
 | `storage_upload_failed` | Storage upload error (reason = provider message) |

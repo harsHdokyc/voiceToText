@@ -10,10 +10,13 @@ import {
     isClaimableForExtraction,
     isClaimableForTranscription,
     AUDIO_DELETED_LABEL,
+    AUDIO_RETRY_UNAVAILABLE_LABEL,
+    audioRetryUnavailableLabel,
     isNoteAudioPurged,
     isRetryableProcessing,
     noteMatchesSearch,
     retryProcessingPlan,
+    showProcessingRetry,
     noteStatusLabel,
     noteStatusShort,
 } from '@/features/notes/services/note-status';
@@ -100,6 +103,20 @@ describe('retryProcessingPlan', () => {
         audio_purged_at: '2026-04-10T00:00:00.000Z',
       }),
     ).toBe('extract');
+    expect(
+      retryProcessingPlan({
+        status: 'transcription_failed',
+        transcript: 'Call the vendor',
+        audio_purged_at: '2026-04-10T00:00:00.000Z',
+      }),
+    ).toBe('extract');
+    expect(
+      retryProcessingPlan({
+        status: 'extracting',
+        transcript: 'Call the vendor',
+        audio_purged_at: '2026-04-10T00:00:00.000Z',
+      }),
+    ).toBe('extract');
   });
 
   it('re-transcribes when the audio file is still available', () => {
@@ -141,6 +158,75 @@ describe('retryProcessingPlan', () => {
         audio_purged_at: '2026-04-10T00:00:00.000Z',
       }),
     ).toBe('audio_gone');
+  });
+});
+
+describe('showProcessingRetry', () => {
+  const purgedAt = '2026-04-10T00:00:00.000Z';
+
+  it('offers retry while audio remains or a transcript can be re-extracted', () => {
+    expect(
+      showProcessingRetry({
+        status: 'transcription_failed',
+        transcript: null,
+        audio_purged_at: null,
+      }),
+    ).toBe(true);
+    expect(
+      showProcessingRetry({
+        status: 'transcription_failed',
+        transcript: 'Call the vendor',
+        audio_purged_at: purgedAt,
+      }),
+    ).toBe(true);
+    expect(
+      showProcessingRetry({
+        status: 'extracting',
+        transcript: 'Call the vendor',
+        audio_purged_at: purgedAt,
+      }),
+    ).toBe(true);
+  });
+
+  it('does not offer retry for a stuck extracting note while the file remains', () => {
+    expect(
+      showProcessingRetry({
+        status: 'extracting',
+        transcript: 'Call the vendor',
+        audio_purged_at: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('hides retry when the file is gone and there is no transcript', () => {
+    expect(
+      showProcessingRetry({
+        status: 'transcription_failed',
+        transcript: null,
+        audio_purged_at: purgedAt,
+      }),
+    ).toBe(false);
+    expect(
+      showProcessingRetry({
+        status: 'queued',
+        transcript: '   ',
+        audio_purged_at: purgedAt,
+      }),
+    ).toBe(false);
+    expect(
+      audioRetryUnavailableLabel({
+        status: 'transcription_failed',
+        transcript: null,
+        audio_purged_at: purgedAt,
+      }),
+    ).toBe(AUDIO_RETRY_UNAVAILABLE_LABEL);
+    expect(
+      audioRetryUnavailableLabel({
+        status: 'extraction_failed',
+        transcript: 'Call the vendor',
+        audio_purged_at: purgedAt,
+      }),
+    ).toBeNull();
   });
 });
 
