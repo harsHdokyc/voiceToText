@@ -82,15 +82,17 @@ describe('phase7 hardening migration', () => {
 describe('count_ai_usage_today ownership', () => {
   const defined = latestFunctionSql('count_ai_usage_today');
 
-  it('is replaced after the applied retention migration', () => {
-    expect(defined.file).toBe('20261022180000_count_ai_usage_ownership.sql');
-    expect(defined.file > '20261022140000_audio_retention.sql').toBe(true);
+  it('is replaced after the applied owner-exemption migration', () => {
+    expect(defined.file).toBe('20261022200000_count_ai_usage_invoker.sql');
+    expect(defined.file > '20261022180000_count_ai_usage_ownership.sql').toBe(true);
   });
 
-  it('returns another user’s count only for service_role', () => {
+  it('runs as the caller and guards with the JWT, not the function owner', () => {
+    expect(defined.sql).toContain('security invoker');
+    expect(defined.sql).not.toContain('security definer');
+    expect(defined.sql).not.toContain('current_user');
     expect(defined.sql).toContain('p_user_id is distinct from auth.uid()');
-    expect(defined.sql).toContain("coalesce(auth.role(), '') <> 'service_role'");
-    expect(defined.sql).toContain("current_user not in ('service_role', 'postgres', 'supabase_admin')");
+    expect(defined.sql).toContain("coalesce(auth.role(), '') is distinct from 'service_role'");
     expect(defined.sql).toContain("raise exception 'forbidden'");
     expect(defined.sql).toContain("errcode = '42501'");
   });

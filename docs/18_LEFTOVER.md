@@ -24,7 +24,8 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | A9 | Redeploy Edge `purge-note-audio` (`verify_jwt` off) and `extract-note` after A11. `note-audio` / `process-note` have no further change for this rule | [ ] |
 | A10 | Schedule `purge-note-audio` hourly with header `x-cron-secret: <CRON_SECRET>` if it is not already scheduled. `pg_cron` is not installed; Dashboard Cron, or enable `pg_cron`+`pg_net` and store the secret in Vault (SQL example in [09_NOTIFICATIONS_EMAIL_CRON.md](./09_NOTIFICATIONS_EMAIL_CRON.md)). Do not commit the secret | [ ] |
 | A11 | Apply migration `20261022160000_audio_purge_any_status` (`list_orphan_note_audio` only). Do this before relying on orphan cleanup | [ ] |
-| A12 | Apply migration `20261022180000_count_ai_usage_ownership`. No function redeploy. Cross-user `count_ai_usage_today` must return `42501`, not the other user’s count | [ ] |
+| A12 | `20261022180000_count_ai_usage_ownership` is applied and does not raise (definer owner exemption). Do not edit it | [x] |
+| A13 | Apply `20261022200000_count_ai_usage_invoker`. No function redeploy. As user A, `count_ai_usage_today(B)` must raise `42501`, not return 0 or B’s count | [ ] |
 
 ### B. Device smoke (blocks private beta confidence)
 
