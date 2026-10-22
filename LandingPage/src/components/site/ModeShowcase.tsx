@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, Mic, Undo2, X } from "lucide-react";
+import { EASE } from "./Reveal";
 import { PINNED_PANEL, StepSpacer, useScrollSteps } from "./ScrollSteps";
 import { SAMPLE_DURATION, SAMPLE_SUGGESTIONS, SAMPLE_TRANSCRIPT } from "@/lib/content";
+import { useSuggestionDecisions, type Decision, type Decisions } from "@/lib/suggestion-decisions";
 import { cn } from "@/lib/utils";
 
 const MODES = [
@@ -12,13 +14,9 @@ const MODES = [
 ];
 
 const WORDS = SAMPLE_TRANSCRIPT.map((s) => s.text).join("").split(" ");
-const EASE = [0.22, 1, 0.36, 1] as const;
-
-type Decision = "approved" | "dismissed";
-
 export function ModeShowcase() {
   const { sectionRef, stickyRef, step, scrollToStep } = useScrollSteps(MODES.length);
-  const [decisions, setDecisions] = useState<Record<number, Decision>>({});
+  const { decisions, decide, undo } = useSuggestionDecisions();
   const mode = MODES[step];
 
   return (
@@ -92,17 +90,7 @@ export function ModeShowcase() {
                       {step === 0 && <CaptureScene />}
                       {step === 1 && <ClarityScene />}
                       {step === 2 && (
-                        <ControlScene
-                          decisions={decisions}
-                          decide={(id, d) => setDecisions((prev) => ({ ...prev, [id]: d }))}
-                          undo={(id) =>
-                            setDecisions((prev) => {
-                              const next = { ...prev };
-                              delete next[id];
-                              return next;
-                            })
-                          }
-                        />
+                        <ControlScene decisions={decisions} decide={decide} undo={undo} />
                       )}
                     </motion.div>
                   </AnimatePresence>
@@ -217,7 +205,7 @@ function ControlScene({
   decide,
   undo,
 }: {
-  decisions: Record<number, Decision>;
+  decisions: Decisions;
   decide: (id: number, d: Decision) => void;
   undo: (id: number) => void;
 }) {

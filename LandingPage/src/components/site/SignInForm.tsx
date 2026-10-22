@@ -3,11 +3,10 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, Check, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { appUrl } from "@/lib/config";
-
-type Mode = "signin" | "signup" | "reset";
+import { signInError, type SignInMode } from "@/lib/sign-in";
 
 export function SignInForm() {
-  const [mode, setMode] = useState<Mode>("signin");
+  const [mode, setMode] = useState<SignInMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -15,7 +14,7 @@ export function SignInForm() {
   const [error, setError] = useState("");
   const [resetDone, setResetDone] = useState(false);
 
-  function changeMode(next: Mode) {
+  function changeMode(next: SignInMode) {
     setMode(next);
     setError("");
     setResetDone(false);
@@ -23,19 +22,9 @@ export function SignInForm() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("Enter a valid email address.");
-      return;
-    }
-    if (mode !== "reset" && password.length < 8) {
-      setError("Enter a password with at least 8 characters.");
-      return;
-    }
-    if (mode === "signup" && !name.trim()) {
-      setError("Enter your name.");
-      return;
-    }
-    setError("");
+    const invalid = signInError(mode, { email, password, name });
+    setError(invalid ?? "");
+    if (invalid) return;
     if (mode === "reset") {
       setResetDone(true);
       return;

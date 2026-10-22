@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useLenis } from "lenis/react";
-import { stepAt } from "@/lib/scroll-steps";
+import { offsetForStep, stepAt } from "@/lib/scroll-steps";
 
 // Scroll distance per step; ~2 wheel/trackpad strokes.
 const STEP_SCROLL_VH = 30;
@@ -32,7 +32,7 @@ export function useScrollSteps(total: number) {
   function scrollToStep(index: number) {
     const p = pin();
     if (!p) return;
-    const top = window.scrollY - p.scrolled + (p.range * (index + 0.5)) / total;
+    const top = window.scrollY - p.scrolled + offsetForStep(index, p.range, total);
     if (lenis) lenis.scrollTo(top);
     else window.scrollTo({ top, behavior: "smooth" });
   }

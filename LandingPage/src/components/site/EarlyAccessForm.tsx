@@ -1,11 +1,6 @@
 import { useState } from "react";
 import { Check, Loader2 } from "lucide-react";
-import { getSupabase } from "@/lib/supabase";
-import {
-  toWaitlistRow,
-  waitlistSchema,
-  waitlistStatusFromError,
-} from "@/lib/waitlist";
+import { joinWaitlist } from "@/lib/waitlist";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -21,25 +16,15 @@ export function EarlyAccessForm({ compact = false }: { compact?: boolean }) {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const parsed = waitlistSchema.safeParse({
-      email,
-      firstName: firstName || undefined,
-    });
-    if (!parsed.success) {
-      const fe = parsed.error.flatten().fieldErrors;
-      setErrors({ email: fe.email?.[0], firstName: fe.firstName?.[0] });
-      return;
-    }
     setErrors({});
     setStatus("loading");
-    try {
-      const { error } = await getSupabase()
-        .from("waitlist")
-        .insert(toWaitlistRow(parsed.data));
-      setStatus(error ? waitlistStatusFromError(error) : "success");
-    } catch {
-      setStatus("error");
+    const result = await joinWaitlist({ email, firstName });
+    if (result.status === "invalid") {
+      setErrors(result.fieldErrors);
+      setStatus("idle");
+      return;
     }
+    setStatus(result.status);
   }
 
   if (status === "success" || status === "already") {

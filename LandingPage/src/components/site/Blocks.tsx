@@ -61,7 +61,3 @@ export function DraftNotice({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-export function Placeholder({ children }: { children: ReactNode }) {
-  return <mark className="rounded bg-lavender px-1.5 py-0.5 font-mono text-[0.85em] text-ink">[{children}]</mark>;
-}

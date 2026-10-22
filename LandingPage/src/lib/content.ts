@@ -1,6 +1,7 @@
 export type Segment = { text: string; taskId?: number };
 
 export const SAMPLE_DURATION = 14;
+export const SAMPLE_LENGTH = `0:${String(SAMPLE_DURATION).padStart(2, "0")}`;
 
 export const SAMPLE_TRANSCRIPT: Segment[] = [
   { text: "Need to " },
@@ -23,15 +24,6 @@ export const SAMPLE_SUGGESTIONS: Suggestion[] = [
   { id: 1, title: "Send revised proposal to Maya", due: "Thursday", kind: "Follow-up" },
   { id: 2, title: "Book dentist appointment", kind: "Task" },
   { id: 3, title: "Explore the new onboarding flow", due: "This weekend", kind: "Idea" },
-];
-
-export const seo = (title: string, description: string) => [
-  { title },
-  { name: "description", content: description },
-  { property: "og:title", content: title },
-  { property: "og:description", content: description },
-  { property: "og:type", content: "website" },
-  { name: "twitter:card", content: "summary_large_image" },
 ];
 
 export type Faq = { q: string; a: string; group: string };

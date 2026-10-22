@@ -3,7 +3,7 @@ import { motion, useInView } from "motion/react";
 import { Check, Mic, Play } from "lucide-react";
 import { LineReveal, Reveal, SectionLabel } from "@/components/site/Reveal";
 import { Waveform } from "@/components/site/Waveform";
-import { SAMPLE_SUGGESTIONS, SAMPLE_TRANSCRIPT } from "@/lib/content";
+import { SAMPLE_LENGTH, SAMPLE_SUGGESTIONS, SAMPLE_TRANSCRIPT } from "@/lib/content";
 import { cn } from "@/lib/utils";
 
 const PILE = [
@@ -158,7 +158,7 @@ function StageVisual({ stage }: { stage: number }) {
   return (
     <div className="min-h-[22rem] rounded-[1.6rem] bg-paper p-6 text-ink shadow-lift sm:p-8">
       <div className="flex items-center justify-between">
-        <span className="eyebrow text-stone">Voice note · 0:14</span>
+        <span className="eyebrow text-stone">Voice note · {SAMPLE_LENGTH}</span>
         <span className="eyebrow rounded-full bg-ink px-2 py-1 text-paper">{STAGES[stage]!.title.replace(".", "")}</span>
       </div>
       <motion.div key={stage} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mt-8">

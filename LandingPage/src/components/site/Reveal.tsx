@@ -1,6 +1,8 @@
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 
+export const EASE = [0.22, 1, 0.36, 1] as const;
+
 export function Reveal({
   children,
   delay = 0,
@@ -19,7 +21,7 @@ export function Reveal({
       initial={reduced ? false : { opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.05 }}
-      transition={{ duration: 0.8, delay, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.8, delay, ease: EASE }}
     >
       {children}
     </motion.div>
@@ -48,7 +50,7 @@ export function LineReveal({
             initial={reduced ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.9, delay: delay + i * 0.09, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.9, delay: delay + i * 0.09, ease: EASE }}
           >
             {line}
           </motion.span>

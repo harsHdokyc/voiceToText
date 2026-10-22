@@ -2,12 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { appUrl } from "@/lib/config";
-import { getSupabase } from "@/lib/supabase";
-import {
-  toWaitlistRow,
-  waitlistSchema,
-  waitlistStatusFromError,
-} from "@/lib/waitlist";
+import { joinWaitlist } from "@/lib/waitlist";
 
 const LINKS = [
   { to: "/product", label: "Product" },
@@ -21,7 +16,7 @@ const LINKS = [
   { href: appUrl(), label: "Sign in" },
 ] as const;
 
-type Status = "idle" | "loading" | "ok" | "already" | "error";
+type Status = "idle" | "loading" | "success" | "already" | "error";
 
 export function SiteFooter() {
   const [email, setEmail] = useState("");
@@ -30,30 +25,15 @@ export function SiteFooter() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const parsed = waitlistSchema.safeParse({ email });
-    if (!parsed.success) {
-      setError(
-        parsed.error.flatten().fieldErrors.email?.[0] ?? "Enter your email.",
-      );
+    setError("");
+    setStatus("loading");
+    const result = await joinWaitlist({ email });
+    if (result.status === "invalid") {
+      setError(result.fieldErrors.email ?? "Enter your email.");
       setStatus("error");
       return;
     }
-    setError("");
-    setStatus("loading");
-    try {
-      const { error: insertError } = await getSupabase()
-        .from("waitlist")
-        .insert(toWaitlistRow(parsed.data));
-      if (!insertError) setStatus("ok");
-      else
-        setStatus(
-          waitlistStatusFromError(insertError) === "already"
-            ? "already"
-            : "error",
-        );
-    } catch {
-      setStatus("error");
-    }
+    setStatus(result.status);
   }
 
   return (
@@ -68,9 +48,9 @@ export function SiteFooter() {
             </h2>
           </div>
 
-          {status === "ok" || status === "already" ? (
+          {status === "success" || status === "already" ? (
             <p className="site-footer-done" role="status">
-              {status === "ok"
+              {status === "success"
                 ? "You're on the list. We'll write when it's your turn."
                 : "You're already on the list."}
             </p>

@@ -2,7 +2,7 @@ import { Check, Mic, Square } from "lucide-react";
 import { LineReveal, Reveal, SectionLabel } from "@/components/site/Reveal";
 import { Waveform } from "@/components/site/Waveform";
 import { SuggestionEditor } from "@/components/site/SuggestionEditor";
-import { SAMPLE_SUGGESTIONS } from "@/lib/content";
+import { SAMPLE_LENGTH, SAMPLE_SUGGESTIONS } from "@/lib/content";
 
 function Panel({ label, n, children, className = "" }: { label: string; n: string; children: React.ReactNode; className?: string }) {
   return (
@@ -98,9 +98,9 @@ export function Showcase() {
         <Panel n="D" label="Task list with source-note context" className="md:col-span-5">
           <ul className="divide-y divide-border">
             {[
-              { t: "Send revised proposal to Maya", due: "Thu", src: "Walk to the station · 0:14" },
+              { t: "Send revised proposal to Maya", due: "Thu", src: `Walk to the station · ${SAMPLE_LENGTH}` },
               { t: "Email Jonas revised timeline", due: "Today", src: "After the call · 0:52" },
-              { t: "Book dentist appointment", src: "Walk to the station · 0:14" },
+              { t: "Book dentist appointment", src: `Walk to the station · ${SAMPLE_LENGTH}` },
             ].map((r) => (
               <li key={r.t} className="flex items-start gap-3 py-3 first:pt-0">
                 <span className="mt-0.5 h-4 w-4 rounded-[5px] border-2 border-foreground" />

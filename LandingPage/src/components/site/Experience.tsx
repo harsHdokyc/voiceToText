@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Check, Mic, Pencil, RotateCcw, Sparkles, X } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { LineReveal, Reveal, SectionLabel } from "./Reveal";
 import { ModeShowcase } from "./ModeShowcase";
 import { PINNED_PANEL, StepSpacer, useScrollSteps } from "./ScrollSteps";
-import { SAMPLE_SUGGESTIONS, SAMPLE_TRANSCRIPT } from "@/lib/content";
+import { SAMPLE_LENGTH, SAMPLE_SUGGESTIONS, SAMPLE_TRANSCRIPT } from "@/lib/content";
+import { useSuggestionDecisions } from "@/lib/suggestion-decisions";
 import { cn } from "@/lib/utils";
 
 export function VoiceRibbon({ live = true }: { live?: boolean }) {
@@ -40,10 +41,8 @@ export function InteractiveJourney() {
   const tabsRef = useRef<HTMLDivElement>(null);
   const total = journey.length;
   const { sectionRef, stickyRef, step, scrollToStep } = useScrollSteps(total);
-  const [kept, setKept] = useState<number[]>([]);
-  const [dismissed, setDismissed] = useState<number[]>([]);
-  const [edited, setEdited] = useState<Record<number, string>>({});
-  const [editing, setEditing] = useState<number | null>(null);
+  const { decisions, titles, editing, setEditing, decide, rename, titleOf } = useSuggestionDecisions();
+  const kept = SAMPLE_SUGGESTIONS.filter((item) => decisions[item.id] === "approved");
   const current = journey[step];
 
   useEffect(() => {
@@ -122,7 +121,7 @@ export function InteractiveJourney() {
             <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-4 shadow-card md:p-9">
               <div className="flex items-center justify-between border-b border-border pb-5">
                 <span className="eyebrow text-muted-foreground">Voice note / 01</span>
-                <span className="font-mono text-xs">0:14</span>
+                <span className="font-mono text-xs">{SAMPLE_LENGTH}</span>
               </div>
               <div className="min-h-64 py-5 md:min-h-80">
                 <AnimatePresence mode="wait">
@@ -178,13 +177,8 @@ export function InteractiveJourney() {
                                   aria-label="Edit suggestion"
                                   className="input-field"
                                   autoFocus
-                                  value={edited[item.id] ?? item.title}
-                                  onChange={(e) =>
-                                    setEdited({
-                                      ...edited,
-                                      [item.id]: e.target.value,
-                                    })
-                                  }
+                                  value={titles[item.id] ?? item.title}
+                                  onChange={(e) => rename(item.id, e.target.value)}
                                   onBlur={() => setEditing(null)}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") setEditing(null);
@@ -194,11 +188,11 @@ export function InteractiveJourney() {
                                 <p
                                   className={cn(
                                     "text-base font-medium",
-                                    dismissed.includes(item.id) &&
+                                    decisions[item.id] === "dismissed" &&
                                       "text-muted-foreground line-through",
                                   )}
                                 >
-                                  {edited[item.id] ?? item.title}
+                                  {titleOf(item)}
                                 </p>
                               )}
                               <p className="mt-1 text-xs text-muted-foreground">
@@ -208,20 +202,13 @@ export function InteractiveJourney() {
                             <div className="mt-3 flex items-center gap-2">
                               <Button
                                 variant={
-                                  kept.includes(item.id) ? "secondary" : "cta"
+                                  decisions[item.id] === "approved" ? "secondary" : "cta"
                                 }
                                 size="sm"
-                                onClick={() => {
-                                  setKept([
-                                    ...new Set([...kept, item.id]),
-                                  ]);
-                                  setDismissed(
-                                    dismissed.filter((id) => id !== item.id),
-                                  );
-                                }}
+                                onClick={() => decide(item.id, "approved")}
                               >
                                 <Check />
-                                {kept.includes(item.id)
+                                {decisions[item.id] === "approved"
                                   ? "Approved"
                                   : "Approve"}
                               </Button>
@@ -239,12 +226,7 @@ export function InteractiveJourney() {
                                 size="icon"
                                 title="Dismiss suggestion"
                                 aria-label={`Dismiss ${item.title}`}
-                                onClick={() => {
-                                  setDismissed([
-                                    ...new Set([...dismissed, item.id]),
-                                  ]);
-                                  setKept(kept.filter((id) => id !== item.id));
-                                }}
+                                onClick={() => decide(item.id, "dismissed")}
                               >
                                 <X />
                               </Button>
@@ -259,9 +241,7 @@ export function InteractiveJourney() {
                           Your next steps / {kept.length}
                         </span>
                         {kept.length ? (
-                          SAMPLE_SUGGESTIONS.filter((item) =>
-                            kept.includes(item.id),
-                          ).map((item) => (
+                          kept.map((item) => (
                             <div
                               key={item.id}
                               className="flex gap-4 border-b border-border py-6"
@@ -269,7 +249,7 @@ export function InteractiveJourney() {
                               <Check className="h-5 w-5 shrink-0 text-primary" />
                               <div>
                                 <p className="font-medium">
-                                  {edited[item.id] ?? item.title}
+                                  {titleOf(item)}
                                 </p>
                                 <p className="mt-2 text-xs text-muted-foreground">
                                   {item.due ?? "Anytime"} · From voice note 01
