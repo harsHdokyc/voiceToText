@@ -1,5 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router, type Href } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
@@ -15,7 +15,10 @@ import {
   type TaskRow,
 } from '@/features/tasks/services/tasks-service';
 import { suggestionKindLabel } from '@/features/notes/services/pending-suggestions';
-import { saveTaskFromEditSheet } from '@/features/tasks/services/task-edit-save';
+import {
+  createTaskFromSheet,
+  saveTaskFromEditSheet,
+} from '@/features/tasks/services/task-edit-save';
 import {
   TASK_LIST_FILTERS,
   taskListQueryForFilter,
@@ -28,6 +31,7 @@ export default function TasksScreen() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<TaskListFilter>('Open');
   const [editing, setEditing] = useState<TaskRow | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const params = taskListQueryForFilter(filter);
   const tasks = useQuery({
@@ -61,16 +65,33 @@ export default function TasksScreen() {
     },
   });
 
+  const create = useMutation({
+    mutationFn: createTaskFromSheet,
+    onSuccess: async () => {
+      setCreating(false);
+      await invalidate();
+    },
+  });
+
   const rows = tasks.data ?? [];
   const busy =
     toggleComplete.isPending || remove.isPending || saveEdit.isPending;
+  const sheetMutation = creating ? create : saveEdit;
 
   return (
     <WorkspacePage>
-      <Eyebrow>The things you chose</Eyebrow>
-      <Text className="font-display text-4xl text-ink">
-        Make <Text className="font-sans-italic text-cobalt">progress.</Text>
-      </Text>
+      <View className="flex-row flex-wrap items-end justify-between gap-4">
+        <View className="min-w-0 gap-2">
+          <Eyebrow>The things you chose</Eyebrow>
+          <Text className="font-display text-4xl text-ink">
+            Make <Text className="font-sans-italic text-cobalt">progress.</Text>
+          </Text>
+        </View>
+        <Button variant="cta" size="lg" onPress={() => setCreating(true)}>
+          <Ionicons name="add" size={18} color={colors.card} />
+          <Text className="font-sans-medium text-[15px] text-card">New task</Text>
+        </Button>
+      </View>
 
       <View className="flex-row flex-wrap gap-2">
         {TASK_LIST_FILTERS.map((f) => (
@@ -84,15 +105,6 @@ export default function TasksScreen() {
           </Button>
         ))}
       </View>
-
-      <Button
-        variant="quiet"
-        size="sm"
-        className="self-start"
-        onPress={() => router.push('/(app)/tasks/new' as Href)}
-      >
-        New task
-      </Button>
 
       {tasks.isLoading ? (
         <ActivityIndicator color={colors.cobalt} />
@@ -142,20 +154,30 @@ export default function TasksScreen() {
       ) : null}
 
       <EditNextStepSheet
-        open={editing !== null}
+        open={creating || editing !== null}
         onClose={() => {
-          if (!saveEdit.isPending) setEditing(null);
+          if (sheetMutation.isPending) return;
+          setCreating(false);
+          setEditing(null);
+          create.reset();
         }}
         initialTitle={editing?.title ?? ''}
         initialDueAt={editing?.due_at ?? null}
-        mode="task"
-        busy={saveEdit.isPending}
+        mode={creating ? 'create' : 'task'}
+        busy={sheetMutation.isPending}
         error={
-          saveEdit.error
-            ? errorMessageForUi(saveEdit.error, 'Save failed')
+          sheetMutation.error
+            ? errorMessageForUi(
+                sheetMutation.error,
+                creating ? 'Create failed' : 'Save failed',
+              )
             : null
         }
         onSave={(draft) => {
+          if (creating) {
+            create.mutate(draft);
+            return;
+          }
           if (!editing) return;
           saveEdit.mutate({
             task: editing,

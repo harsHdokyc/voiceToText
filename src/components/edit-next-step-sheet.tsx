@@ -28,11 +28,36 @@ type Props = {
   onClose: () => void;
   initialTitle: string;
   initialDueAt: string | null;
-  /** Tasks: Save changes. Suggestions: Approve with changes (RLS blocks draft field updates). */
-  mode: 'task' | 'suggestion';
+  /** Tasks: Save changes. Suggestions: Approve with changes (RLS blocks draft field updates). Create: new manual task. */
+  mode: 'task' | 'suggestion' | 'create';
   busy?: boolean;
   error?: string | null;
   onSave: (draft: EditNextStepDraft) => void;
+};
+
+const MODE_COPY: Record<
+  Props['mode'],
+  { title: string; description: string; submitLabel: string; busyLabel: string }
+> = {
+  task: {
+    title: 'Edit your next step',
+    description: 'Set a due date and a reminder so it doesn’t slip.',
+    submitLabel: 'Save changes',
+    busyLabel: 'Saving…',
+  },
+  suggestion: {
+    title: 'Edit your next step',
+    description:
+      'Adjust the title and due date, then approve — suggestions become tasks only when you approve.',
+    submitLabel: 'Approve with changes',
+    busyLabel: 'Approving…',
+  },
+  create: {
+    title: 'New next step',
+    description: 'Write it down, then set a due date and a reminder so it doesn’t slip.',
+    submitLabel: 'Add task',
+    busyLabel: 'Adding…',
+  },
 };
 
 /**
@@ -81,25 +106,14 @@ export function EditNextStepSheet({
     onSave({ title: trimmed, dueAt, reminderHours });
   }
 
-  const submitLabel =
-    mode === 'suggestion'
-      ? busy
-        ? 'Approving…'
-        : 'Approve with changes'
-      : busy
-        ? 'Saving…'
-        : 'Save changes';
+  const copy = MODE_COPY[mode];
 
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      title="Edit your next step"
-      description={
-        mode === 'suggestion'
-          ? 'Adjust the title and due date, then approve — suggestions become tasks only when you approve.'
-          : 'Set a due date and a reminder so it doesn’t slip.'
-      }
+      title={copy.title}
+      description={copy.description}
     >
       <View className="gap-2">
         <Text className="font-sans text-sm text-ink">Title</Text>
@@ -228,7 +242,9 @@ export function EditNextStepSheet({
         onPress={submit}
         className="mt-2 self-start rounded-pill px-6"
       >
-        <Text className="font-sans-medium text-[15px] text-card">{submitLabel}</Text>
+        <Text className="font-sans-medium text-[15px] text-card">
+          {busy ? copy.busyLabel : copy.submitLabel}
+        </Text>
         <Ionicons name="checkmark" size={16} color={colors.card} />
       </Button>
     </Sheet>

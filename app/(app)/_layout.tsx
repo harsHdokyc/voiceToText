@@ -43,10 +43,6 @@ export default function AppLayout() {
         <Stack.Screen name="suggestions" />
         <Stack.Screen name="tasks/index" />
         <Stack.Screen
-          name="tasks/new"
-          options={{ ...detailHeader, title: 'New task' }}
-        />
-        <Stack.Screen
           name="tasks/[taskId]"
           options={{ ...detailHeader, title: 'Task' }}
         />

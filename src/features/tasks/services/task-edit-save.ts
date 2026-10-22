@@ -2,7 +2,19 @@ import { reminderAtHoursFromNow } from '@/features/reminders/services/reminder-s
 import { scheduleReminder } from '@/features/reminders/services/reminders-service';
 import { registerForPushNotifications } from '@/features/reminders/services/push-registration';
 import type { ReminderHourPreset } from '@/features/reminders/services/reminder-schedule';
-import { updateTask, type TaskRow } from '@/features/tasks/services/tasks-service';
+import {
+  createManualTask,
+  updateTask,
+  type TaskRow,
+} from '@/features/tasks/services/tasks-service';
+
+async function scheduleReminderPreset(taskId: string, hours: ReminderHourPreset) {
+  await registerForPushNotifications().catch(() => undefined);
+  await scheduleReminder({
+    taskId,
+    scheduledFor: reminderAtHoursFromNow(hours),
+  });
+}
 
 /** Save title/due from the edit sheet; optionally schedule a reminder preset. */
 export async function saveTaskFromEditSheet(params: {
@@ -19,11 +31,20 @@ export async function saveTaskFromEditSheet(params: {
     priority: task.priority,
   });
   if (reminderHours && task.status === 'open') {
-    await registerForPushNotifications().catch(() => undefined);
-    await scheduleReminder({
-      taskId: task.id,
-      scheduledFor: reminderAtHoursFromNow(reminderHours),
-    });
+    await scheduleReminderPreset(task.id, reminderHours);
   }
   return updated;
+}
+
+/** Create a manual task from the sheet; optionally schedule a reminder preset. */
+export async function createTaskFromSheet(params: {
+  title: string;
+  dueAt: string | null;
+  reminderHours: ReminderHourPreset | null;
+}) {
+  const task = await createManualTask({ title: params.title, due_at: params.dueAt });
+  if (params.reminderHours) {
+    await scheduleReminderPreset(task.id, params.reminderHours);
+  }
+  return task;
 }
