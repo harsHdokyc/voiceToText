@@ -34,6 +34,9 @@ export default function AppLayout() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.paper },
+          // Content reveal lives in WorkspacePage; a slide here would double the motion.
+          animation: 'fade',
+          animationDuration: 220,
         }}
       >
         <Stack.Screen name="index" />

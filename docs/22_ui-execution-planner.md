@@ -493,7 +493,7 @@ Each step: **goal → do → do not → exit**.
 **Exit**
 - Manual pass: iPhone/Android + Expo web width 390 and 1280 against prototype checklist.
 
-**Status: done (2026-10-13).** `PageEnter` on pathname; hitSlop on nav/controls; note cards `overflow/minWidth` guarded; sidebar collapse already present.
+**Status: done (2026-10-13).** Staggered section reveal in `WorkspacePage` (Reanimated `entering`, ease-out, reduced-motion aware) + native Stack `fade` (replaced `PageEnter`, which flashed one frame post-paint); hitSlop on nav/controls; note cards `overflow/minWidth` guarded; sidebar collapse already present.
 
 ---
 

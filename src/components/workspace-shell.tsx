@@ -18,7 +18,6 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CaptureProvider, useCapture } from '@/components/capture-sheet';
-import { PageEnter } from '@/components/page-enter';
 import { Button, iconPressClassName } from '@/components/ui';
 import {
   hrefForWorkspaceNav,
@@ -297,7 +296,7 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
           className="flex-1"
           style={!desktop ? { paddingBottom: 72 + insets.bottom } : undefined}
         >
-          <PageEnter animKey={pathname}>{children}</PageEnter>
+          {children}
         </View>
 
         {!desktop ? (
