@@ -17,6 +17,10 @@ import {
   showProcessingRetry,
   type NoteStatus,
 } from '@/features/notes/services/note-status';
+import {
+  audioMimeForUpload,
+  extensionForMime,
+} from '@/features/recording/services/recording-format';
 import { ApiError } from '@/lib/api-error';
 import { trackProductEvent } from '@/lib/product-analytics';
 import { supabase } from '@/lib/supabase';
@@ -155,7 +159,6 @@ export async function uploadNoteAudio(params: {
   uri: string;
   mimeType: string;
   durationSeconds: number;
-  extension?: string;
 }) {
   return withApiLog(
     'api.notes.upload',
@@ -175,14 +178,14 @@ export async function uploadNoteAudio(params: {
         );
       }
       const blob = await response.blob();
-      const ext = params.extension ?? 'm4a';
+      const mimeType = audioMimeForUpload(blob.type, params.mimeType);
 
       const note = await proxyUploadNoteAudio({
         noteId: params.note.id,
         blob,
-        mimeType: params.mimeType,
+        mimeType,
         durationSeconds,
-        filename: `original.${ext}`,
+        filename: `original.${extensionForMime(mimeType)}`,
       });
 
       return asNoteRow(note as NoteRow);

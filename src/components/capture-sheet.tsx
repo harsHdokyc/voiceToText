@@ -27,7 +27,6 @@ import {
 } from '@/features/recording/services/live-dictation';
 import {
   ensureRecordingPermission,
-  extensionForMime,
   mimeFromUri,
   NOTE_RECORDING_PRESET,
   useAudioRecorder,
@@ -251,7 +250,6 @@ function CaptureSheet({
         uri: clip.uri,
         mimeType,
         durationSeconds: clip.durationSeconds,
-        extension: extensionForMime(mimeType),
       });
       await requestTranscription(queued.id);
       onClose();
@@ -288,7 +286,6 @@ function CaptureSheet({
           uri: readyUri,
           mimeType,
           durationSeconds: readyDuration,
-          extension: extensionForMime(mimeType),
         });
       }
       onClose();
