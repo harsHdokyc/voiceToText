@@ -52,3 +52,7 @@ graphify-out/
 .tmp*
 .tmp-*/
 expo-env.d.ts
+.cursor
+.vscode
+.expo
+# .agents
