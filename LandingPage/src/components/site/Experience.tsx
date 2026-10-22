@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useLenis } from "lenis/react";
-import { ArrowRight, Check, Mic, Pencil, RotateCcw, Sparkles, X } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LineReveal, Reveal, SectionLabel } from "./Reveal";
-import { ProductDemo } from "./ProductDemo";
 import { SAMPLE_SUGGESTIONS, SAMPLE_TRANSCRIPT } from "@/lib/content";
 import { cn } from "@/lib/utils";
+import { useLenis } from "lenis/react";
+import { ArrowRight, Check, Mic, Pencil, RotateCcw, Sparkles, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { ProductDemo } from "./ProductDemo";
+import { LineReveal, Reveal, SectionLabel } from "./Reveal";
 
 export function VoiceRibbon({ live = true }: { live?: boolean }) {
   const reduced = useReducedMotion();
@@ -111,9 +111,9 @@ export function InteractiveJourney() {
       ref={sectionRef}
       id="journey"
       className="scroll-mt-20 bg-lavender"
-      style={{ height: `${total * 100}vh` }}
+      style={{ height: `${(total - 1) * 50 + 100}vh` }}
     >
-      <div className="sticky top-0 flex min-h-dvh items-center">
+      <div className="sticky top-0 z-[51] flex min-h-dvh items-center">
         <div className="container-site w-full py-8 md:py-16">
           <div
             ref={tabsRef}
