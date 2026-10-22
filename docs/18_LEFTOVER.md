@@ -1,6 +1,6 @@
 # Leftovers — what remains to finish the project
 
-Last updated: 2026-10-19 (code leftovers shipped; marketing on Vercel; **manual items left for you**).
+Last updated: 2026-10-22 (audio retention code is in repo; hosted migration, function deploy, and schedule are still manual).
 
 Phases **0–7** are done. Code polish from this leftover pass is also in the app. Marketing landing is on Vercel — see [STATUS.md](./20_STATUS.md) + [LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).  
 Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
@@ -20,6 +20,9 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | A5 | **Rotate** any provider key that appeared in git; purge history or unblock after rotate so `git push` works | [ ] |
 | A6 | Confirm Auth email OTP templates on hosted Supabase | [ ] |
 | A7 | Re-read Google Gemini + Supabase terms before broader launch | [ ] |
+| A8 | Apply migration `20261022140000_audio_retention` on hosted **before** the app build or `note-audio` / `process-note` deploy that selects `audio_purged_at` | [ ] |
+| A9 | Deploy Edge `purge-note-audio` with `verify_jwt` off (`config.toml`). Redeploy `note-audio` and `process-note` | [ ] |
+| A10 | Schedule `purge-note-audio` hourly with header `x-cron-secret: <CRON_SECRET>`. `pg_cron` is not installed; Dashboard Cron, or enable `pg_cron`+`pg_net` and store the secret in Vault (SQL example in [09_NOTIFICATIONS_EMAIL_CRON.md](./09_NOTIFICATIONS_EMAIL_CRON.md)). Do not commit the secret | [ ] |
 
 ### B. Device smoke (blocks private beta confidence)
 

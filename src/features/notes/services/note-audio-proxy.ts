@@ -29,6 +29,7 @@ export type NoteAudioUploadResult = {
     status: string;
     processing_attempts: number;
     last_error_code: string | null;
+    audio_purged_at: string | null;
     created_at: string;
     updated_at: string;
   };

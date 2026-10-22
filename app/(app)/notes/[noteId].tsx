@@ -21,7 +21,9 @@ import {
   normalizeNoteCategory
 } from '@/features/notes/services/note-category';
 import {
+  AUDIO_DELETED_LABEL,
   displayTranscript,
+  isNoteAudioPurged,
   isRetryableProcessing,
   noteStatusLabel,
 } from '@/features/notes/services/note-status';
@@ -185,8 +187,16 @@ export default function NoteDetailScreen() {
         <View className="min-w-0 flex-1 border-t border-border pt-6">
           <Eyebrow>Transcript</Eyebrow>
           <View className="my-5 w-full min-w-0">
-            {/* Beat always — matches product ribbon feel on detail */}
-            <VoiceRibbon live />
+            {isNoteAudioPurged(row) ? (
+              <Text
+                className="py-3 font-sans text-sm leading-5 text-stone"
+                accessibilityRole="text"
+              >
+                {AUDIO_DELETED_LABEL}
+              </Text>
+            ) : (
+              <VoiceRibbon live />
+            )}
           </View>
           {processing ? (
             <Text className="mt-3 font-sans text-sm text-stone">

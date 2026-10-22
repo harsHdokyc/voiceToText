@@ -5,7 +5,7 @@ Use UUID primary keys, UTC `timestamptz`, foreign keys, constraints, indexes, an
 `id` references `auth.users(id)` cascade; `display_name`, `timezone`, `locale`, `created_at`, `updated_at`.
 
 ## notes
-`id`, `user_id`, `title`, `audio_path` (object path, not public URL), `audio_mime_type`, `audio_duration_seconds`, `transcript`, `edited_transcript`, `language`, `status`, `processing_attempts`, `last_error_code`, timestamps. Index `(user_id, created_at desc)` and `(user_id, status)`.
+`id`, `user_id`, `title`, `audio_path` (object path, not public URL; nulled when the file is purged), `audio_purged_at` (set when retention removes the file; clients may read it, only service role may write it), `audio_mime_type`, `audio_duration_seconds`, `transcript`, `edited_transcript`, `language`, `status`, `processing_attempts`, `last_error_code`, timestamps. Index `(user_id, created_at desc)`, `(user_id, status)`, and partial `(created_at)` where audio is still stored.
 
 ## task_suggestions
 `id`, `user_id`, `note_id`, `title`, `details`, `kind`, `due_at`, `priority`, `source_quote`, `confidence`, `status` (`pending/approved/rejected`), `created_task_id`, timestamps. Index `(user_id, note_id)`.

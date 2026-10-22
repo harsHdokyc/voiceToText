@@ -15,4 +15,10 @@ describe('privacyDisclosureParagraphs', () => {
     expect(PRIVACY_DISCLOSURE.toLowerCase()).toContain('private');
     expect(PRIVACY_DISCLOSURE.toLowerCase()).toContain('approve');
   });
+
+  it('says voice audio is deleted after 3 days and the transcript is kept', () => {
+    expect(PRIVACY_DISCLOSURE).toContain('3 days');
+    expect(PRIVACY_DISCLOSURE.toLowerCase()).toContain('transcript');
+    expect(PRIVACY_DISCLOSURE.toLowerCase()).toContain('reminders are kept');
+  });
 });

@@ -5,6 +5,18 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-22 · Voice-note audio deleted 3 days after recording
+- **Context:** Private `note-audio` objects should not be kept indefinitely. Notes, transcripts, suggestions, tasks, and reminders stay. Hosted project does not have `pg_cron` installed. Deleting `storage.objects` rows does not remove the file.
+- **Alternatives:** Hard-delete the whole note; purge every status at 3 days including `transcription_failed`; schedule inside the migration with a secret; enable `pg_cron` in the same migration as the column.
+- **Decision:**
+  - Column `notes.audio_purged_at`. Clients can read it. Only `service_role` (or the DB owner) can set it.
+  - Edge `purge-note-audio` uses the service role and `x-cron-secret` (same `CRON_SECRET` as `dispatch-reminders`). `verify_jwt = false`.
+  - Eligible when `created_at` is at least 3 days ago, `audio_path` is set, `audio_purged_at` is null, status is `review_ready` or `extraction_failed`, and `transcript` is non-blank. `created_at` is the recording clock.
+  - In-progress statuses and `transcription_failed` keep the file so `process-note` can retry speech-to-text. `extraction_failed` with a transcript is purged; retry calls `extract-note` and does not need the file.
+  - Storage API `remove` per object. Clear `audio_path` and set `audio_purged_at` only after that call is confirmed. Reruns are safe. Batch 40.
+  - No cron SQL in the migration. Schedule hourly in the dashboard, or with `pg_cron` + `pg_net` reading the secret from Vault. Do not hardcode the secret.
+- **Consequence:** Apply migration `20261022140000_audio_retention` before deploying `note-audio`, `process-note`, or an app build that selects `audio_purged_at`. Audio is not deleted until the function is deployed and scheduled. Playback of a purged note shows “Audio deleted after 3 days”.
+
 ## 2026-10-19 · AI provider = Google Gemini via LangChain + @google/genai
 - **Context:** Switch Edge AI off OpenAI/Naga OpenAI-compatible stack to Gemini; use LangChain for chat/extraction communication.
 - **Alternatives:** Keep OpenAI SDK; Gemini OpenAI-compat endpoint only; LangChain for both STT and chat; Vertex AI.

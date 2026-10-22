@@ -102,14 +102,19 @@ export default {
     }
 
     if (!existing.audio_path) {
+      const purged = Boolean(existing.audio_purged_at);
+      const code = purged ? "audio_purged" : "audio_missing";
+      const reason = purged
+        ? "Audio deleted after the 3 day retention window"
+        : "audio_path is null";
       edgeLog("error", "edge.process-note", {
         event: "fail",
-        code: "audio_missing",
-        reason: "audio_path is null",
+        code,
+        reason,
         noteId,
         durationMs: Date.now() - started,
       });
-      return Response.json({ ok: false, error: "audio_missing" }, {
+      return Response.json({ ok: false, error: code, reason }, {
         status: 400,
       });
     }

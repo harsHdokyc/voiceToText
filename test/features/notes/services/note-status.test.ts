@@ -8,8 +8,11 @@ import {
     displayTranscript,
     isClaimableForExtraction,
     isClaimableForTranscription,
+    AUDIO_DELETED_LABEL,
+    isNoteAudioPurged,
     isRetryableProcessing,
     noteMatchesSearch,
+    retryProcessingPlan,
     noteStatusLabel,
     noteStatusShort,
 } from '@/features/notes/services/note-status';
@@ -74,6 +77,80 @@ describe('Phase 4 status transitions', () => {
       true,
     );
     expect(canTransitionNoteStatus('transcribing', 'extracting')).toBe(true);
+  });
+});
+
+describe('retryProcessingPlan', () => {
+  it('re-extracts from the stored transcript when extraction failed', () => {
+    expect(
+      retryProcessingPlan({
+        status: 'extraction_failed',
+        transcript: ' Call the vendor ',
+        audio_purged_at: null,
+      }),
+    ).toBe('extract');
+  });
+
+  it('still re-extracts after the audio file has been purged', () => {
+    expect(
+      retryProcessingPlan({
+        status: 'extraction_failed',
+        transcript: 'Call the vendor',
+        audio_purged_at: '2026-04-10T00:00:00.000Z',
+      }),
+    ).toBe('extract');
+  });
+
+  it('re-transcribes when the audio file is still available', () => {
+    expect(
+      retryProcessingPlan({
+        status: 'transcription_failed',
+        transcript: 'partial',
+        audio_purged_at: null,
+      }),
+    ).toBe('transcribe');
+    expect(
+      retryProcessingPlan({
+        status: 'queued',
+        transcript: null,
+        audio_purged_at: null,
+      }),
+    ).toBe('transcribe');
+    expect(
+      retryProcessingPlan({
+        status: 'extraction_failed',
+        transcript: '   ',
+        audio_purged_at: null,
+      }),
+    ).toBe('transcribe');
+  });
+
+  it('does not send a purged note without a transcript back to speech-to-text', () => {
+    expect(
+      retryProcessingPlan({
+        status: 'transcription_failed',
+        transcript: '   ',
+        audio_purged_at: '2026-04-10T00:00:00.000Z',
+      }),
+    ).toBe('audio_gone');
+    expect(
+      retryProcessingPlan({
+        status: 'queued',
+        transcript: null,
+        audio_purged_at: '2026-04-10T00:00:00.000Z',
+      }),
+    ).toBe('audio_gone');
+  });
+});
+
+describe('isNoteAudioPurged', () => {
+  it('is true only when retention stamped a time', () => {
+    expect(isNoteAudioPurged({ audio_purged_at: null })).toBe(false);
+    expect(isNoteAudioPurged({ audio_purged_at: '  ' })).toBe(false);
+    expect(
+      isNoteAudioPurged({ audio_purged_at: '2026-04-10T00:00:00.000Z' }),
+    ).toBe(true);
+    expect(AUDIO_DELETED_LABEL).toBe('Audio deleted after 3 days');
   });
 });
 

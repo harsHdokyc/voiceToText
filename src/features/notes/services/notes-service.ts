@@ -13,6 +13,7 @@ import {
   isRetryableProcessing,
   normalizeNoteSearchQuery,
   noteMatchesSearch,
+  retryProcessingPlan,
   type NoteStatus,
 } from '@/features/notes/services/note-status';
 import { ApiError } from '@/lib/api-error';
@@ -34,15 +35,21 @@ export type NoteRow = {
   status: NoteStatus;
   processing_attempts: number;
   last_error_code: string | null;
+  /** Set by purge-note-audio. Null means the file was not removed by retention. */
+  audio_purged_at: string | null;
   created_at: string;
   updated_at: string;
 };
 
 const NOTE_PUBLIC_SELECT =
-  'id, title, category, audio_mime_type, audio_duration_seconds, transcript, edited_transcript, language, status, processing_attempts, last_error_code, created_at, updated_at';
+  'id, title, category, audio_mime_type, audio_duration_seconds, transcript, edited_transcript, language, status, processing_attempts, last_error_code, audio_purged_at, created_at, updated_at';
 
 function asNoteRow(row: NoteRow): NoteRow {
-  return { ...row, category: normalizeNoteCategory(row.category) };
+  return {
+    ...row,
+    category: normalizeNoteCategory(row.category),
+    audio_purged_at: row.audio_purged_at ?? null,
+  };
 }
 
 export type ListNotesParams = {
@@ -332,9 +339,15 @@ export async function retryTranscription(note: NoteRow) {
           'Note is not retryable for processing',
         );
       }
+      const plan = retryProcessingPlan(note);
+      if (plan === 'audio_gone') {
+        throw new ApiError(
+          'audio_purged',
+          'Audio deleted after 3 days and there is no transcript to re-extract',
+        );
+      }
       let current = note;
-      // ponytail: extraction_failed → retry extract-only via extract-note
-      if (note.status === 'extraction_failed' && note.transcript) {
+      if (plan === 'extract') {
         const { data, error } = await supabase.functions.invoke('extract-note', {
           body: { noteId: note.id },
         });

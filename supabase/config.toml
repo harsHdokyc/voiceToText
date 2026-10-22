@@ -446,6 +446,12 @@ verify_jwt = false
 import_map = "./functions/dispatch-reminders/deno.json"
 entrypoint = "./functions/dispatch-reminders/index.ts"
 
+[functions.purge-note-audio]
+enabled = true
+verify_jwt = false
+import_map = "./functions/purge-note-audio/deno.json"
+entrypoint = "./functions/purge-note-audio/index.ts"
+
 [functions.delete-note]
 enabled = true
 verify_jwt = true

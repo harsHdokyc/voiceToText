@@ -1,5 +1,5 @@
 # Project Status
-Last updated: 2026-10-19 (Phases 0–7 complete + Saydo workspace UI + landing on Vercel).
+Last updated: 2026-10-22 (Phases 0–7 complete + 3-day voice-audio retention in repo, not yet applied on hosted).
 
 ## Current phase
 **Phases 0–7 complete** against plan exit criteria (see inventory below). Hosted backend: [voiceToWork](https://supabase.com/dashboard/project/ubqhyeicmgmdzethtids).
@@ -62,6 +62,17 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | Cost dashboards / billing alerts | Metrics rows exist; no BI UI |
 | Transcript/note title editors, FTS, manual task create | Earlier-phase polish / P1 |
 
+### Audio retention (2026-10-22)
+**Shipped in repo, not applied on hosted:** migration `20261022140000_audio_retention` (`notes.audio_purged_at`); Edge `purge-note-audio` (`x-cron-secret`, service role, storage API); note detail shows “Audio deleted after 3 days” when `audio_purged_at` is set; extraction retry uses the transcript; Settings privacy copy updated.
+
+**Kept on purpose:** in-progress notes and `transcription_failed` keep the file so speech-to-text can retry. Notes without a stored transcript keep the file. Transcripts, suggestions, tasks, and reminders are never deleted by this job.
+
+**Ops (required before any audio is actually removed)**
+1. Apply the migration **before** deploying `note-audio` / `process-note` and before an app build that selects `audio_purged_at`.
+2. Deploy `purge-note-audio` with `verify_jwt = false` (from `config.toml`). Redeploy `note-audio` and `process-note`.
+3. `CRON_SECRET` must already be set (same header as reminders). No new secret name.
+4. Schedule `purge-note-audio` hourly. `pg_cron` is not installed; use Dashboard Cron or enable `pg_cron` + `pg_net` and read the secret from Vault. See [DECISIONS.md](./17_DECISIONS.md) and [09_NOTIFICATIONS_EMAIL_CRON.md](./09_NOTIFICATIONS_EMAIL_CRON.md).
+
 ### Physical device smoke (Phase 7)
 - [ ] Sign in / session restore on device
 - [ ] Record ≤60s note → transcript → suggestions → approve → task appears after restart
@@ -71,7 +82,8 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 ### Ops still required
 1. Edge secrets: `GOOGLE_API_KEY`, **`CRON_SECRET`** (optional model overrides `AI_*`)
 2. Schedule `dispatch-reminders` every minute with header `x-cron-secret: <CRON_SECRET>`
-3. Re-check Google Gemini + Supabase terms before public launch
+3. Apply `20261022140000_audio_retention`, deploy `purge-note-audio` (and redeploy `note-audio` / `process-note`), schedule it hourly with the same `x-cron-secret`
+4. Re-check Google Gemini + Supabase terms before public launch
 
 ---
 
@@ -90,7 +102,7 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | Overview | Greeting from `profiles.display_name`; cobalt capture band; recent notes + review/task previews |
 | Voice notes | Category chips Work/Ideas/Personal; search; card grid; detail + suggestions |
 | Capture | In-shell modal ≤60s `expo-audio` → upload → process-note (optional web live preview) |
-| Note detail | Transcript, suggestion approve/dismiss, retry, **delete note**, category |
+| Note detail | Transcript, suggestion approve/dismiss, retry, **delete note**, category. Purged audio shows “Audio deleted after 3 days” instead of the waveform |
 | Suggestions | Global pending inbox; Approve / Approve all / Edit (approve-with-edits) / Dismiss |
 | Tasks | Open/Completed/All; complete; edit sheet (due + 1h/3h/1d reminder); delete; source note |
 | Settings | Display name persist; privacy; push; sign out; delete account; Developer collapsed |
@@ -103,6 +115,7 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | `approve-suggestion` / `reject-suggestion` | Review path |
 | `register-push-token` | Upsert Expo token |
 | `dispatch-reminders` | Cron; claim → Expo push → delivery ledger |
+| `purge-note-audio` | Cron; delete `note-audio` files ≥3 days old; keep the note row |
 | `delete-note` / `delete-account` | Storage cleanup + DB wipe / auth delete |
 | `openai-spike` / `health` | Debug (spike slug historical; probes Gemini) |
 
@@ -110,7 +123,8 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | Item | Status |
 |---|---|
 | Migrations through `phase7_hardening` + `waitlist` | Applied on hosted |
-| Edge functions above | ACTIVE (register-push-token, dispatch-reminders, delete-note, delete-account, process-note redeployed) |
+| `20261022140000_audio_retention` | **In repo only.** Not applied by this change |
+| Edge functions above | ACTIVE except `purge-note-audio`, which is not deployed yet |
 | Marketing static site | Vercel ← `LandingPage/` (see Marketing deploy above) |
 
 ## Logging
@@ -119,8 +133,8 @@ See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 ## Tests
 | Command | Last result |
 |---|---|
-| `npm run typecheck` | Pass (2026-10-19) |
-| `npm test` | 141 passed / 25 files (2026-10-19) |
+| `npm run typecheck` | Retention files clean (2026-10-22). Two pre-existing errors remain: `global.css` side-effect import, `note-card` `backgroundImage` |
+| `npm test` | Retention, retry-plan, and privacy tests pass (2026-10-22). Full run: 156 passed; 1 pre-existing `sanitizeNoteTitle` failure; 3 suites fail to load `react-native` under Vite 8 (`logger`, `product-analytics`, `suggestions-service`). No `lint` script |
 
 **Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`). Behavior tests for pure helpers (greeting/display name, due presets, capture timer, live-dictation concat, dueLabel, etc.).
 

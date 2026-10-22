@@ -56,6 +56,30 @@ export function isRetryableProcessing(status: NoteStatus) {
   );
 }
 
+/** Shown in place of the note waveform after retention removes the file. */
+export const AUDIO_DELETED_LABEL = 'Audio deleted after 3 days';
+
+export function isNoteAudioPurged(note: { audio_purged_at?: string | null }) {
+  return Boolean(note.audio_purged_at?.trim());
+}
+
+export type RetryProcessingPlan = 'extract' | 'transcribe' | 'audio_gone';
+
+/**
+ * extraction_failed with a stored transcript retries extract-note and does not
+ * need the audio file. Any other retry after purge must not call process-note.
+ */
+export function retryProcessingPlan(note: {
+  status: NoteStatus;
+  transcript: string | null;
+  audio_purged_at?: string | null;
+}): RetryProcessingPlan {
+  const transcript = note.transcript?.trim();
+  if (note.status === 'extraction_failed' && transcript) return 'extract';
+  if (isNoteAudioPurged(note)) return 'audio_gone';
+  return 'transcribe';
+}
+
 export function noteStatusLabel(status: NoteStatus) {
   return status.replaceAll('_', ' ');
 }

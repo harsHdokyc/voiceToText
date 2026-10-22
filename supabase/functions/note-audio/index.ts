@@ -6,7 +6,7 @@ import { buildNoteAudioPath } from "../_shared/storage/note-audio-path.ts";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const NOTE_PUBLIC_COLUMNS =
-  "id, title, audio_mime_type, audio_duration_seconds, transcript, edited_transcript, language, status, processing_attempts, last_error_code, created_at, updated_at";
+  "id, title, audio_mime_type, audio_duration_seconds, transcript, edited_transcript, language, status, processing_attempts, last_error_code, audio_purged_at, created_at, updated_at";
 
 /**
  * Authenticated audio proxy — client sends noteId only; storage keys stay server-side.
@@ -260,7 +260,7 @@ async function handleDownload(ctx: any, userId: string, noteId: string, started:
 
   const { data: existing, error: loadError } = await ctx.supabase
     .from("notes")
-    .select("id, audio_path, audio_mime_type")
+    .select("id, audio_path, audio_mime_type, audio_purged_at")
     .eq("id", noteId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -279,6 +279,16 @@ async function handleDownload(ctx: any, userId: string, noteId: string, started:
     );
   }
   if (!existing.audio_path) {
+    if (existing.audio_purged_at) {
+      return fail(
+        started,
+        "download",
+        "audio_purged",
+        "Audio deleted after the 3 day retention window",
+        noteId,
+        404,
+      );
+    }
     return fail(started, "download", "audio_missing", "audio_path is null", noteId, 404);
   }
 
