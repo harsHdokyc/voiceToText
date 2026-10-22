@@ -316,7 +316,7 @@ export default function OverviewScreen() {
               <TaskProgressRow
                 key={t.id}
                 title={t.title}
-                kindLabel="Task"
+                kindLabel={suggestionKindLabel(t.kind)}
                 dueAt={t.due_at}
                 sourceNoteId={t.source_note_id}
                 done={t.status === 'completed'}

@@ -13,6 +13,7 @@ import {
   type TaskStatus,
 } from '@/features/tasks/services/task-status';
 import { trackProductEvent } from '@/lib/product-analytics';
+import type { SuggestionKind } from '@/features/notes/services/suggestions-service';
 
 export type TaskRow = {
   id: string;
@@ -21,6 +22,7 @@ export type TaskRow = {
   source_suggestion_id: string | null;
   title: string;
   details: string | null;
+  kind: SuggestionKind;
   status: TaskStatus;
   due_at: string | null;
   priority: TaskPriority | null;
@@ -30,7 +32,7 @@ export type TaskRow = {
 };
 
 const TASK_PUBLIC_SELECT =
-  'id, source_note_id, source_suggestion_id, title, details, status, due_at, priority, completed_at, created_at, updated_at';
+  'id, source_note_id, source_suggestion_id, title, details, kind, status, due_at, priority, completed_at, created_at, updated_at';
 
 export type ListTasksParams = {
   /** When set, only that status. When omitted, open + completed unless includeArchived. */

@@ -14,6 +14,7 @@ import {
   reopenTask,
   type TaskRow,
 } from '@/features/tasks/services/tasks-service';
+import { suggestionKindLabel } from '@/features/notes/services/pending-suggestions';
 import { saveTaskFromEditSheet } from '@/features/tasks/services/task-edit-save';
 import {
   TASK_LIST_FILTERS,
@@ -105,7 +106,7 @@ export default function TasksScreen() {
             <TaskProgressRow
               key={task.id}
               title={task.title}
-              kindLabel="Task"
+              kindLabel={suggestionKindLabel(task.kind)}
               dueAt={task.due_at}
               sourceNoteId={task.source_note_id}
               done={task.status === 'completed'}

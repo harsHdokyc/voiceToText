@@ -214,7 +214,6 @@ async function handleUpload(req: Request, ctx: any, userId: string, started: num
       audio_mime_type: mimeType,
       audio_duration_seconds: durationSeconds,
       last_error_code: null,
-      title: "Voice note",
       updated_at: new Date().toISOString(),
     })
     .eq("id", noteId)
