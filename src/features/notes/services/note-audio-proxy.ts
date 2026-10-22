@@ -1,3 +1,5 @@
+import { fetch as expoFetch } from 'expo/fetch';
+
 import { getPublicEnv } from '@/lib/env';
 import { ApiError } from '@/lib/api-error';
 import { supabase } from '@/lib/supabase';
@@ -16,11 +18,7 @@ function noteAudioUrl(action: 'upload' | 'download') {
   return `${EXPO_PUBLIC_SUPABASE_URL}/functions/v1/note-audio?action=${action}`;
 }
 
-export function noteAudioDownloadUrl(noteId: string) {
-  return `${noteAudioUrl('download')}&noteId=${encodeURIComponent(noteId)}`;
-}
-
-export async function noteAudioAuthHeaders() {
+async function noteAudioAuthHeaders() {
   return {
     Authorization: `Bearer ${await accessToken()}`,
     apikey: getPublicEnv().EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
@@ -94,10 +92,13 @@ export async function proxyUploadNoteAudio(params: {
   );
 }
 
-/** Download via Edge proxy — returns audio bytes; storage key never leaves the server. */
+/**
+ * Download via Edge proxy — returns audio bytes; storage key never leaves the server.
+ * `expo/fetch` so native can read binary (`arrayBuffer`); on web it is the global fetch.
+ */
 export async function proxyDownloadNoteAudio(noteId: string) {
   return withApiLog('api.notes.audio_download_proxy', { noteId }, async () => {
-    const response = await fetch(noteAudioUrl('download'), {
+    const response = await expoFetch(noteAudioUrl('download'), {
       method: 'POST',
       headers: {
         ...(await noteAudioAuthHeaders()),
@@ -118,7 +119,7 @@ export async function proxyDownloadNoteAudio(noteId: string) {
     }
 
     const mimeType = response.headers.get('Content-Type') ?? 'audio/mp4';
-    const blob = await response.blob();
-    return { blob, mimeType, bytes: blob.size };
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return { bytes, mimeType };
   });
 }

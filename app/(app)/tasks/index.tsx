@@ -25,6 +25,10 @@ import {
   type TaskListFilter,
 } from '@/features/tasks/services/task-due-label';
 import { errorMessageForUi } from '@/lib/api-error';
+import {
+  TASK_ROW_MUTATION_KEY,
+  usePendingRowIds,
+} from '@/lib/use-pending-row-ids';
 import { colors } from '@/theme';
 
 export default function TasksScreen() {
@@ -45,6 +49,7 @@ export default function TasksScreen() {
   };
 
   const toggleComplete = useMutation({
+    mutationKey: TASK_ROW_MUTATION_KEY,
     mutationFn: async (task: TaskRow) => {
       if (task.status === 'completed') return reopenTask(task.id);
       return completeTask(task.id);
@@ -53,9 +58,11 @@ export default function TasksScreen() {
   });
 
   const remove = useMutation({
-    mutationFn: (taskId: string) => deleteTask(taskId),
+    mutationKey: TASK_ROW_MUTATION_KEY,
+    mutationFn: (task: { id: string }) => deleteTask(task.id),
     onSuccess: invalidate,
   });
+  const pendingRowIds = usePendingRowIds(TASK_ROW_MUTATION_KEY);
 
   const saveEdit = useMutation({
     mutationFn: saveTaskFromEditSheet,
@@ -74,8 +81,6 @@ export default function TasksScreen() {
   });
 
   const rows = tasks.data ?? [];
-  const busy =
-    toggleComplete.isPending || remove.isPending || saveEdit.isPending;
   const sheetMutation = creating ? create : saveEdit;
 
   return (
@@ -122,10 +127,10 @@ export default function TasksScreen() {
               dueAt={task.due_at}
               sourceNoteId={task.source_note_id}
               done={task.status === 'completed'}
-              busy={busy}
+              busy={pendingRowIds.includes(task.id)}
               onToggleDone={() => toggleComplete.mutate(task)}
               onEdit={() => setEditing(task)}
-              onRemove={() => remove.mutate(task.id)}
+              onRemove={() => remove.mutate(task)}
             />
           ))}
         </View>

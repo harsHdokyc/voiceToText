@@ -19,6 +19,10 @@ import {
   type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
 import { errorMessageForUi } from '@/lib/api-error';
+import {
+  SUGGESTION_ROW_MUTATION_KEY,
+  usePendingRowIds,
+} from '@/lib/use-pending-row-ids';
 import { colors } from '@/theme';
 
 export default function SuggestionsScreen() {
@@ -38,14 +42,17 @@ export default function SuggestionsScreen() {
   };
 
   const approve = useMutation({
-    mutationFn: (id: string) => approveSuggestion(id),
+    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
+    mutationFn: (s: { id: string }) => approveSuggestion(s.id),
     onSuccess: invalidate,
   });
 
   const reject = useMutation({
-    mutationFn: (id: string) => rejectSuggestion(id),
+    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
+    mutationFn: (s: { id: string }) => rejectSuggestion(s.id),
     onSuccess: invalidate,
   });
+  const pendingRowIds = usePendingRowIds(SUGGESTION_ROW_MUTATION_KEY);
 
   const approveAll = useMutation({
     mutationFn: async (ids: string[]) => {
@@ -66,11 +73,7 @@ export default function SuggestionsScreen() {
 
   const rows = pending.data ?? [];
   const ids = pendingSuggestionIds(rows);
-  const busy =
-    approve.isPending ||
-    reject.isPending ||
-    approveAll.isPending ||
-    saveEdit.isPending;
+  const busy = pendingRowIds.length > 0 || approveAll.isPending || saveEdit.isPending;
 
   return (
     <WorkspacePage>
@@ -111,9 +114,9 @@ export default function SuggestionsScreen() {
               kindLabel={suggestionKindLabel(s.kind)}
               dueAt={s.due_at}
               sourceNoteId={s.note_id}
-              busy={busy}
-              onApprove={() => approve.mutate(s.id)}
-              onDismiss={() => reject.mutate(s.id)}
+              busy={approveAll.isPending || pendingRowIds.includes(s.id)}
+              onApprove={() => approve.mutate(s)}
+              onDismiss={() => reject.mutate(s)}
               onEdit={() => setEditing(s)}
             />
           ))}

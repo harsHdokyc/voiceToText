@@ -44,6 +44,10 @@ import {
   type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
 import { errorMessageForUi } from '@/lib/api-error';
+import {
+  SUGGESTION_ROW_MUTATION_KEY,
+  usePendingRowIds,
+} from '@/lib/use-pending-row-ids';
 import { cn } from '@/lib/cn';
 import { colors } from '@/theme';
 
@@ -100,17 +104,20 @@ export default function NoteDetailScreen() {
   });
 
   const approve = useMutation({
-    mutationFn: (id: string) => approveSuggestion(id),
+    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
+    mutationFn: (s: { id: string }) => approveSuggestion(s.id),
     onSuccess: invalidate,
   });
 
   const reject = useMutation({
-    mutationFn: (id: string) => rejectSuggestion(id),
+    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
+    mutationFn: (s: { id: string }) => rejectSuggestion(s.id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
       await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
     },
   });
+  const pendingRowIds = usePendingRowIds(SUGGESTION_ROW_MUTATION_KEY);
 
   const saveSuggestionEdit = useMutation({
     mutationFn: approveSuggestionWithEdit,
@@ -140,10 +147,6 @@ export default function NoteDetailScreen() {
 
   const row = note.data;
   const transcript = displayTranscript(row);
-  const busy =
-    approve.isPending ||
-    reject.isPending ||
-    saveSuggestionEdit.isPending;
   const processing =
     row.status === 'queued' ||
     row.status === 'transcribing' ||
@@ -238,9 +241,9 @@ export default function NoteDetailScreen() {
                   kindLabel={suggestionKindLabel(s.kind)}
                   dueAt={s.due_at}
                   sourceNoteId={null}
-                  busy={busy}
-                  onApprove={() => approve.mutate(s.id)}
-                  onDismiss={() => reject.mutate(s.id)}
+                  busy={pendingRowIds.includes(s.id)}
+                  onApprove={() => approve.mutate(s)}
+                  onDismiss={() => reject.mutate(s)}
                   onEdit={() => setEditingSuggestion(s)}
                 />
               ))

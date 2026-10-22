@@ -59,7 +59,7 @@ const variantClass: Record<ButtonVariant, string> = {
   ink: 'bg-ink rounded-pill web:transition-[opacity,transform] web:duration-300 hover:opacity-85 active:scale-[0.98]',
   lime: 'bg-lime rounded-pill web:transition-transform web:duration-300 hover:-translate-y-0.5 active:scale-[0.98]',
   quiet:
-    'bg-transparent border border-border rounded-pill web:transition-colors web:duration-300 hover:bg-ink active:bg-ink',
+    'group bg-transparent border border-border rounded-pill web:transition-colors web:duration-300 hover:bg-ink active:bg-ink',
   ghost:
     'bg-transparent rounded-md web:transition-colors web:duration-200 hover:bg-lime active:bg-lime/80',
   destructive:
@@ -118,14 +118,16 @@ export function Button({
 }) {
   return (
     <Pressable
+      // Remount on variant change (ink ↔ quiet chips). Variants differ in group/transform
+      // features; NativeWind can't add those after first render, and its dev "upgrade"
+      // warning crashes on native ("Couldn't find a navigation context").
+      key={variant}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       disabled={disabled}
       onPress={onPress}
       className={cn(
-        // `group` on every variant: adding it later (ink ↔ quiet chips) makes NativeWind
-        // remount the button as a container, and its dev warning crashes on native.
-        'group flex-row items-center justify-center gap-2',
+        'flex-row items-center justify-center gap-2',
         variantClass[variant],
         sizeClass[size],
         disabled && 'opacity-50',

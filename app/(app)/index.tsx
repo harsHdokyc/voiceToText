@@ -44,6 +44,11 @@ import {
   type TaskRow,
 } from '@/features/tasks/services/tasks-service';
 import { errorMessageForUi } from '@/lib/api-error';
+import {
+  SUGGESTION_ROW_MUTATION_KEY,
+  TASK_ROW_MUTATION_KEY,
+  usePendingRowIds,
+} from '@/lib/use-pending-row-ids';
 import { useAuth } from '@/providers/auth-provider';
 import { cn } from '@/lib/cn';
 import { colors, space } from '@/theme';
@@ -88,16 +93,19 @@ export default function OverviewScreen() {
     onSuccess: invalidateAll,
   });
   const approve = useMutation({
-    mutationFn: (id: string) => approveSuggestion(id),
+    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
+    mutationFn: (s: { id: string }) => approveSuggestion(s.id),
     onSuccess: invalidateAll,
   });
   const reject = useMutation({
-    mutationFn: (id: string) => rejectSuggestion(id),
+    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
+    mutationFn: (s: { id: string }) => rejectSuggestion(s.id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
     },
   });
   const toggleTask = useMutation({
+    mutationKey: TASK_ROW_MUTATION_KEY,
     mutationFn: async (task: TaskRow) => {
       if (task.status === 'completed') return reopenTask(task.id);
       return completeTask(task.id);
@@ -107,7 +115,8 @@ export default function OverviewScreen() {
     },
   });
   const removeTask = useMutation({
-    mutationFn: (id: string) => deleteTask(id),
+    mutationKey: TASK_ROW_MUTATION_KEY,
+    mutationFn: (t: { id: string }) => deleteTask(t.id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
@@ -126,18 +135,13 @@ export default function OverviewScreen() {
       await invalidateAll();
     },
   });
+  const pendingSuggestionRowIds = usePendingRowIds(SUGGESTION_ROW_MUTATION_KEY);
+  const pendingTaskRowIds = usePendingRowIds(TASK_ROW_MUTATION_KEY);
 
   const name = greetingName(profile.data?.display_name, user?.email);
   const pendingRows = pending.data ?? [];
   const openTasks = tasks.data ?? [];
   const recent = (notes.data ?? []).slice(0, 6);
-  const busy =
-    approve.isPending ||
-    reject.isPending ||
-    toggleTask.isPending ||
-    removeTask.isPending ||
-    saveTaskEdit.isPending ||
-    saveSuggestionEdit.isPending;
   return (
     <WorkspacePage gap={space[6]}>
       {/* Greeting + counts — lg:grid-cols-[1fr_auto] */}
@@ -277,9 +281,9 @@ export default function OverviewScreen() {
                 kindLabel={suggestionKindLabel(s.kind)}
                 dueAt={s.due_at}
                 sourceNoteId={s.note_id}
-                busy={busy}
-                onApprove={() => approve.mutate(s.id)}
-                onDismiss={() => reject.mutate(s.id)}
+                busy={pendingSuggestionRowIds.includes(s.id)}
+                onApprove={() => approve.mutate(s)}
+                onDismiss={() => reject.mutate(s)}
                 onEdit={() => setEditingSuggestion(s)}
               />
             ))
@@ -320,10 +324,10 @@ export default function OverviewScreen() {
                 dueAt={t.due_at}
                 sourceNoteId={t.source_note_id}
                 done={t.status === 'completed'}
-                busy={busy}
+                busy={pendingTaskRowIds.includes(t.id)}
                 onToggleDone={() => toggleTask.mutate(t)}
                 onEdit={() => setEditingTask(t)}
-                onRemove={() => removeTask.mutate(t.id)}
+                onRemove={() => removeTask.mutate(t)}
               />
             ))
           ) : (
