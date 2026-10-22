@@ -8,29 +8,87 @@ import { LineReveal, Reveal, SectionLabel } from "./Reveal";
 import { ProductDemo } from "./ProductDemo";
 import { SAMPLE_SUGGESTIONS, SAMPLE_TRANSCRIPT } from "@/lib/content";
 import { cn } from "@/lib/utils";
+import { stepAt } from "@/lib/scroll-steps";
 
 export function VoiceRibbon({ live = true }: { live?: boolean }) {
   const reduced = useReducedMotion();
   return <div aria-hidden className="flex h-16 w-full min-w-0 items-center justify-center gap-1 overflow-hidden md:h-24 md:gap-1.5">{Array.from({ length: 52 }, (_, i) => <motion.span key={i} className="h-14 min-w-0 flex-1 md:h-20 rounded-full bg-current" initial={{ scaleY: 0.2 }} animate={{ scaleY: live && !reduced ? [0.15 + (i % 5) / 10, 0.4 + (i % 7) / 12, 0.15 + (i % 5) / 10] : 0.2 }} transition={{ duration: 1.4, repeat: live && !reduced ? Infinity : 0, delay: i * 0.04 }} />)}</div>;
 }
 
+// Scroll distance per step; ~2 wheel/trackpad strokes.
+const STEP_SCROLL_VH = 30;
+const PINNED_PANEL =
+  "sticky top-20 flex min-h-[calc(100dvh-5rem)] items-center md:top-24 md:min-h-[calc(100dvh-6rem)]";
+
+function StepSpacer({ steps }: { steps: number }) {
+  return <div aria-hidden style={{ height: `${steps * STEP_SCROLL_VH}vh` }} />;
+}
+
+/** Pins a panel below the header and advances steps as the trailing spacer scrolls past. */
+function useScrollSteps(total: number) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const lenis = useLenis();
+  const [step, setStep] = useState(0);
+
+  function pin() {
+    const section = sectionRef.current;
+    const sticky = stickyRef.current;
+    if (!section || !sticky) return null;
+    const range = section.offsetHeight - sticky.offsetHeight;
+    if (range <= 0) return null;
+    const offset = parseFloat(getComputedStyle(sticky).top) || 0;
+    return { range, scrolled: offset - section.getBoundingClientRect().top };
+  }
+
+  function scrollToStep(index: number) {
+    const p = pin();
+    if (!p) return;
+    const top = window.scrollY - p.scrolled + (p.range * (index + 0.5)) / total;
+    if (lenis) lenis.scrollTo(top);
+    else window.scrollTo({ top, behavior: "smooth" });
+  }
+
+  useEffect(() => {
+    const sync = () => {
+      const p = pin();
+      if (!p) return;
+      const next = stepAt(p.scrolled, p.range, total);
+      setStep((prev) => (prev === next ? prev : next));
+    };
+
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    return () => {
+      window.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+    };
+  }, [total]);
+
+  return { sectionRef, stickyRef, step, scrollToStep };
+}
+
 export function ProductExperience() {
-  const [selected, setSelected] = useState(0);
   const modes = ["Capture", "Clarity", "Control"];
+  const { sectionRef, stickyRef, step: selected, scrollToStep } = useScrollSteps(modes.length);
   return <>
     <section className="container-site pt-8 pb-10 md:pt-20">
       <SectionLabel>Saydo / the product</SectionLabel>
       <LineReveal as="h1" className="mt-6 max-w-5xl text-[2.5rem] font-medium leading-[1.03] md:text-7xl lg:text-8xl" lines={["A home for your", <span>out-loud <span className="italic text-primary">thinking.</span></span>]} />
       <div className="mt-6 grid gap-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-end"><p className="max-w-lg text-lg leading-relaxed text-muted-foreground">The messy thought. The useful part. The next thing to do. All connected, without taking the decisions away from you.</p><Button asChild variant="ink" size="xl"><Link to="/early-access">Get early access <ArrowRight /></Link></Button></div>
     </section>
-    <section className="surface-ink overflow-hidden">
-      <div className="container-site py-10 md:py-16">
+    <section ref={sectionRef} className="surface-ink overflow-x-clip">
+      <div ref={stickyRef} className={PINNED_PANEL}>
+      <div className="container-site w-full py-6 md:py-10">
         <div className="grid gap-3 border-b border-border pb-6 sm:grid-cols-[minmax(0,1fr)_auto]"><span className="eyebrow text-lime">One thought. More possibilities.</span><span className="eyebrow text-muted-foreground">Interactive product example</span></div>
         <div className="grid gap-6 py-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:items-center">
-          <div className="min-w-0"><div className="mb-6 grid grid-cols-3 gap-1">{modes.map((name, i) => <Button key={name} variant="ghost" onClick={() => setSelected(i)} className={cn("rounded-full", selected === i ? "bg-lime text-ink" : "text-muted-foreground")} aria-pressed={selected === i}>{name}</Button>)}</div><AnimatePresence mode="wait"><motion.div key={selected} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}><span className="font-mono text-sm text-lime">0{selected + 1} / 03</span><h2 className="mt-4 max-w-md text-3xl font-medium leading-tight md:text-5xl">{["Less typing. More thinking.", "Find the thread in the thought.", "Your work. Your call."][selected]}</h2><p className="mt-5 max-w-sm leading-relaxed text-muted-foreground">{["Start naturally. A quick note or a whole train of thought — there’s no form to fill before your idea exists.", "A readable transcript keeps the context. Suggested actions bring the useful parts into focus.", "Approve, rewrite, or leave it behind. A suggestion only becomes a task when you choose it."][selected]}</p></motion.div></AnimatePresence><div className="mt-5 hidden text-lime lg:block"><VoiceRibbon /></div></div>
+          <div className="min-w-0"><div className="mb-6 grid grid-cols-3 gap-1">{modes.map((name, i) => <Button key={name} variant="ghost" onClick={() => scrollToStep(i)} className={cn("rounded-full", selected === i ? "bg-lime text-ink" : "text-muted-foreground")} aria-pressed={selected === i}>{name}</Button>)}</div><AnimatePresence mode="wait"><motion.div key={selected} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}><span className="font-mono text-sm text-lime">0{selected + 1} / 03</span><h2 className="mt-4 max-w-md text-3xl font-medium leading-tight md:text-5xl">{["Less typing. More thinking.", "Find the thread in the thought.", "Your work. Your call."][selected]}</h2><p className="mt-5 max-w-sm leading-relaxed text-muted-foreground">{["Start naturally. A quick note or a whole train of thought — there’s no form to fill before your idea exists.", "A readable transcript keeps the context. Suggested actions bring the useful parts into focus.", "Approve, rewrite, or leave it behind. A suggestion only becomes a task when you choose it."][selected]}</p></motion.div></AnimatePresence><div className="mt-5 hidden text-lime lg:block"><VoiceRibbon /></div></div>
           <Reveal className="min-w-0"><div className="surface-paper p-0 md:p-5"><ProductDemo autoPlay={false} /><p className="mt-4 text-center font-mono text-xs text-stone">A sample note · nothing is recorded</p></div></Reveal>
         </div>
       </div>
+      </div>
+      <StepSpacer steps={modes.length} />
     </section>
     <section className="container-site py-16 md:py-24">
       <SectionLabel>Not another pile of notes</SectionLabel><LineReveal className="mt-7 text-4xl font-medium leading-tight md:text-6xl" lines={["Keep the context.", <span>Lose the <span className="italic text-primary">loose ends.</span></span>]} />
@@ -47,62 +105,22 @@ const journey = [
 ];
 
 export function InteractiveJourney() {
-  const sectionRef = useRef<HTMLElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
-  const lenis = useLenis();
-  const [step, setStep] = useState(0);
+  const total = journey.length;
+  const { sectionRef, stickyRef, step, scrollToStep } = useScrollSteps(total);
   const [kept, setKept] = useState<number[]>([]);
   const [dismissed, setDismissed] = useState<number[]>([]);
   const [edited, setEdited] = useState<Record<number, string>>({});
   const [editing, setEditing] = useState<number | null>(null);
   const current = journey[step];
-  const total = journey.length;
-
-  function scrollToStep(index: number) {
-    const section = sectionRef.current;
-    if (!section) return;
-    const max = section.offsetHeight - window.innerHeight;
-    if (max <= 0) return;
-    const top =
-      section.getBoundingClientRect().top +
-      window.scrollY +
-      (max * (index + 0.5)) / total;
-    if (lenis) lenis.scrollTo(top);
-    else window.scrollTo({ top, behavior: "smooth" });
-  }
 
   useEffect(() => {
-    const section = sectionRef.current;
-    if (!section) return;
-
-    const sync = () => {
-      const max = section.offsetHeight - window.innerHeight;
-      if (max <= 0) return;
-      const progressed = Math.min(
-        Math.max(-(section.getBoundingClientRect().top), 0),
-        max,
-      );
-      const next = Math.min(total - 1, Math.floor((progressed / max) * total));
-      setStep((prev) => (prev === next ? prev : next));
-    };
-
-    sync();
-    window.addEventListener("scroll", sync, { passive: true });
-    window.addEventListener("resize", sync);
-    return () => {
-      window.removeEventListener("scroll", sync);
-      window.removeEventListener("resize", sync);
-    };
-  }, [total]);
-
-  useEffect(() => {
-    const active = tabsRef.current?.querySelector<HTMLElement>(
-      `[data-step="${step}"]`,
-    );
-    active?.scrollIntoView({
+    const tabs = tabsRef.current;
+    const active = tabs?.querySelector<HTMLElement>(`[data-step="${step}"]`);
+    if (!tabs || !active) return;
+    tabs.scrollTo({
+      left: active.offsetLeft - (tabs.clientWidth - active.offsetWidth) / 2,
       behavior: "smooth",
-      inline: "center",
-      block: "nearest",
     });
   }, [step]);
 
@@ -110,14 +128,13 @@ export function InteractiveJourney() {
     <section
       ref={sectionRef}
       id="journey"
-      className="scroll-mt-20 bg-lavender"
-      style={{ height: `${total * 100}vh` }}
+      className="bg-lavender"
     >
-      <div className="sticky top-0 flex min-h-dvh items-center">
-        <div className="container-site w-full py-8 md:py-16">
+      <div ref={stickyRef} className={PINNED_PANEL}>
+        <div className="container-site w-full py-6 md:py-10">
           <div
             ref={tabsRef}
-            className="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="relative flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {journey.map((item, i) => (
               <Button
@@ -358,6 +375,7 @@ export function InteractiveJourney() {
           </div>
         </div>
       </div>
+      <StepSpacer steps={total} />
     </section>
   );
 }
