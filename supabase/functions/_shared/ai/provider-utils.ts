@@ -195,8 +195,9 @@ export function sanitizeNoteTitle(
 ): string {
   const cleaned = (raw ?? "")
     .replace(/\s+/g, " ")
-    .replace(/^["'`]+|["'`]+$/g, "")
-    .replace(/[.!?…]+$/g, "")
+    .trim()
+    .replace(/^["'`]+/, "")
+    .replace(/["'`.!?…]+$/, "")
     .trim();
   if (!cleaned) return "Voice note";
   if (cleaned.length <= maxLen) return cleaned;

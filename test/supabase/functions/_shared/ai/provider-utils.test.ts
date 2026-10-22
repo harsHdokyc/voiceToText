@@ -238,6 +238,11 @@ describe('sanitizeNoteTitle', () => {
     expect(sanitizeNoteTitle('   ')).toBe('Voice note');
   });
 
+  it('strips a trailing quote and punctuation in either order', () => {
+    expect(sanitizeNoteTitle("'Call the landlord'.")).toBe('Call the landlord');
+    expect(sanitizeNoteTitle('Ship it!"')).toBe('Ship it');
+  });
+
   it('truncates long titles on a word boundary', () => {
     const long =
       'Alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike';

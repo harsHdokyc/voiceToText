@@ -10,6 +10,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@supabaseShared': path.resolve(__dirname, 'supabase/functions/_shared'),
+      // RN ships Flow source Node can't parse; web build exposes the same Platform/AppState APIs.
+      'react-native': 'react-native-web',
     },
   },
 });
