@@ -82,7 +82,7 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 1. Edge secrets: `GOOGLE_API_KEY`, **`CRON_SECRET`** (optional model overrides `AI_*`)
 2. Schedule `dispatch-reminders` every minute with header `x-cron-secret: <CRON_SECRET>`
 3. Apply `20261022160000_audio_purge_any_status`, redeploy `purge-note-audio` and `extract-note`, schedule the purge hourly with the same `x-cron-secret` if it is not already scheduled
-4. Apply `20261022180000_count_ai_usage_ownership`. No Edge function redeploy
+4. Apply `20261022200000_count_ai_usage_invoker`. `20261022180000` is already applied and does not raise. No Edge function redeploy
 5. Re-check Google Gemini + Supabase terms before public launch
 
 ---
@@ -125,7 +125,8 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | Migrations through `phase7_hardening` + `waitlist` | Applied on hosted |
 | `20261022140000_audio_retention` | Applied (do not edit) |
 | `20261022160000_audio_purge_any_status` | **In repo only.** Not applied by this change |
-| `20261022180000_count_ai_usage_ownership` | **In repo only.** Not applied by this change. No function redeploy |
+| `20261022180000_count_ai_usage_ownership` | Applied. Does not raise (definer owner exemption). Do not edit |
+| `20261022200000_count_ai_usage_invoker` | **In repo only.** Not applied by this change. No function redeploy |
 | Edge functions above | ACTIVE except `purge-note-audio`, which is not deployed yet |
 | Marketing static site | Vercel ← `LandingPage/` (see Marketing deploy above) |
 
@@ -136,7 +137,7 @@ See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 | Command | Last result |
 |---|---|
 | `npm run typecheck` | Two pre-existing errors remain: `global.css` side-effect import, `note-card` `backgroundImage`. This change added none |
-| `npm test` | 198 passed (2026-10-22), including the `count_ai_usage_today` policy inventory. No `lint` script |
+| `npm test` | 200 passed (2026-10-22). Includes a Postgres role test: the applied definer function returns B’s count to A; the invoker function raises `42501`. No `lint` script |
 
 **Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`). Behavior tests for pure helpers (greeting/display name, due presets, capture timer, live-dictation concat, dueLabel, etc.).
 

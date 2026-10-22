@@ -5,11 +5,17 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-22 · Usage count runs as the caller
+- **Context:** `20261022180000_count_ai_usage_ownership` was applied. Asking for another user’s count returned that count (0 when they had no rows today) and did not raise. Inside a `security definer` function the session role is the owner, `postgres`, which was on the exemption list, so the check never ran.
+- **Alternatives:** Delete the owner from the exemption and stay `security definer`. A later edit that trusts the session role breaks the same way, and a failed check still bypasses `ai_usage_events` RLS. Revoke `authenticated` and use only `service_role`. `process-note` calls the RPC with the user JWT; a failed count is logged and ignored, so the 40/day cap would stop.
+- **Decision:** New function is `security invoker`. Authenticated callers may pass only `auth.uid()`; a mismatch raises `42501`. The JWT role allows `service_role` to count any user, and that role bypasses RLS. The UTC day filter is unchanged. Do not edit `20261022180000`.
+- **Consequence:** Apply `20261022200000_count_ai_usage_invoker`. No Edge function redeploy.
+
 ## 2026-10-22 · Daily AI usage count is the caller’s own
 - **Context:** `public.count_ai_usage_today(p_user_id, p_kind)` is `security definer` and was granted to `authenticated` with no check that `p_user_id` is the caller. Any signed-in user could read another user’s daily count through the API.
 - **Alternatives:** Revoke `authenticated` and grant only `service_role`. That breaks the cap: `process-note` calls the RPC with the user JWT and `p_user_id` = that user’s id, and a failed count is logged then ignored.
 - **Decision:** Keep the `authenticated` grant. Non-service callers may count only `auth.uid()`; a mismatch raises `42501 forbidden`. `service_role` (and the DB owner roles) may still count any user. The UTC day filter is unchanged, so the 40/day cap still sees the same rows. `approve_suggestion`, `create_manual_task`, and `delete_own_app_data` already require `auth.uid()` and pin `search_path = public`; they are not replaced.
-- **Consequence:** Apply `20261022180000_count_ai_usage_ownership`. No Edge function redeploy. Do not edit `20261002184635_phase7_hardening`.
+- **Consequence:** Superseded the same day by “Usage count runs as the caller”. `20261022180000` is applied and does not raise. Do not edit `20261002184635_phase7_hardening`.
 
 ## 2026-10-22 · 3-day audio window is the retry window
 - **Context:** The first retention rule kept audio for in-progress notes, `transcription_failed`, and notes with no transcript. The owner set the opposite rule: 3 days is the only chance to retry from the recording.

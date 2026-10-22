@@ -15,7 +15,8 @@
 -- service_role can execute claim_due_reminders: ok
 
 -- User A count_ai_usage_today(A, 'process_note'): own count (process-note cap)
--- User A count_ai_usage_today(B, 'process_note'): error 42501 forbidden, not B's count
+-- User A count_ai_usage_today(B, 'process_note') after 20261022200000: error 42501, not 0 and not B's count
+-- 20261022180000 does not raise: security definer sees the owner, so A is told B's count
 -- service_role count_ai_usage_today(B, 'process_note'): B's count
 -- anon count_ai_usage_today: permission denied
 
