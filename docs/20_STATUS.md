@@ -135,8 +135,8 @@ See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
 ## Tests
 | Command | Last result |
 |---|---|
-| `npm run typecheck` | Retention files clean (2026-10-22). Two pre-existing errors remain: `global.css` side-effect import, `note-card` `backgroundImage` |
-| `npm test` | Policy inventory 13 passed, including `count_ai_usage_today` ownership (2026-10-22). Full run: 169 passed; 1 pre-existing `sanitizeNoteTitle` failure; 3 suites fail to load `react-native` under Vite 8 (`logger`, `product-analytics`, `suggestions-service`). No `lint` script |
+| `npm run typecheck` | Two pre-existing errors remain: `global.css` side-effect import, `note-card` `backgroundImage`. This change added none |
+| `npm test` | 198 passed (2026-10-22), including the `count_ai_usage_today` policy inventory. No `lint` script |
 
 **Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`). Behavior tests for pure helpers (greeting/display name, due presets, capture timer, live-dictation concat, dueLabel, etc.).
 
