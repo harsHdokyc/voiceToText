@@ -9,7 +9,7 @@
 8. Add quotas/rate limits for expensive AI endpoints.
 9. Don't log raw audio, transcripts, prompts, auth headers, signed URLs, or secrets. Do log structured `[vtw]` lines with error **code** + **reason** (see [LOGGING_COMBINED.md](./LOGGING_COMBINED.md)).
 10. Validate and bound model-generated text.
-11. Audio files in `note-audio` are deleted 3 days after recording once a transcript exists and the note is not still processing (`review_ready` or `extraction_failed`). `transcription_failed` and in-progress notes keep the file so retry can transcribe. Transcripts, notes, suggestions, tasks, and reminders are kept. Account deletion remains a separate user action.
+11. Audio files in `note-audio` are deleted 3 days after recording. That window is the retry window for every note status, with or without a transcript. Orphan objects older than 3 days with no note row are deleted through the Storage API. Transcripts, notes, suggestions, tasks, and reminders are kept. Account deletion remains a separate user action.
 12. Keep original transcript distinct from edited text.
 13. No broad `true` policies for private content.
 14. Keep service-role usage isolated to trusted server code; authorize first.

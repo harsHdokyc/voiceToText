@@ -4,17 +4,22 @@ import { createClient } from "npm:@supabase/supabase-js@2.49.1";
 import { edgeLog } from "../_shared/log.ts";
 import {
   AUDIO_PURGE_BATCH_LIMIT,
-  AUDIO_PURGE_STATUSES,
   audioRetentionCutoff,
   isAudioPurgeEligible,
+  isOrphanAudioDeletable,
   storageDeleteConfirmed,
   type AudioPurgeCandidate,
 } from "../_shared/storage/audio-retention.ts";
 
 type CandidateRow = AudioPurgeCandidate & { id: string };
 
-const CANDIDATE_COLUMNS =
-  "id, audio_path, status, transcript, created_at, audio_purged_at";
+type OrphanRow = {
+  object_name: string;
+  created_at: string;
+  updated_at: string | null;
+};
+
+const CANDIDATE_COLUMNS = "id, audio_path, created_at, audio_purged_at";
 
 /**
  * Cron purge of private `note-audio` objects 3 days after the note was recorded.
@@ -65,18 +70,12 @@ export default {
 
     try {
       const cutoff = audioRetentionCutoff(now).toISOString();
-      // ponytail: whitespace-only transcripts still match `.neq("")` and are
-      // skipped in JS, so a backlog of them can fill this batch. Upgrade path:
-      // length(btrim(transcript)) > 0 in SQL if that shows up.
       const { data, error } = await admin
         .from("notes")
         .select(CANDIDATE_COLUMNS)
         .not("audio_path", "is", null)
         .is("audio_purged_at", null)
         .lte("created_at", cutoff)
-        .in("status", [...AUDIO_PURGE_STATUSES])
-        .not("transcript", "is", null)
-        .neq("transcript", "")
         .order("created_at", { ascending: true })
         .limit(AUDIO_PURGE_BATCH_LIMIT);
 
@@ -96,12 +95,18 @@ export default {
         else skipped += 1;
       }
 
-      edgeLog(failed > 0 ? "warn" : "info", "edge.purge-note-audio", {
-        event: failed > 0 ? "partial" : "ok",
+      const orphans = await purgeOrphans(admin, cutoff, now);
+      const anyFailed = failed > 0 || orphans.failed > 0;
+
+      edgeLog(anyFailed ? "warn" : "info", "edge.purge-note-audio", {
+        event: anyFailed ? "partial" : "ok",
         scanned: rows.length,
         purged,
         failed,
         skipped,
+        orphansScanned: orphans.scanned,
+        orphansRemoved: orphans.removed,
+        orphansFailed: orphans.failed,
         durationMs: Date.now() - started,
       });
 
@@ -111,6 +116,9 @@ export default {
         purged,
         failed,
         skipped,
+        orphansScanned: orphans.scanned,
+        orphansRemoved: orphans.removed,
+        orphansFailed: orphans.failed,
       });
     } catch (error) {
       const reason = error instanceof Error
@@ -164,7 +172,6 @@ async function purgeOne(
     .eq("id", row.id)
     .eq("audio_path", path)
     .is("audio_purged_at", null)
-    .in("status", [...AUDIO_PURGE_STATUSES])
     .select("id");
 
   if (updateError) {
@@ -188,4 +195,58 @@ async function purgeOne(
   }
 
   return "purged";
+}
+
+async function purgeOrphans(
+  admin: ReturnType<typeof createClient>,
+  cutoff: string,
+  now: Date,
+): Promise<{ scanned: number; removed: number; failed: number }> {
+  const { data, error } = await admin.rpc("list_orphan_note_audio", {
+    p_cutoff: cutoff,
+    p_limit: AUDIO_PURGE_BATCH_LIMIT,
+  });
+  if (error) {
+    edgeLog("warn", "edge.purge-note-audio", {
+      event: "orphan_query_failed",
+      code: "orphan_query_failed",
+      reason: error.message.slice(0, 200),
+    });
+    return { scanned: 0, removed: 0, failed: 1 };
+  }
+
+  const rows = (data ?? []) as OrphanRow[];
+  let removed = 0;
+  let failed = 0;
+  for (const row of rows) {
+    const name = row.object_name?.trim() ?? "";
+    if (
+      !isOrphanAudioDeletable(
+        {
+          name,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          referenced_by_note: false,
+        },
+        now,
+      )
+    ) {
+      continue;
+    }
+    const { data: gone, error: storageError } = await admin.storage
+      .from("note-audio")
+      .remove([name]);
+    if (!storageDeleteConfirmed(storageError, gone, name)) {
+      edgeLog("warn", "edge.purge-note-audio", {
+        event: "orphan_delete_failed",
+        code: "storage_delete_failed",
+        reason: (storageError?.message ?? "storage remove was not confirmed")
+          .slice(0, 200),
+      });
+      failed += 1;
+      continue;
+    }
+    removed += 1;
+  }
+  return { scanned: rows.length, removed, failed };
 }

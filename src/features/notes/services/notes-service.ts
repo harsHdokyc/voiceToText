@@ -10,10 +10,11 @@ import {
   assertAudioDurationSeconds,
   assertNoteStatusTransition,
   canTransitionNoteStatus,
-  isRetryableProcessing,
+  AUDIO_RETRY_UNAVAILABLE_LABEL,
   normalizeNoteSearchQuery,
   noteMatchesSearch,
   retryProcessingPlan,
+  showProcessingRetry,
   type NoteStatus,
 } from '@/features/notes/services/note-status';
 import { ApiError } from '@/lib/api-error';
@@ -333,17 +334,13 @@ export async function retryTranscription(note: NoteRow) {
     'api.notes.retry_transcription',
     { noteId: note.id, fromStatus: note.status },
     async () => {
-      if (!isRetryableProcessing(note.status)) {
-        throw new ApiError(
-          'not_retryable',
-          'Note is not retryable for processing',
-        );
-      }
       const plan = retryProcessingPlan(note);
-      if (plan === 'audio_gone') {
+      if (!showProcessingRetry(note)) {
         throw new ApiError(
-          'audio_purged',
-          'Audio deleted after 3 days and there is no transcript to re-extract',
+          plan === 'audio_gone' ? 'audio_purged' : 'not_retryable',
+          plan === 'audio_gone'
+            ? AUDIO_RETRY_UNAVAILABLE_LABEL
+            : 'Note is not retryable for processing',
         );
       }
       let current = note;

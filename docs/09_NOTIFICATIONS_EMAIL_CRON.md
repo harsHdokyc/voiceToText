@@ -9,7 +9,7 @@ Persist UTC schedule. Cron runs at a justified cadence. Claim due reminders atom
 Use `pg_cron`; if invoking Edge Functions, use `pg_net` and store secrets in Supabase Vault. Confirm extension availability, permissions, and current plan limits. Never hardcode secrets in migrations.
 
 ## Audio retention
-`purge-note-audio` is invoked on a schedule with header `x-cron-secret: <CRON_SECRET>` (the same Edge secret as `dispatch-reminders`). Hourly is enough (each run deletes up to 40 files and is safe to run again). `pg_cron` is not installed on the hosted project; turn it on only as an ops step, or use Dashboard Cron. Do not put the secret in a migration.
+`purge-note-audio` is invoked on a schedule with header `x-cron-secret: <CRON_SECRET>` (the same Edge secret as `dispatch-reminders`). Hourly is enough. Each run deletes up to 40 note files (any status, once the note is 3 days old) and up to 40 unreferenced objects older than 3 days. It is safe to run again. `pg_cron` is not installed on the hosted project; turn it on only as an ops step, or use Dashboard Cron. Do not put the secret in a migration.
 
 Example after Vault has `project_url` and `cron_secret` (run in the SQL editor, not as a committed migration):
 

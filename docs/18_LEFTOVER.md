@@ -20,9 +20,10 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | A5 | **Rotate** any provider key that appeared in git; purge history or unblock after rotate so `git push` works | [ ] |
 | A6 | Confirm Auth email OTP templates on hosted Supabase | [ ] |
 | A7 | Re-read Google Gemini + Supabase terms before broader launch | [ ] |
-| A8 | Apply migration `20261022140000_audio_retention` on hosted **before** the app build or `note-audio` / `process-note` deploy that selects `audio_purged_at` | [ ] |
-| A9 | Deploy Edge `purge-note-audio` with `verify_jwt` off (`config.toml`). Redeploy `note-audio` and `process-note` | [ ] |
-| A10 | Schedule `purge-note-audio` hourly with header `x-cron-secret: <CRON_SECRET>`. `pg_cron` is not installed; Dashboard Cron, or enable `pg_cron`+`pg_net` and store the secret in Vault (SQL example in [09_NOTIFICATIONS_EMAIL_CRON.md](./09_NOTIFICATIONS_EMAIL_CRON.md)). Do not commit the secret | [ ] |
+| A8 | `20261022140000_audio_retention` is applied. Do not edit that file | [x] |
+| A9 | Redeploy Edge `purge-note-audio` (`verify_jwt` off) and `extract-note` after A11. `note-audio` / `process-note` have no further change for this rule | [ ] |
+| A10 | Schedule `purge-note-audio` hourly with header `x-cron-secret: <CRON_SECRET>` if it is not already scheduled. `pg_cron` is not installed; Dashboard Cron, or enable `pg_cron`+`pg_net` and store the secret in Vault (SQL example in [09_NOTIFICATIONS_EMAIL_CRON.md](./09_NOTIFICATIONS_EMAIL_CRON.md)). Do not commit the secret | [ ] |
+| A11 | Apply migration `20261022160000_audio_purge_any_status` (`list_orphan_note_audio` only). Do this before relying on orphan cleanup | [ ] |
 
 ### B. Device smoke (blocks private beta confidence)
 

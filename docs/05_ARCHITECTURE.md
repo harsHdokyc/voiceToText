@@ -14,7 +14,7 @@
 Expo app -> Auth session / TanStack Query / RLS-protected CRUD / private Storage upload.
 For processing: app invokes `process-note` -> function validates JWT and ownership -> claims processing job -> reads private audio -> transcribes -> extracts schema-validated suggestions -> persists result/state -> app polls or subscribes to status.
 Cron -> protected reminder dispatcher -> atomically claims due reminders -> checks task/preferences -> sends Expo push or optional email -> records delivery.
-Cron -> `purge-note-audio` (`x-cron-secret`) -> storage API delete of `note-audio` objects older than 3 days -> clear `audio_path` and set `audio_purged_at`. The note row and transcript stay.
+Cron -> `purge-note-audio` (`x-cron-secret`) -> storage API delete of `note-audio` objects whose note is at least 3 days old (any status) and of unreferenced objects older than 3 days -> clear `audio_path` and set `audio_purged_at`. The note row and transcript stay.
 
 ## Client/server boundary
 Client: UI, recording, Supabase publishable key, simple RLS-protected reads/writes.
