@@ -140,7 +140,7 @@ export function NoteCard({
 
       <View className="min-w-0 flex-1 px-[18px] pb-0 pt-4">
         <Text
-          className="mb-2.5 font-display text-[36px] leading-[0.9] text-ink"
+          className="mb-2.5 font-display text-[36px] leading-[40px] text-ink"
           numberOfLines={2}
         >
           {title}
