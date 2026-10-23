@@ -5,6 +5,27 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-24 · Dues carry an optional time; relative days follow the clock
+- **Context:** Spoken times ("CEO meeting at 2 pm") reached `due_at`, but labels showed only the date and the edit sheet was date-only, so editing wiped the time. On web the date field never opened a picker: RN-web `TextInput` forces `type="text"`. A transcript that said "today is 23rd July" in October put every item months in the past.
+- **Alternatives:** `due_has_time` column; `@react-native-community/datetimepicker` (native rebuild); trust spoken dates.
+- **Decision:**
+  - No time = local noon (existing convention). Any other local time is a **timed due**: labels add the time and it goes overdue once the time passes. `ponytail:` a real 12:00 deadline reads as date-only; add `due_has_time` if that starts to matter.
+  - Edit sheet: separate date + time fields. Web uses native `<input type="date|time">` (click anywhere opens the picker); native stays typed `YYYY-MM-DD` / `HH:mm` until a picker dependency is justified.
+  - Extraction prompt: today / tomorrow / weekday names always come from the **speaker's local time**; explicit dates in the transcript are still honoured; spoken clock times must be kept.
+- **Consequence:** Suggestions extracted before 2026-10-24 keep their old (UTC-shifted or past) dues; re-record or edit them.
+- **Open:** Both defaults were proposed to the product owner and not yet confirmed — reopen here if they change.
+
+## 2026-10-24 · Note card grid = explicit flex rows
+- **Context:** Notes grid computed pixel card widths from the *window* (ignores the 240px sidebar) and used `flex-wrap`; fractional / mis-measured widths dropped the 3rd card to the next row, leaving an empty column at desktop widths.
+- **Decision:** `NoteCardGrid` picks 1–3 columns from its own measured width (min card 300px) and renders explicit rows of `flex-1` cards with spacers in a short last row. Cards under 360px use compact type. Pure helpers `noteGridLayout` / `noteGridRows` in `note-category.ts`.
+- **Consequence:** A card can no longer wrap early; Overview and Voice notes share the fix.
+
+## 2026-10-23 · "Today" is the user's local day, worldwide
+- **Context:** Edge and Postgres run in UTC. The 40/day cap reset at UTC midnight (5:30 AM in India), and extraction had no current date, so "tomorrow at 5" could not resolve correctly anywhere.
+- **Alternatives:** Hard-code `Asia/Kolkata`; send the zone with every request; IP geolocation.
+- **Decision:** Store each user's IANA zone in `profiles.timezone` (already in schema). The app syncs it from the device on profile load, so travel updates it. A DB check ensures it's a real zone. `count_ai_usage_today` counts from local midnight; extraction gets the speaker's local time; naive `due_at` is read in that zone (`_shared/time/user-time.ts`). Unset → UTC. Storage stays UTC `timestamptz`; display stays device-local.
+- **Consequence:** Users with no synced zone keep UTC behaviour until they open the app once. Applied on hosted 2026-10-24 (`user_timezone_day`, `extract-note` v13+).
+
 ## 2026-10-23 · Docker for web builds only
 - **Context:** Need a one-command way to run the portal and landing page as production builds. The portal targets web, Android, and iOS.
 - **Alternatives:** Containerize the Expo dev server (`expo start`) for devices; build Android in Docker; one image serving both sites.

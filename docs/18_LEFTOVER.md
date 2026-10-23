@@ -84,7 +84,7 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | Note search | Home search over title + display transcript |
 | Suggestion kind / due / priority edit | Pending suggestion card before approve |
 | Manual task create | `create_manual_task` RPC + `/(app)/tasks/new` |
-| Task due edit | YYYY-MM-DD on task detail |
+| Task due edit | Date + optional time in the edit sheet (web: native pickers; native: typed `YYYY-MM-DD` / `HH:mm`) — 2026-10-24 |
 | Task delete | Task detail + list trash icons hard-delete |
 | Archive removed | Migration `remove_archive` (applied on hosted): archived tasks → `completed`, archived notes → `review_ready`/`draft`; `archived` dropped from `task_status` / `note_status` |
 | Content-free analytics | `trackProductEvent` (approve, complete, reminder, extraction) — no transcript/audio |

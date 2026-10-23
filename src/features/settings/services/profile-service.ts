@@ -2,6 +2,10 @@ import { ApiError } from '@/lib/api-error';
 import { supabase } from '@/lib/supabase';
 import { withApiLog } from '@/lib/with-api-log';
 import { normalizeDisplayName } from '@/features/settings/services/greeting-name';
+import {
+  deviceTimeZone,
+  timeZoneToSync,
+} from '@/features/settings/services/time-zone';
 
 export type ProfileRow = {
   id: string;
@@ -19,10 +23,23 @@ export async function getOwnProfile() {
 
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, display_name')
+      .select('id, display_name, timezone')
       .eq('id', user.id)
       .maybeSingle();
     if (error) throw error;
+
+    const timezone = data ? timeZoneToSync(deviceTimeZone(), data.timezone) : null;
+    if (timezone) {
+      // Best effort: a failed sync only leaves "today" on the old zone.
+      await withApiLog('api.profile.sync_timezone', { timezone }, async () => {
+        const { error: tzError } = await supabase
+          .from('profiles')
+          .update({ timezone, updated_at: new Date().toISOString() })
+          .eq('id', user.id);
+        if (tzError) throw tzError;
+      }).catch(() => undefined);
+    }
+
     return (data as ProfileRow | null) ?? { id: user.id, display_name: null };
   });
 }

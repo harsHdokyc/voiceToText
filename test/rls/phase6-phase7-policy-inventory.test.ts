@@ -83,7 +83,7 @@ describe('count_ai_usage_today ownership', () => {
   const defined = latestFunctionSql('count_ai_usage_today');
 
   it('is replaced after the applied owner-exemption migration', () => {
-    expect(defined.file).toBe('20261022200000_count_ai_usage_invoker.sql');
+    expect(defined.file).toBe('20261023190000_user_timezone_day.sql');
     expect(defined.file > '20261022180000_count_ai_usage_ownership.sql').toBe(true);
   });
 
@@ -97,14 +97,24 @@ describe('count_ai_usage_today ownership', () => {
     expect(defined.sql).toContain("errcode = '42501'");
   });
 
-  it('keeps the UTC daily count the 40/day cap uses', () => {
+  it('starts the 40/day cap at the user’s local midnight, UTC when unset', () => {
     expect(defined.sql).toContain('from public.ai_usage_events e');
     expect(defined.sql).toContain('e.user_id = p_user_id');
     expect(defined.sql).toContain('e.kind = p_kind');
+    expect(defined.sql).toContain("select coalesce(p.timezone, 'UTC')");
     expect(defined.sql).toContain(
-      "e.created_at >= date_trunc('day', now() at time zone 'utc')",
+      "e.created_at >= date_trunc('day', now(), coalesce(v_tz, 'UTC'))",
     );
+    expect(defined.sql).not.toContain("at time zone 'utc'");
     expect(defined.sql).toContain('set search_path = public');
+  });
+
+  it('only accepts real IANA zones in profiles.timezone', () => {
+    const sql = migration('user_timezone_day');
+    expect(sql).toContain('pg_catalog.pg_timezone_names');
+    expect(sql).toContain(
+      'check (timezone is null or public.is_valid_timezone(timezone))',
+    );
   });
 
   it('stays executable by the user JWT and not by anon', () => {

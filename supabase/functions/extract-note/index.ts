@@ -7,15 +7,13 @@ import { edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
 import { noteLifecycle } from "../_shared/notes/note-lifecycle.ts";
 import { reextractClaimStatuses } from "../_shared/storage/audio-retention.ts";
+import {
+  localIso,
+  parseDueAt,
+  resolveTimeZone,
+} from "../_shared/time/user-time.ts";
 
 const SCOPE = "edge.extract-note";
-
-function parseDueAt(raw: string | null): string | null {
-  if (!raw) return null;
-  const ms = Date.parse(raw);
-  if (Number.isNaN(ms)) return null;
-  return new Date(ms).toISOString();
-}
 
 /**
  * Extraction-only (free-tier wall-clock). Transcription is `process-note`.
@@ -132,8 +130,16 @@ export default {
         throw new Error(`suggestions_clear_failed: ${clearError.message}`);
       }
 
+      const { data: profile } = await ctx.supabase
+        .from("profiles")
+        .select("timezone")
+        .eq("id", userId)
+        .maybeSingle();
+      const timeZone = resolveTimeZone(profile?.timezone);
+
       const extractionResult = await extractTasks({
         transcript: transcriptText,
+        localNow: `${localIso(Date.now(), timeZone)} (${timeZone})`,
       });
 
       const suggestionsToInsert = extractionResult.suggestions.map((s) => ({
@@ -142,7 +148,7 @@ export default {
         title: s.title,
         details: s.details,
         kind: s.kind,
-        due_at: parseDueAt(s.due_at),
+        due_at: parseDueAt(s.due_at, timeZone),
         priority: s.priority,
         source_quote: s.source_quote,
         confidence: s.confidence,

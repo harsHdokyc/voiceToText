@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 
 import { Button, Sheet, TextField } from '@/components/ui';
@@ -8,6 +8,7 @@ import {
   dueAtFromLocalDateKey,
   dueDateKeyForPreset,
   localDateKeyFromDueAt,
+  localTimeKeyFromDueAt,
   type DuePreset,
 } from '@/features/tasks/services/due-presets';
 import {
@@ -60,9 +61,74 @@ const MODE_COPY: Record<
   },
 };
 
+const WEB_INPUT_STYLE = {
+  width: '100%',
+  minHeight: 52,
+  boxSizing: 'border-box',
+  borderRadius: 14,
+  border: `1px solid ${colors.input}`,
+  background: colors.card,
+  color: colors.ink,
+  padding: '0 16px',
+  fontSize: 16,
+  fontFamily: 'Geist_400Regular, system-ui, sans-serif',
+  cursor: 'pointer',
+} as const;
+
+/**
+ * Date (`YYYY-MM-DD`) or time (`HH:mm`) input. Web gets the browser's native
+ * picker — RN-web's TextInput forces `type="text"`, so it can't. Native has no
+ * picker dependency yet, so it stays a typed field.
+ */
+function DueField({
+  kind,
+  value,
+  onChange,
+  disabled,
+}: {
+  kind: 'date' | 'time';
+  value: string | null;
+  onChange: (next: string | null) => void;
+  disabled?: boolean;
+}) {
+  const label = kind === 'date' ? 'Due date' : 'Due time';
+  if (Platform.OS === 'web') {
+    return createElement('input', {
+      type: kind,
+      value: value ?? '',
+      disabled,
+      'aria-label': label,
+      style: { ...WEB_INPUT_STYLE, opacity: disabled ? 0.5 : 1 },
+      onChange: (e: { target: { value: string } }) =>
+        onChange(e.target.value || null),
+      // Open the picker from anywhere in the field, not just the tiny icon.
+      onClick: (e: { currentTarget: { showPicker?: () => void } }) => {
+        try {
+          e.currentTarget.showPicker?.();
+        } catch {
+          // Not allowed in some browsers/iframes; typing still works.
+        }
+      },
+    });
+  }
+  return (
+    <TextField
+      value={value ?? ''}
+      onChangeText={(t) => onChange(t.trim() || null)}
+      editable={!disabled}
+      placeholder={kind === 'date' ? 'YYYY-MM-DD' : 'HH:mm (24h)'}
+      accessibilityLabel={label}
+      keyboardType="numbers-and-punctuation"
+      autoCapitalize="none"
+      autoCorrect={false}
+      className="rounded-[14px] bg-card"
+    />
+  );
+}
+
 /**
  * Shared edit dialog — mirrors ui/goals-in-motion-55 Workspace edit Dialog.
- * Reminder presets stay 1h/3h/1d (durable push); no demo datetime-local.
+ * Reminder presets stay 1h/3h/1d (durable push).
  */
 export function EditNextStepSheet({
   open,
@@ -78,6 +144,9 @@ export function EditNextStepSheet({
   const [dueKey, setDueKey] = useState<string | null>(
     localDateKeyFromDueAt(initialDueAt),
   );
+  const [timeKey, setTimeKey] = useState<string | null>(
+    localTimeKeyFromDueAt(initialDueAt),
+  );
   const [reminderHours, setReminderHours] =
     useState<ReminderHourPreset | null>(null);
 
@@ -88,6 +157,7 @@ export function EditNextStepSheet({
     if (draftFor !== null) {
       setTitle(initialTitle);
       setDueKey(localDateKeyFromDueAt(initialDueAt));
+      setTimeKey(localTimeKeyFromDueAt(initialDueAt));
       setReminderHours(null);
     }
   }
@@ -96,7 +166,12 @@ export function EditNextStepSheet({
     setDueKey(dueDateKeyForPreset(preset));
   }
 
-  const dueAt = dueKey ? dueAtFromLocalDateKey(dueKey) : null;
+  function clearDue() {
+    setDueKey(null);
+    setTimeKey(null);
+  }
+
+  const dueAt = dueKey ? dueAtFromLocalDateKey(dueKey, timeKey) : null;
   const dueInvalid = dueKey !== null && dueAt === null;
 
   function submit() {
@@ -126,7 +201,7 @@ export function EditNextStepSheet({
       </View>
 
       <View className="gap-2">
-        <Text className="font-sans text-sm text-ink">Due date</Text>
+        <Text className="font-sans text-sm text-ink">Due date & time</Text>
         <View className="flex-row flex-wrap gap-2">
           {DUE_PRESETS.map((p) => {
             const key = dueDateKeyForPreset(p.id);
@@ -148,7 +223,7 @@ export function EditNextStepSheet({
               size="sm"
               variant="ghost"
               disabled={busy}
-              onPress={() => setDueKey(null)}
+              onPress={clearDue}
               accessibilityLabel="Clear due date"
             >
               <Ionicons name="close" size={14} color={colors.ink} />
@@ -156,30 +231,27 @@ export function EditNextStepSheet({
             </Button>
           ) : null}
         </View>
-        <View className="relative justify-center">
-          <TextField
-            value={dueKey ?? ''}
-            onChangeText={(t) => setDueKey(t.trim() || null)}
-            editable={!busy}
-            placeholder="YYYY-MM-DD"
-            accessibilityLabel="Due date"
-            autoCapitalize="none"
-            autoCorrect={false}
-            className="rounded-[14px] bg-card pr-10"
-            {...(Platform.OS === 'web'
-              ? ({ type: 'date' } as object)
-              : null)}
-          />
-          <View className="pointer-events-none absolute right-4">
-            <Ionicons name="calendar-outline" size={18} color={colors.stone} />
+        <View className="flex-row flex-wrap gap-2">
+          <View className="min-w-[150px] flex-[3]">
+            <DueField kind="date" value={dueKey} onChange={setDueKey} disabled={busy} />
+          </View>
+          <View className="min-w-[120px] flex-[2]">
+            <DueField
+              kind="time"
+              value={timeKey}
+              onChange={setTimeKey}
+              disabled={busy || !dueKey}
+            />
           </View>
         </View>
         {!dueKey ? (
           <Text className="font-sans text-xs text-stone">No due date · Anytime</Text>
         ) : dueInvalid ? (
           <Text className="font-sans text-xs text-destructive" accessibilityRole="alert">
-            Enter a real date as YYYY-MM-DD
+            Enter a real date (YYYY-MM-DD) and time (HH:mm)
           </Text>
+        ) : !timeKey ? (
+          <Text className="font-sans text-xs text-stone">No time · any time that day</Text>
         ) : null}
       </View>
 

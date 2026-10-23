@@ -27,12 +27,23 @@ export function dueDateKeyForPreset(preset: DuePreset, now = new Date()): string
   return localDateKey(d);
 }
 
-/** Local date key → due_at ISO at local noon. Null unless it is a real calendar date. */
-export function dueAtFromLocalDateKey(key: string): string | null {
+/**
+ * Local date key (+ optional `HH:mm`) → due_at ISO. No time = local noon.
+ * Null unless both are real (no Feb 30, no 25:00).
+ */
+export function dueAtFromLocalDateKey(key: string, time?: string | null): string | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
   if (!match) return null;
   const [year, month, day] = match.slice(1).map(Number);
-  const date = new Date(year, month - 1, day, 12);
+  let hour = 12;
+  let minute = 0;
+  if (time) {
+    const t = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time.trim());
+    if (!t) return null;
+    hour = Number(t[1]);
+    minute = Number(t[2]);
+  }
+  const date = new Date(year, month - 1, day, hour, minute);
   return date.getMonth() === month - 1 && date.getDate() === day ? date.toISOString() : null;
 }
 
@@ -41,4 +52,18 @@ export function localDateKeyFromDueAt(dueAt: string | null | undefined): string 
   if (!dueAt) return null;
   const ms = Date.parse(dueAt);
   return Number.isFinite(ms) ? localDateKey(new Date(ms)) : null;
+}
+
+/**
+ * ISO due_at → local `HH:mm`, or null for a date-only due (local noon).
+ * ponytail: a task due at exactly 12:00 reads as date-only; fix with a
+ * `due_has_time` column if noon deadlines start to matter.
+ */
+export function localTimeKeyFromDueAt(dueAt: string | null | undefined): string | null {
+  if (!dueAt) return null;
+  const ms = Date.parse(dueAt);
+  if (!Number.isFinite(ms)) return null;
+  const d = new Date(ms);
+  if (d.getHours() === 12 && d.getMinutes() === 0) return null;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }

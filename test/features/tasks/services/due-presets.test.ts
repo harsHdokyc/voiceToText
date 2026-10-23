@@ -7,6 +7,7 @@ import {
   dueDateKeyForPreset,
   localDateKey,
   localDateKeyFromDueAt,
+  localTimeKeyFromDueAt,
 } from '@/features/tasks/services/due-presets';
 
 describe('localDateKey', () => {
@@ -48,7 +49,25 @@ describe('due date convention (timezone-sensitive)', () => {
   it('reads back the same local day the list label shows, not the UTC day', () => {
     const aiDueAt = '2026-10-13T22:00:00.000Z'; // Oct 14, 03:30 in UTC+5:30
     expect(localDateKeyFromDueAt(aiDueAt)).toBe('2026-10-14');
-    expect(dueLabel(aiDueAt, new Date(2026, 9, 14, 9))).toBe('Today');
+    expect(dueLabel(aiDueAt, new Date(2026, 9, 14, 2))).toMatch(/^Today · 3:30\sam$/i);
+  });
+
+  it('stores date + time as that local wall-clock time', () => {
+    expect(dueAtFromLocalDateKey('2026-10-24', '14:00')).toBe('2026-10-24T08:30:00.000Z');
+    expect(dueAtFromLocalDateKey('2026-10-24', '23:00')).toBe('2026-10-24T17:30:00.000Z');
+  });
+
+  it('rejects impossible times instead of saving a wrong due', () => {
+    expect(dueAtFromLocalDateKey('2026-10-24', '24:00')).toBeNull();
+    expect(dueAtFromLocalDateKey('2026-10-24', '2pm')).toBeNull();
+    expect(dueAtFromLocalDateKey('2026-10-24', '14:60')).toBeNull();
+  });
+
+  it('reads the local time back, treating local noon as date-only', () => {
+    expect(localTimeKeyFromDueAt('2026-10-24T08:30:00.000Z')).toBe('14:00');
+    expect(localTimeKeyFromDueAt(dueAtFromLocalDateKey('2026-10-24'))).toBeNull();
+    expect(localTimeKeyFromDueAt(null)).toBeNull();
+    expect(localTimeKeyFromDueAt('garbage')).toBeNull();
   });
 
   it('round-trips a key even at UTC+14', () => {

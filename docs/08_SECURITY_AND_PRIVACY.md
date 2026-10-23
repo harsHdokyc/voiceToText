@@ -14,7 +14,7 @@
 13. No broad `true` policies for private content.
 14. Keep service-role usage isolated to trusted server code; authorize first.
 15. Commit migrations and review grants/RLS together.
-16. `count_ai_usage_today` runs as the caller (`security invoker`). A signed-in user may count only `auth.uid()`; another id raises `42501`. `process-note` uses that user JWT for the 40/day cap, and `ai_usage_events_select_own` still applies. `service_role` may count any user. Do not exempt the function owner: under `security definer` that role is `postgres` and the check never runs.
+16. `count_ai_usage_today` runs as the caller (`security invoker`). A signed-in user may count only `auth.uid()`; another id raises `42501`. `process-note` uses that user JWT for the 40/day cap (counted from the user's local midnight via `profiles.timezone`, else UTC), and `ai_usage_events_select_own` still applies. `service_role` may count any user. Do not exempt the function owner: under `security definer` that role is `postgres` and the check never runs.
 
 Audio path pattern (server-only): `{user_id}/notes/{note_id}/original.ext`. Client never receives `audio_path` — use Edge `note-audio` proxy with `noteId` for upload/download. Storage policy validates bucket and first-folder ownership (`auth.uid()`); server checks object belongs to authenticated user and expected note. Use allowed MIME types/size limit. For deletion, coordinate DB and object cleanup with retries and orphan cleanup.
 

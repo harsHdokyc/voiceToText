@@ -1,8 +1,15 @@
-/** Human due label for task list rows (Today / Tomorrow / Overdue / date / Anytime). */
+import { localTimeKeyFromDueAt } from '@/features/tasks/services/due-presets';
+
+/** Human due label for task rows: Today / Tomorrow / Overdue / date / Anytime, plus time when set. */
 export function dueLabel(dueAt: string | null | undefined, now = new Date()): string {
   if (!dueAt) return 'Anytime';
   const d = new Date(dueAt);
   if (!Number.isFinite(d.getTime())) return 'Anytime';
+
+  const hasTime = localTimeKeyFromDueAt(dueAt) !== null;
+  const time = hasTime
+    ? ` · ${d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`
+    : '';
 
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
@@ -10,19 +17,19 @@ export function dueLabel(dueAt: string | null | undefined, now = new Date()): st
   day.setHours(0, 0, 0, 0);
   const diff = Math.round((day.getTime() - today.getTime()) / 86_400_000);
 
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Tomorrow';
-  if (diff < 0) {
-    return `Overdue · ${d.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-    })}`;
+  if (diff < 0 || (hasTime && d.getTime() < now.getTime())) {
+    const when = diff === 0
+      ? 'Today'
+      : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return `Overdue · ${when}${time}`;
   }
-  return d.toLocaleDateString(undefined, {
+  if (diff === 0) return `Today${time}`;
+  if (diff === 1) return `Tomorrow${time}`;
+  return `${d.toLocaleDateString(undefined, {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
-  });
+  })}${time}`;
 }
 
 export function isOverdueDueLabel(label: string): boolean {

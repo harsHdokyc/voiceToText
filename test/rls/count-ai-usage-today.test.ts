@@ -97,6 +97,16 @@ describe('count_ai_usage_today JWT role', () => {
         alter role authenticated nobypassrls;
         grant usage on schema public, auth to anon, authenticated, service_role;
 
+        create table public.profiles (
+          id uuid primary key,
+          timezone text
+        );
+        alter table public.profiles enable row level security;
+        create policy profiles_select_own
+          on public.profiles for select to authenticated
+          using (id = auth.uid());
+        grant select on table public.profiles to authenticated, service_role;
+
         create table public.ai_usage_events (
           id uuid primary key default gen_random_uuid(),
           user_id uuid not null,
@@ -174,5 +184,30 @@ describe('count_ai_usage_today JWT role', () => {
     expect(asRole('service_role', 'service_role', '')).toBe(
       'count:2,count:4,count:0',
     );
+  });
+
+  it('counts from the user’s local midnight once profiles.timezone is set', () => {
+    psqlFile(
+      resolve(root, 'supabase/migrations/20261023190000_user_timezone_day.sql'),
+    );
+    const userC = '33333333-3333-4333-8333-333333333333';
+    psql(
+      db,
+      `
+        insert into public.profiles (id, timezone) values ('${userC}', 'Pacific/Kiritimati');
+        insert into public.ai_usage_events (user_id, kind, created_at) values
+          ('${userC}', 'process_note', date_trunc('day', now(), 'Pacific/Kiritimati') + interval '1 second'),
+          ('${userC}', 'process_note', date_trunc('day', now(), 'Pacific/Kiritimati') - interval '1 second');
+      `,
+    );
+    expect(psql(db, `select public.try_count('${userC}'::uuid, 'process_note')`)).toBe(
+      'count:1',
+    );
+    expect(asRole('authenticated', 'authenticated', userA)).toBe(
+      'count:2,sqlstate:42501,count:0',
+    );
+    expect(() =>
+      psql(db, `update public.profiles set timezone = 'Mars/Olympus' where id = '${userC}'`),
+    ).toThrow(/profiles_timezone_valid/);
   });
 });

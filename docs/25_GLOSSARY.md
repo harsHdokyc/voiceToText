@@ -10,6 +10,17 @@ Domain and code terms with one meaning across docs, code, and reviews. Add a ter
 | **Review** | The human decision on a suggestion: approve (with optional edits) or reject. |
 | **Reminder** | Scheduled UTC nudge for a task (`reminders`), sent by `dispatch-reminders`. |
 | **Retention window** | 3 days after a note is recorded. The audio file is purged after it; the note, transcript, and tasks stay. Also the only window for retrying transcription. |
+| **Due** | `due_at` on a suggestion or task: one UTC instant. A **date-only due** is stored at 12:00 local and shows no time; a **timed due** shows its time and is overdue once that time passes. Helpers: `src/features/tasks/services/due-presets.ts`, label `task-due-label.ts`. |
+| **Daily cap** | 40 `process-note` runs per user per **local day** (`count_ai_usage_today`). |
+
+## Time
+| Term | Meaning |
+|---|---|
+| **User time zone** | IANA zone in `profiles.timezone` (e.g. `Asia/Kolkata`). Synced from the device on profile load, so travel updates it; DB rejects unknown zones; unset → UTC. |
+| **Local day** | A calendar day in the user time zone, from local midnight. Used by the daily cap and by “today / tomorrow” in extraction. |
+| **Speaker's local time** | Wall clock + zone handed to extraction (`2026-10-24T00:10:00+05:30 (Asia/Kolkata)`). Relative days in a transcript resolve against it, never against a date spoken in the recording. Server helpers: `supabase/functions/_shared/time/user-time.ts`. |
+
+Storage is always UTC `timestamptz`; screens format in the device zone.
 
 ## Note lifecycle
 | Term | Meaning |
