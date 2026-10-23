@@ -1,7 +1,7 @@
 # Sentry — client crash, error & performance monitoring (plan)
 
-**Status:** not started · **When:** before first build goes to beta testers / store · **Scope:** Expo app only  
-**Why:** Supabase logs cover the server (Edge, Postgres, Auth, Storage). Client `[vtw]` logs (`logger`, `withApiLog`) only reach Metro/device console — invisible once the app is on someone else's phone. Sentry fills that gap.
+**Status:** not started · **When:** before first build goes to beta testers / store · **Scope:** Expo app + Edge Functions  
+**Why:** Client `[vtw]` logs (`logger`, `withApiLog`) only reach Metro/device console — invisible once the app is on someone else's phone. Edge `[vtw]` logs land in Supabase logs, but Supabase never alerts on them. Sentry gives one place with email alerts for both.
 
 Related: [16_LOGGING_COMBINED.md](./16_LOGGING_COMBINED.md), [08_SECURITY_AND_PRIVACY.md](./08_SECURITY_AND_PRIVACY.md), [18_LEFTOVER.md](./18_LEFTOVER.md).
 
@@ -20,6 +20,7 @@ Related: [16_LOGGING_COMBINED.md](./16_LOGGING_COMBINED.md), [08_SECURITY_AND_PR
 | Breadcrumbs (scrubbed) | Screens + taps before the error; no URLs/tokens/transcripts | 1 |
 | Release health | Crash-free users per release | 1 |
 | Alerts | Email on new issue / spike | 1 |
+| Edge Function errors | `process-note` fail → `code: transcription_failed`, `reason: provider 503` → email | 1b |
 | API operation timing | `notes.upload` p95 = 4.2s, by device/network | 2 |
 | Slow screens | Time-to-initial-display per route (e.g. note detail 1.8s) | 2 |
 | App start time | Cold/warm start duration per release | 2 |
@@ -32,7 +33,7 @@ Related: [16_LOGGING_COMBINED.md](./16_LOGGING_COMBINED.md), [08_SECURITY_AND_PR
 | Audio, transcripts, prompts, tokens, signed URLs, emails | Privacy rules ([08](./08_SECURITY_AND_PRIVACY.md), logging rule) — scrubbed in `beforeSend` / `beforeBreadcrumb` |
 | Session replay | Records screen content (transcripts) — stays **off** |
 | Profiling | Not needed for V1 |
-| Edge Function / DB errors | Already in Supabase logs |
+| Postgres / Auth / Storage errors | Only reachable via Supabase Log Drains (Pro plan + add-on) — later, not V1 |
 | Local dev events | `enabled` only in production builds |
 | Trace headers to Supabase | `tracePropagationTargets: []` — avoids CORS preflight issues on Edge Functions |
 
@@ -133,6 +134,63 @@ No other call sites — `withApiLog` already wraps every client API op, so all s
 
 ---
 
+## Phase 1b — Edge Function errors
+
+Same Sentry org, separate project (`voicetotext-edge`, platform: Deno) so server issues don't mix with app issues. Shares the free-tier quota.
+
+### 1. Secret (manual)
+
+```bash
+supabase secrets set SENTRY_DSN=<edge project DSN>
+```
+
+Server-side only — never in `.env` / `EXPO_PUBLIC_*`.
+
+### 2. Init — `supabase/functions/_shared/sentry.ts`
+
+```ts
+import * as Sentry from "npm:@sentry/deno";
+
+const dsn = Deno.env.get("SENTRY_DSN");
+
+Sentry.init({
+  dsn,
+  enabled: !!dsn,
+  environment: "production",
+  sendDefaultPii: false,
+  defaultIntegrations: false, // Edge isolates are shared; no global handlers
+  tracesSampleRate: 0,
+});
+
+export { Sentry };
+```
+
+### 3. Wire-up points
+
+| File | Change |
+|---|---|
+| `supabase/functions/_shared/log.ts` | In `edgeLog`, when `level === "error"`: `Sentry.captureMessage(\`${scope}: ${code}\`, { level: "error", tags: { scope, code }, extra: sanitize(fields) })`. Every function already logs failures through `edgeLog`, so all report for free. Reuses existing `sanitize()` — no transcripts/tokens/signed URLs leave. |
+| Each `supabase/functions/*/index.ts` handler | Wrap body in `try/catch` → `Sentry.captureException(err, { tags: { scope } })` for crashes that never reach `edgeLog`; then `await Sentry.flush(2000)` before returning the response (isolate may stop right after responding and drop queued events). |
+
+Rules:
+- Use a per-request scope (`Sentry.withScope`), not global `setTag`/`setUser` — isolates serve many requests.
+- Only report real server failures. User-caused codes (`validation_failed`, `unauthorized`, `not_found`) stay log-only.
+- User = `{ id }` UUID only, when known.
+
+### 4. Verify
+
+- [ ] `health` function (or a temporary throw) in deployed project → issue appears in `voicetotext-edge`
+- [ ] Event has `scope` + `code` tags and `reason`; no transcript, auth header, signed URL, or audio
+- [ ] Alert rule on `voicetotext-edge`: email on new issue + on regression
+- [ ] Local `supabase functions serve` without `SENTRY_DSN` sends nothing
+
+### Not covered (known gap)
+
+- Postgres / Auth / Storage errors — need Supabase Log Drains (Pro plan). Revisit after V1.
+- Edge timeouts / isolate OOM kills — the process dies before Sentry can send; watch Supabase Edge logs for these.
+
+---
+
 ## Phase 2 — performance & slow screens
 
 Turn on after Phase 1 is stable and real users exist.
@@ -154,5 +212,6 @@ Watch: free tier span quota; lower sample rate if exceeded.
 ## Done when
 
 - Phase 1 checklist above passes on a preview build
+- Phase 1b checklist passes on the deployed Supabase project
 - `npm test` + `npm run typecheck` green (scrub tests included)
-- Update [16_LOGGING_COMBINED.md](./16_LOGGING_COMBINED.md) (client errors also → Sentry) and [20_STATUS.md](./20_STATUS.md)
+- Update [16_LOGGING_COMBINED.md](./16_LOGGING_COMBINED.md) (client + Edge errors also → Sentry) and [20_STATUS.md](./20_STATUS.md)
