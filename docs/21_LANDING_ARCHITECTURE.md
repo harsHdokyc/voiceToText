@@ -104,6 +104,10 @@ Client routes (`/pricing`, `/early-access`, …) have no matching files in `dist
 
 During `vite build`, esbuild may warn that parent `../tsconfig.json` extends missing `expo/tsconfig.base` (Expo app lives at repo root; Vercel only installs `LandingPage` deps). Safe to ignore if the build completes.
 
+### Docker (self-host / local prod check)
+
+`LandingPage/Dockerfile` runs the same `npm run build` and serves `dist/` with nginx (`try_files … /index.html`, the equivalent of the `vercel.json` rewrite). Root `docker-compose.yaml` runs it as `landing` on http://localhost:8080 next to the portal on :3000. Vercel stays the production host; Docker is an alternative, not a replacement.
+
 ### Ops still open
 
 1. Confirm Production + Preview env vars on Vercel match hosted Supabase.

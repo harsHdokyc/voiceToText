@@ -4,7 +4,6 @@ import { useState } from 'react';
 import {
   Pressable,
   Text,
-  useWindowDimensions,
   View,
   type LayoutChangeEvent,
 } from 'react-native';
@@ -14,6 +13,8 @@ import {
   formatNoteDuration,
   formatNoteTimeShort,
   noteCardTone,
+  noteGridLayout,
+  noteGridRows,
   noteTitleInitials,
   normalizeNoteCategory,
   type NoteCardTone,
@@ -45,15 +46,20 @@ export function NoteCard({
   note,
   index,
   onDelete,
-  style,
   className,
+  compact = false,
 }: {
   note: NoteRow;
   index: number;
   onDelete?: (noteId: string) => void;
-  style?: object;
   className?: string;
+  /** Narrow card (< 360px): smaller title + stats so nothing truncates. */
+  compact?: boolean;
 }) {
+  const statValueClass = cn(
+    'font-display leading-none text-ink',
+    compact ? 'text-[18px]' : 'text-[22px]',
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const tone = noteCardTone(index);
   const category = normalizeNoteCategory(note.category);
@@ -74,7 +80,7 @@ export function NoteCard({
         'relative min-w-0 max-w-full overflow-hidden border-[5px] border-ink bg-paper',
         className,
       )}
-      style={[HARD_SHADOW, style]}
+      style={HARD_SHADOW}
     >
       <View
         className={cn(
@@ -140,7 +146,12 @@ export function NoteCard({
 
       <View className="min-w-0 flex-1 px-[18px] pb-0 pt-4">
         <Text
-          className="mb-2.5 font-display text-[36px] leading-[40px] text-ink"
+          className={cn(
+            'mb-2.5 font-display text-ink',
+            compact
+              ? 'text-[28px] leading-[32px]'
+              : 'text-[36px] leading-[40px]',
+          )}
           numberOfLines={2}
         >
           {title}
@@ -157,7 +168,7 @@ export function NoteCard({
 
       <View className="flex-row border-t-[3px] border-ink">
         <View className="flex-1 items-center border-r-[3px] border-ink px-1.5 py-3">
-          <Text className="font-display text-[22px] leading-none text-ink">
+          <Text className={statValueClass} numberOfLines={1}>
             {formatNoteDuration(note.audio_duration_seconds)}
           </Text>
           <Text className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-[1.2px] text-stone">
@@ -165,7 +176,7 @@ export function NoteCard({
           </Text>
         </View>
         <View className="flex-1 items-center border-r-[3px] border-ink px-1.5 py-3">
-          <Text className="font-display text-[22px] leading-none text-ink">
+          <Text className={statValueClass} numberOfLines={1}>
             {noteStatusShort(note.status)}
           </Text>
           <Text className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-[1.2px] text-stone">
@@ -173,10 +184,7 @@ export function NoteCard({
           </Text>
         </View>
         <View className="flex-1 items-center px-1.5 py-3">
-          <Text
-            className="font-display text-[22px] leading-none text-ink"
-            numberOfLines={1}
-          >
+          <Text className={statValueClass} numberOfLines={1}>
             {formatNoteTimeShort(note.created_at)}
           </Text>
           <Text className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-[1.2px] text-stone">
@@ -199,7 +207,10 @@ export function NoteCard({
   );
 }
 
-/** Prototype grid: 1 col mobile → 2 sm → 3 xl (matches Workspace noteGrid). */
+/**
+ * 1–3 columns from the grid's own width (sidebar-aware). Explicit flex rows,
+ * not flex-wrap + pixel widths, so a card can never spill onto the next line.
+ */
 export function NoteCardGrid({
   notes,
   onDelete,
@@ -207,34 +218,32 @@ export function NoteCardGrid({
   notes: NoteRow[];
   onDelete?: (noteId: string) => void;
 }) {
-  const { width } = useWindowDimensions();
-  const cols = width >= 1280 ? 3 : width >= 640 ? 2 : 1;
   const gap = space[4];
   const [gridW, setGridW] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => {
     setGridW(e.nativeEvent.layout.width);
   };
-  const cardW =
-    gridW > 0
-      ? cols === 1
-        ? gridW
-        : (gridW - gap * (cols - 1)) / cols
-      : undefined;
+  const { cols, cardWidth } = noteGridLayout(gridW, gap);
+  const compact = cardWidth > 0 && cardWidth < 360;
 
   return (
-    <View
-      className="w-full max-w-full flex-row flex-wrap"
-      style={{ gap }}
-      onLayout={onLayout}
-    >
-      {notes.map((note, i) => (
-        <NoteCard
-          key={note.id}
-          note={note}
-          index={i}
-          onDelete={onDelete}
-          style={cardW != null ? { width: cardW } : { flexGrow: 1 }}
-        />
+    <View className="w-full" style={{ gap }} onLayout={onLayout}>
+      {noteGridRows(notes, cols).map((row, r) => (
+        <View key={row[0]!.id} className="flex-row" style={{ gap }}>
+          {row.map((note, c) => (
+            <NoteCard
+              key={note.id}
+              note={note}
+              index={r * cols + c}
+              onDelete={onDelete}
+              compact={compact}
+              className="flex-1"
+            />
+          ))}
+          {Array.from({ length: cols - row.length }, (_, i) => (
+            <View key={`spacer-${i}`} className="flex-1" />
+          ))}
+        </View>
       ))}
     </View>
   );

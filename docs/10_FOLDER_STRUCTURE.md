@@ -49,6 +49,10 @@ voice-to-work/
 │   └── …numbered pack docs…
 ├── assets/
 ├── .cursor/rules/               # single source of Cursor agent rules (repo root)
+├── LandingPage/                 # marketing site (Vite) + Dockerfile + .dockerignore
+├── Dockerfile                   # portal web build (Expo export → nginx)
+├── docker-compose.yaml          # portal :3000 + landing :8080
+├── .dockerignore                # keeps .env*, node_modules, docs, supabase out of the image
 ├── .env.example
 └── README.md
 ```

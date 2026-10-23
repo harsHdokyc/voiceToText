@@ -5,6 +5,12 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-23 · Docker for web builds only
+- **Context:** Need a one-command way to run the portal and landing page as production builds. The portal targets web, Android, and iOS.
+- **Alternatives:** Containerize the Expo dev server (`expo start`) for devices; build Android in Docker; one image serving both sites.
+- **Decision:** Two images, each a Node 24 build stage + nginx static stage: root `Dockerfile` (`expo export --platform web`) and `LandingPage/Dockerfile` (`vite build`). `docker-compose.yaml` maps portal → 3000, landing → 8080 (8081 stays free for Metro). Only `EXPO_PUBLIC_*` / `VITE_*` enter as build args; `.dockerignore` excludes `.env*`.
+- **Consequence:** iOS/Android keep shipping through EAS. Vercel stays the landing host. Rebuild images after any env change (values are baked in).
+
 ## 2026-10-23 · Edge shared modules: request envelope, note lifecycle, service role
 - **Context:** Architecture review of `supabase/functions`. Every function rebuilt its own fail log + JSON envelope; nine derived the error code with `reason.split(":")[0]`, a weaker copy of `describeProcessError`. Note status writes were spread over `note-audio`, `process-note`, `extract-note`, and `provider-utils`, with an unused `failTargetForStage`. Service-role client and cron-secret check were pasted into four / two functions with two `supabase-js` versions (two functions failed `deno check`).
 - **Alternatives:** Leave per-function code; a full `withUser` handler wrapper around every function; move note transitions into Postgres RPCs.

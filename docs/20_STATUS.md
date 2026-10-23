@@ -77,6 +77,9 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 
 **Ops:** No migration. Redeploy all Edge functions except `health`. Do not set `ENABLE_DEBUG_FUNCTIONS` on hosted except briefly for a probe.
 
+### Docker web builds (2026-10-23)
+`docker compose up --build -d` → portal web http://localhost:3000, landing http://localhost:8080 (nginx, SPA fallback). Verified: both 200 on `/` and deep links; Supabase URL in the portal bundle; no `.env` / access token in either image. Native apps stay on EAS. See [14_SETUP_AND_SOURCE_LOG.md](./14_SETUP_AND_SOURCE_LOG.md#docker-web-builds).
+
 ### Physical device smoke (Phase 7)
 - [ ] Sign in / session restore on device
 - [ ] Record ≤60s note → transcript → suggestions → approve → task appears after restart

@@ -24,6 +24,11 @@ Never prefix secrets with `EXPO_PUBLIC_` / never put `service_role` in Vite or V
 
 Marketing deploy status: [20_STATUS.md](./20_STATUS.md), [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
 
+## Docker (web builds)
+`docker compose up --build -d` builds and serves the portal web export on http://localhost:3000 (`Dockerfile`) and the landing page on http://localhost:8080 (`LandingPage/Dockerfile`), both via nginx with SPA fallback. Build args are read from the root `.env`: `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the landing page falls back to those when `VITE_*` are unset, and `VITE_APP_URL` defaults to the portal URL. `.dockerignore` keeps every `.env*` out of the build context. Values are baked at build time, so rebuild after changing them. iOS/Android ship through EAS (`eas build`), not Docker.
+
+Do not run `npm audit fix --force` on the app: it upgrades to Expo 58 / Tailwind 4 and NativeWind (Tailwind v3 only) fails at `npm start`. Use `npx expo install --check`.
+
 If older `OPENAI_*` / Naga secrets are still set on the project, **replace** them with `GOOGLE_API_KEY` — stale OpenAI env is unused by the new adapters. See `17_DECISIONS.md`.
 
 ## Official docs to verify

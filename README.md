@@ -27,8 +27,8 @@ Saydo captures voice notes, transcribes them with AI, extracts structured task s
 
 ### Prerequisites
 
-- Node.js 18+ and npm
-- Expo CLI (`npm install -g expo-cli`)
+- Node.js 20+ and npm (Expo CLI runs via `npx expo`; no global install)
+- Docker (optional: local Supabase stack, or running the web builds)
 - Supabase account (for backend)
 - Google AI Studio API key (for Gemini)
 
@@ -84,6 +84,26 @@ npm run android
 npm run web
 ```
 
+> Do not run `npm audit fix --force`: it jumps to Expo 58 / Tailwind 4 and NativeWind (Tailwind v3 only) stops the app from starting. Use `npx expo install --check` for safe updates.
+
+### Run with Docker (web)
+
+Production web builds of the portal and the landing page, each served by nginx:
+
+```bash
+npm run docker:up     # docker compose up --build -d (rebuild + start)
+npm run docker:down   # docker compose down (stop)
+```
+
+| Service | URL | Source |
+|---|---|---|
+| `portal` | http://localhost:3000 | Expo web export (`Dockerfile`) |
+| `landing` | http://localhost:8080 | Vite site (`LandingPage/Dockerfile`) |
+
+Build args come from the root `.env` (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`); the landing page reuses them unless `VITE_*` is set. Only these public values are baked in — `.env` files never enter an image. Rebuild after any code or env change.
+
+Android and iOS are native apps, not containers: build them with `eas build` (see `eas.json`).
+
 ## 📖 Documentation
 
 | Document | Description |
@@ -118,7 +138,8 @@ npm run web
 - **Validation**: Zod schemas
 
 ### Infrastructure
-- **Hosting**: Supabase (backend), Vercel (marketing site)
+- **Hosting**: Supabase (backend), Vercel (marketing site), EAS (iOS/Android builds)
+- **Containers**: Docker Compose for the portal web build + landing page (nginx)
 - **Push Notifications**: Expo Push Service
 - **Email**: Resend (transactional)
 
@@ -151,8 +172,9 @@ npm test
 # Run tests in watch mode
 npm run test:watch
 
-# Type checking
+# Type checking + lint
 npm run typecheck
+npm run lint
 ```
 
 ## 🛠️ Development
@@ -202,9 +224,12 @@ voice-to-work/
 │   ├── migrations/        # Database migrations
 │   ├── functions/        # Edge Functions
 │   └── tests/            # Database tests
+├── test/                 # Vitest unit tests (mirrors src/ and supabase/functions/_shared/)
 ├── docs/                 # Product and engineering documentation
 ├── .cursor/rules/        # Cursor agent rules
-└── LandingPage/          # Marketing site (Vite + React)
+├── LandingPage/          # Marketing site (Vite + React) + its Dockerfile
+├── Dockerfile            # Portal web build (Expo export → nginx)
+└── docker-compose.yaml   # portal :3000 + landing :8080
 ```
 
 ## 🤝 Contributing

@@ -36,6 +36,39 @@ export function noteCardTone(index: number): NoteCardTone {
   return CARD_TONES[((index % CARD_TONES.length) + CARD_TONES.length) % CARD_TONES.length]!;
 }
 
+const NOTE_CARD_MIN_WIDTH = 300;
+const NOTE_GRID_MAX_COLS = 3;
+
+/**
+ * Columns + approximate card width from the grid's own width (not the window,
+ * which ignores the sidebar). Card width only drives compact typography;
+ * actual sizing is flex.
+ */
+export function noteGridLayout(
+  gridWidth: number,
+  gap: number,
+): { cols: number; cardWidth: number } {
+  if (!Number.isFinite(gridWidth) || gridWidth <= 0) {
+    return { cols: 1, cardWidth: 0 };
+  }
+  const fit = Math.floor((gridWidth + gap) / (NOTE_CARD_MIN_WIDTH + gap));
+  const cols = Math.min(NOTE_GRID_MAX_COLS, Math.max(1, fit));
+  return {
+    cols,
+    cardWidth: Math.floor((gridWidth - gap * (cols - 1)) / cols),
+  };
+}
+
+/** Split items into rows of `cols` (last row may be short). */
+export function noteGridRows<T>(items: readonly T[], cols: number): T[][] {
+  const size = Math.max(1, Math.floor(cols) || 1);
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    rows.push(items.slice(i, i + size));
+  }
+  return rows;
+}
+
 /** Two-letter mark from a note title for card watermark / avatar. */
 export function noteTitleInitials(title: string | null | undefined): string {
   const parts = (title?.trim() || 'Note').split(/\s+/).filter(Boolean);
@@ -85,7 +118,7 @@ export function formatNoteTimeShort(iso: string, nowMs = Date.now()): string {
   if (dayDiff == null) return '—';
   if (dayDiff === 0) {
     return new Date(iso).toLocaleTimeString(undefined, {
-      hour: '2-digit',
+      hour: 'numeric',
       minute: '2-digit',
     });
   }

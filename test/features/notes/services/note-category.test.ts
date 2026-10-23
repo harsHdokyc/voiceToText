@@ -6,6 +6,8 @@ import {
   formatNoteTimeShort,
   isNoteCategory,
   noteCardTone,
+  noteGridLayout,
+  noteGridRows,
   noteMatchesCategoryFilter,
   noteTitleInitials,
   normalizeNoteCategory,
@@ -54,6 +56,54 @@ describe('noteCardTone', () => {
   });
 });
 
+describe('noteGridLayout', () => {
+  it('uses one full-width column on phones', () => {
+    expect(noteGridLayout(335, 16)).toEqual({ cols: 1, cardWidth: 335 });
+    expect(noteGridLayout(280, 16)).toEqual({ cols: 1, cardWidth: 280 });
+  });
+
+  it('keeps one column on tablet once the sidebar eats the width', () => {
+    expect(noteGridLayout(448, 16)).toEqual({ cols: 1, cardWidth: 448 });
+  });
+
+  it('switches to two columns once two 300px cards fit', () => {
+    expect(noteGridLayout(616, 16)).toEqual({ cols: 2, cardWidth: 300 });
+    expect(noteGridLayout(704, 16)).toEqual({ cols: 2, cardWidth: 344 });
+  });
+
+  it('uses three columns on a desktop grid beside the sidebar', () => {
+    expect(noteGridLayout(1100, 16)).toEqual({ cols: 3, cardWidth: 356 });
+  });
+
+  it('caps at three columns on very wide grids', () => {
+    expect(noteGridLayout(2000, 16).cols).toBe(3);
+  });
+
+  it('returns no width before the grid has been measured', () => {
+    expect(noteGridLayout(0, 16)).toEqual({ cols: 1, cardWidth: 0 });
+    expect(noteGridLayout(Number.NaN, 16)).toEqual({ cols: 1, cardWidth: 0 });
+  });
+});
+
+describe('noteGridRows', () => {
+  it('fills full rows and leaves the remainder in a short last row', () => {
+    expect(noteGridRows(['a', 'b', 'c', 'd', 'e'], 3)).toEqual([
+      ['a', 'b', 'c'],
+      ['d', 'e'],
+    ]);
+  });
+
+  it('puts every item on its own row for one column', () => {
+    expect(noteGridRows(['a', 'b'], 1)).toEqual([['a'], ['b']]);
+  });
+
+  it('returns no rows for no items and treats bad column counts as 1', () => {
+    expect(noteGridRows([], 3)).toEqual([]);
+    expect(noteGridRows(['a', 'b'], 0)).toEqual([['a'], ['b']]);
+    expect(noteGridRows(['a', 'b'], Number.NaN)).toEqual([['a'], ['b']]);
+  });
+});
+
 describe('formatNoteTime', () => {
   it('labels today and yesterday relative to frozen now', () => {
     vi.useFakeTimers();
@@ -79,7 +129,7 @@ describe('formatNoteTimeShort', () => {
     ).toMatch(/\d/);
     expect(
       formatNoteTimeShort(new Date(2026, 9, 10, 8, 42, 0).toISOString()),
-    ).not.toMatch(/Today|Yesterday/);
+    ).not.toMatch(/Today|Yesterday|^0/);
     expect(
       formatNoteTimeShort(new Date(2026, 9, 9, 18, 15, 0).toISOString()),
     ).toBe('Yday');

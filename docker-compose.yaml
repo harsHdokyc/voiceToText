@@ -1,0 +1,24 @@
+# Web builds of the portal and the landing page.
+# Build args come from the root .env (public EXPO_PUBLIC_* values only; nothing else enters the image).
+# Android/iOS: `eas build` — native apps are not containers.
+services:
+  portal:
+    build:
+      context: .
+      args:
+        EXPO_PUBLIC_SUPABASE_URL: ${EXPO_PUBLIC_SUPABASE_URL:?set in .env}
+        EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:?set in .env}
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+  landing:
+    build:
+      context: ./LandingPage
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-${EXPO_PUBLIC_SUPABASE_URL}}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-${EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY}}
+        VITE_APP_URL: ${VITE_APP_URL:-http://localhost:3000}
+    ports:
+      - "8080:80"
+    restart: unless-stopped

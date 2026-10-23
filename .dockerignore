@@ -1,0 +1,15 @@
+**/node_modules
+.git
+.env*
+.expo
+dist
+android
+ios
+LandingPage
+ui
+supabase
+docs
+test
+graphify-out
+.agents
+.cursor
