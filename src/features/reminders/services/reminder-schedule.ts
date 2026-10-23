@@ -38,5 +38,3 @@ export const REMINDER_HOUR_PRESETS = [
 ] as const;
 
 export type ReminderHourPreset = (typeof REMINDER_HOUR_PRESETS)[number]['hours'];
-
-export const MAX_REMINDER_ATTEMPTS = 5;

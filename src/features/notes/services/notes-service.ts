@@ -9,9 +9,7 @@ import {
 import {
   assertAudioDurationSeconds,
   assertNoteStatusTransition,
-  canTransitionNoteStatus,
   AUDIO_RETRY_UNAVAILABLE_LABEL,
-  normalizeNoteSearchQuery,
   noteMatchesSearch,
   retryProcessingPlan,
   showProcessingRetry,
@@ -20,13 +18,16 @@ import {
 import {
   audioMimeForUpload,
   extensionForMime,
+  mimeFromUri,
 } from '@/features/recording/services/recording-format';
-import { ApiError } from '@/lib/api-error';
+import { ApiError, describeError } from '@/lib/api-error';
+import { invokeEdge } from '@/lib/invoke-edge';
+import { logger } from '@/lib/logger';
 import { trackProductEvent } from '@/lib/product-analytics';
 import { supabase } from '@/lib/supabase';
 import { withApiLog } from '@/lib/with-api-log';
 
-/** Client-facing note — never includes `audio_path` / storage keys. */
+/** Client-facing note â€” never includes `audio_path` / storage keys. */
 export type NoteRow = {
   id: string;
   user_id?: string;
@@ -57,15 +58,13 @@ function asNoteRow(row: NoteRow): NoteRow {
   };
 }
 
-export type ListNotesParams = {
+type ListNotesParams = {
   query?: string;
   category?: NoteCategoryFilter;
 };
 
 export async function listNotes(params: ListNotesParams = {}) {
-  const search = params.query
-    ? normalizeNoteSearchQuery(params.query)
-    : undefined;
+  const search = params.query?.trim();
 
   return withApiLog(
     'api.notes.list',
@@ -103,7 +102,7 @@ export async function getNote(noteId: string) {
   });
 }
 
-export async function createDraftNote() {
+async function createDraftNote() {
   return withApiLog('api.notes.create_draft', {}, async () => {
     const {
       data: { user },
@@ -154,17 +153,15 @@ async function updateNoteStatus(
   return asNoteRow(data as NoteRow);
 }
 
-export async function uploadNoteAudio(params: {
+async function uploadNoteAudio(params: {
   note: NoteRow;
   uri: string;
-  mimeType: string;
   durationSeconds: number;
 }) {
   return withApiLog(
     'api.notes.upload',
     {
       noteId: params.note.id,
-      mimeType: params.mimeType,
       durationSeconds: params.durationSeconds,
     },
     async () => {
@@ -178,7 +175,7 @@ export async function uploadNoteAudio(params: {
         );
       }
       const blob = await response.blob();
-      const mimeType = audioMimeForUpload(blob.type, params.mimeType);
+      const mimeType = audioMimeForUpload(blob.type, mimeFromUri(params.uri));
 
       const note = await proxyUploadNoteAudio({
         noteId: params.note.id,
@@ -223,66 +220,21 @@ type ExtractNoteResponse = {
  * ponytail: Free tier optimization - chain transcription then extraction.
  * process-note does transcription only, extract-note does extraction.
  */
-export async function requestTranscription(noteId: string) {
+async function requestTranscription(noteId: string) {
   return withApiLog('api.notes.process', { noteId }, async () => {
-    // Step 1: Transcribe
-    const { data, error } = await supabase.functions.invoke('process-note', {
-      body: { noteId },
-    });
-
-    const body = (data ?? null) as ProcessNoteResponse | null;
-
-    if (error) {
-      const fromBody = body?.error;
-      throw new ApiError(
-        fromBody ?? 'process_note_failed',
-        fromBody
-          ? `process-note failed: ${fromBody}`
-          : error.message,
-        error,
-      );
-    }
-
-    if (!body) {
-      throw new ApiError(
-        'process_note_empty',
-        'process-note returned an empty body',
-      );
-    }
-
-    if (body.ok === false) {
-      throw new ApiError(
-        body.error ?? 'process_note_failed',
-        body.reason ??
-          (body.error
-            ? `process-note failed: ${body.error}`
-            : 'process-note returned ok:false'),
-      );
-    }
+    const body = await invokeEdge<ProcessNoteResponse>('process-note', 'process_note', { noteId });
 
     // Step 2: Extract after transcription-only process-note (`extracting` + flag).
     if (body.extractionSkipped && body.status === 'extracting') {
       try {
-        const extractResult = await supabase.functions.invoke('extract-note', {
-          body: { noteId },
-        });
-
-        const extractBody = (extractResult.data ?? null) as ExtractNoteResponse | null;
-
-        if (extractResult.error || !extractBody?.ok) {
-          console.warn('[extract-note] failed but transcription ok', {
-            noteId,
-            error: extractBody?.error,
-          });
-          trackProductEvent('extraction_succeeded', { noteId });
-          return body;
-        }
-
+        const extracted = await invokeEdge<ExtractNoteResponse>('extract-note', 'extract_note', { noteId });
         trackProductEvent('extraction_succeeded', { noteId });
-        return { ...body, ...extractBody };
-      } catch {
-        console.warn('[extract-note] failed but transcription ok', { noteId });
-        trackProductEvent('extraction_succeeded', { noteId });
+        return { ...body, ...extracted };
+      } catch (e) {
+        // Transcript is saved; the note stays `extracting`, where note detail offers retry.
+        const { code, reason } = describeError(e);
+        logger.warn('api.notes.extract', { event: 'fail', noteId, code, reason });
+        trackProductEvent('extraction_failed', { noteId, code });
         return body;
       }
     }
@@ -295,7 +247,7 @@ export async function requestTranscription(noteId: string) {
   });
 }
 
-export async function updateNoteContent(
+async function updateNoteContent(
   noteId: string,
   patch: {
     title?: string;
@@ -348,17 +300,7 @@ export async function retryTranscription(note: NoteRow) {
       }
       let current = note;
       if (plan === 'extract') {
-        const { data, error } = await supabase.functions.invoke('extract-note', {
-          body: { noteId: note.id },
-        });
-        if (error || !data?.ok) {
-          throw new ApiError(
-            'extract_retry_failed',
-            error?.message || 'extract-note retry failed',
-            error,
-          );
-        }
-        return data;
+        return invokeEdge<ExtractNoteResponse>('extract-note', 'extract_retry', { noteId: note.id });
       }
       // Transcription failures re-queue for a full pass
       if (note.status === 'transcription_failed') {
@@ -372,4 +314,42 @@ export async function retryTranscription(note: NoteRow) {
       return requestTranscription(current.id);
     },
   );
+}
+
+export async function deleteNote(noteId: string) {
+  return withApiLog('api.notes.delete', { noteId }, () =>
+    invokeEdge('delete-note', 'note_delete', { noteId }),
+  );
+}
+
+type CaptureClip = { uri: string; durationSeconds: number };
+
+/** Capture sheet save: draft â†’ title/thought â†’ optional audio â†’ optional processing. */
+export async function captureNote(params: {
+  title: string;
+  thought: string;
+  clip: CaptureClip | null;
+  process: boolean;
+}) {
+  const draft = await createDraftNote();
+  let note = draft;
+  try {
+    const title = params.title.trim();
+    const thought = params.thought.trim();
+    if (title || thought) {
+      note = await updateNoteContent(draft.id, {
+        ...(title ? { title } : {}),
+        ...(thought ? { edited_transcript: thought } : {}),
+      });
+    }
+    if (params.clip) note = await uploadNoteAudio({ note, ...params.clip });
+  } catch (e) {
+    // Only a half-made draft exists; the sheet keeps the user's input for another try.
+    await deleteNote(draft.id).catch(() => undefined);
+    throw e;
+  }
+  // Audio is stored and the note is `queued`, which note detail can retry. Failing here would
+  // keep the sheet open, and a second tap would create a duplicate note.
+  if (params.process && params.clip) await requestTranscription(note.id).catch(() => undefined);
+  return note;
 }

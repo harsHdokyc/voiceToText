@@ -2,14 +2,9 @@ import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
 } from 'expo-audio';
 
 import { pickWebRecordingMime } from '@/features/recording/services/recording-format';
-import { MAX_AUDIO_DURATION_SECONDS } from '@/lib/constants';
-
-export { mimeFromUri } from '@/features/recording/services/recording-format';
 
 const webRecordingMime =
   typeof MediaRecorder === 'undefined'
@@ -37,9 +32,3 @@ export async function ensureRecordingPermission() {
     playsInSilentMode: true,
   });
 }
-
-export {
-  useAudioRecorder,
-  useAudioRecorderState,
-  MAX_AUDIO_DURATION_SECONDS,
-};

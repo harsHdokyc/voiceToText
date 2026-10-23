@@ -1,32 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { Button, Eyebrow } from '@/components/ui';
 import { WorkspacePage } from '@/components/workspace-page';
-import {
-  completeTask,
-  deleteTask,
-  getTask,
-  reopenTask,
-} from '@/features/tasks/services/tasks-service';
-import { saveTaskFromEditSheet } from '@/features/tasks/services/task-edit-save';
-import { taskStatusLabel } from '@/features/tasks/services/task-status';
+import { useTaskActions } from '@/features/tasks/hooks/use-task-actions';
+import { getTask } from '@/features/tasks/services/tasks-service';
 import { dueLabel } from '@/features/tasks/services/task-due-label';
 import {
   cancelReminder,
   listRemindersForTask,
 } from '@/features/reminders/services/reminders-service';
 import { errorMessageForUi } from '@/lib/api-error';
+import { invalidateWorkspace } from '@/lib/query-client';
 import { colors, space } from '@/theme';
 
 export default function TaskDetailScreen() {
   const { taskId } = useLocalSearchParams<{ taskId: string }>();
   const queryClient = useQueryClient();
-  const [editOpen, setEditOpen] = useState(false);
+  const actions = useTaskActions({ onRemoved: () => router.back() });
 
   const task = useQuery({
     queryKey: ['tasks', taskId],
@@ -40,43 +34,9 @@ export default function TaskDetailScreen() {
     enabled: Boolean(taskId),
   });
 
-  const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    await queryClient.invalidateQueries({ queryKey: ['tasks', taskId] });
-    await queryClient.invalidateQueries({ queryKey: ['reminders', taskId] });
-  };
-
-  const saveEdit = useMutation({
-    mutationFn: saveTaskFromEditSheet,
-    onSuccess: async () => {
-      setEditOpen(false);
-      await invalidate();
-    },
-  });
-
-  const toggle = useMutation({
-    mutationFn: async () => {
-      if (!task.data) throw new Error('Task missing');
-      if (task.data.status === 'completed') return reopenTask(task.data.id);
-      return completeTask(task.data.id);
-    },
-    onSuccess: invalidate,
-  });
-
   const cancelRemind = useMutation({
     mutationFn: (reminderId: string) => cancelReminder(reminderId),
-    onSuccess: invalidate,
-  });
-
-  const remove = useMutation({
-    mutationFn: async () => {
-      if (!task.data) throw new Error('Task missing');
-      await deleteTask(task.data.id);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      router.back();
-    },
+    onSuccess: () => invalidateWorkspace(queryClient),
   });
 
   if (task.isLoading) {
@@ -98,11 +58,7 @@ export default function TaskDetailScreen() {
   }
 
   const row = task.data;
-  const busy =
-    saveEdit.isPending ||
-    toggle.isPending ||
-    cancelRemind.isPending ||
-    remove.isPending;
+  const busy = actions.isBusy(row.id) || actions.sheetBusy || cancelRemind.isPending;
   const scheduled = (reminders.data ?? []).filter(
     (r) => r.status === 'scheduled',
   );
@@ -112,7 +68,7 @@ export default function TaskDetailScreen() {
       <Eyebrow>The things you chose</Eyebrow>
       <Text className="font-display text-[32px] text-ink">{row.title}</Text>
       <Text className="font-sans text-[13px] text-stone">
-        {taskStatusLabel(row.status)} · {dueLabel(row.due_at)}
+        {row.status} · {dueLabel(row.due_at)}
       </Text>
 
       {row.details ? (
@@ -169,7 +125,7 @@ export default function TaskDetailScreen() {
       <Button
         variant="cta"
         disabled={busy}
-        onPress={() => setEditOpen(true)}
+        onPress={() => actions.edit(row)}
       >
         <Ionicons name="pencil" size={16} color={colors.card} />
         <Text className="font-sans-medium text-[15px] text-card">
@@ -179,7 +135,7 @@ export default function TaskDetailScreen() {
       <Button
         variant="quiet"
         disabled={busy}
-        onPress={() => toggle.mutate()}
+        onPress={() => actions.toggle(row)}
       >
         {row.status === 'completed' ? 'Reopen task' : 'Mark complete'}
       </Button>
@@ -187,45 +143,18 @@ export default function TaskDetailScreen() {
       <Button
         variant="destructive"
         disabled={busy}
-        onPress={() => remove.mutate()}
+        onPress={() => actions.remove(row)}
       >
-        {remove.isPending ? 'Deleting…' : 'Delete task'}
+        {actions.removing ? 'Deleting…' : 'Delete task'}
       </Button>
 
-      {toggle.error || remove.error || cancelRemind.error ? (
+      {actions.error || cancelRemind.error ? (
         <Text className="font-sans text-destructive">
-          {errorMessageForUi(
-            toggle.error ??
-              remove.error ??
-              cancelRemind.error,
-            'Update failed',
-          )}
+          {errorMessageForUi(actions.error ?? cancelRemind.error, 'Update failed')}
         </Text>
       ) : null}
 
-      <EditNextStepSheet
-        open={editOpen}
-        onClose={() => {
-          if (!saveEdit.isPending) setEditOpen(false);
-        }}
-        initialTitle={row.title}
-        initialDueAt={row.due_at}
-        mode="task"
-        busy={saveEdit.isPending}
-        error={
-          saveEdit.error
-            ? errorMessageForUi(saveEdit.error, 'Save failed')
-            : null
-        }
-        onSave={(draft) => {
-          saveEdit.mutate({
-            task: row,
-            title: draft.title,
-            dueAt: draft.dueAt,
-            reminderHours: draft.reminderHours,
-          });
-        }}
-      />
+      <EditNextStepSheet {...actions.sheet} />
     </WorkspacePage>
   );
 }

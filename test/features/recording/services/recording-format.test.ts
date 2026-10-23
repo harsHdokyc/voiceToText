@@ -2,11 +2,29 @@ import { describe, expect, it } from 'vitest';
 
 import {
   audioMimeForUpload,
+  clipDurationSeconds,
   extensionForMime,
   isWebmAudio,
   mimeFromUri,
   pickWebRecordingMime,
 } from '@/features/recording/services/recording-format';
+
+describe('clipDurationSeconds', () => {
+  it('rounds to whole seconds', () => {
+    expect(clipDurationSeconds(12_400)).toBe(12);
+    expect(clipDurationSeconds(12_600)).toBe(13);
+  });
+
+  it('caps a late auto-stop at the 60 s limit the server enforces', () => {
+    expect(clipDurationSeconds(60_600)).toBe(60);
+    expect(clipDurationSeconds(75_000)).toBe(60);
+  });
+
+  it('never reports less than 1 s (also for a missing reading)', () => {
+    expect(clipDurationSeconds(200)).toBe(1);
+    expect(clipDurationSeconds(null)).toBe(1);
+  });
+});
 
 describe('pickWebRecordingMime', () => {
   it('prefers AAC-in-MP4 (iPhone-playable) when the browser can record it', () => {

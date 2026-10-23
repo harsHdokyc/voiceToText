@@ -1,5 +1,13 @@
+import { normalizeDisplayName } from '@/features/settings/services/greeting-name';
 import { EMAIL_OTP_LENGTH, MIN_PASSWORD_LENGTH } from '@/lib/constants';
 import { errorMessageForUi } from '@/lib/api-error';
+
+/** Sign-up requires a name; returns it trimmed and clamped to the profile limit. */
+export function assertDisplayName(name: string) {
+  const value = normalizeDisplayName(name);
+  if (!value) throw new Error('Enter your name');
+  return value;
+}
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();

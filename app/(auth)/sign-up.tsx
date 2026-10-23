@@ -12,11 +12,11 @@ import {
 } from '@/features/auth/components/auth-ui';
 import { useAuthAction } from '@/features/auth/hooks/use-auth-action';
 import { signUpWithPassword } from '@/features/auth/services/auth-service';
-import { normalizeEmail } from '@/features/auth/services/auth-validation';
 import {
-  DISPLAY_NAME_MAX,
-  normalizeDisplayName,
-} from '@/features/settings/services/greeting-name';
+  assertDisplayName,
+  normalizeEmail,
+} from '@/features/auth/services/auth-validation';
+import { DISPLAY_NAME_MAX } from '@/features/settings/services/greeting-name';
 import { useAuth } from '@/providers/auth-provider';
 
 export default function SignUpScreen() {
@@ -75,10 +75,7 @@ export default function SignUpScreen() {
         busy={busy}
         onPress={() =>
           void run(async () => {
-            const displayName = normalizeDisplayName(name);
-            if (!displayName) {
-              throw new Error('Enter your name');
-            }
+            const displayName = assertDisplayName(name);
             const result = await signUpWithPassword(
               email,
               password,

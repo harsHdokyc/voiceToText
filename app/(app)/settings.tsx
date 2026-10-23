@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { SaydoWordmark } from '@/components/saydo-mark';
@@ -7,39 +7,29 @@ import { Button, Eyebrow, TextField } from '@/components/ui';
 import { WorkspacePage } from '@/components/workspace-page';
 import { signOut } from '@/features/auth/services/auth-service';
 import { registerForPushNotifications } from '@/features/reminders/services/push-registration';
-import { deleteAccount } from '@/features/settings/services/account-service';
+import { useProfile } from '@/features/settings/hooks/use-profile';
+import { deleteAccount, runEdgeProbe } from '@/features/settings/services/account-service';
 import { privacyDisclosureParagraphs } from '@/features/settings/services/privacy-disclosure';
-import {
-  DISPLAY_NAME_MAX,
-  getOwnProfile,
-  updateOwnDisplayName,
-} from '@/features/settings/services/profile-service';
+import { DISPLAY_NAME_MAX } from '@/features/settings/services/greeting-name';
+import { updateOwnDisplayName } from '@/features/settings/services/profile-service';
 import { errorMessageForUi } from '@/lib/api-error';
-import { supabase } from '@/lib/supabase';
 import { space } from '@/theme';
 
 export default function SettingsScreen() {
   const queryClient = useQueryClient();
-  const [displayName, setDisplayName] = useState('');
+  const { profile } = useProfile();
+  // null = untouched: show the server value, so a background refetch never clobbers typing.
+  const [draftName, setDraftName] = useState<string | null>(null);
+  const displayName = draftName ?? profile.data?.display_name ?? '';
   const [savedFlash, setSavedFlash] = useState(false);
   const [devOpen, setDevOpen] = useState(false);
-
-  const profile = useQuery({
-    queryKey: ['profile'],
-    queryFn: getOwnProfile,
-  });
-
-  useEffect(() => {
-    if (profile.data?.display_name != null) {
-      setDisplayName(profile.data.display_name);
-    }
-  }, [profile.data?.display_name]);
 
   const saveName = useMutation({
     mutationFn: () => updateOwnDisplayName(displayName),
     onSuccess: async () => {
       setSavedFlash(true);
       await queryClient.invalidateQueries({ queryKey: ['profile'] });
+      setDraftName(null);
       setTimeout(() => setSavedFlash(false), 1600);
     },
   });
@@ -62,22 +52,9 @@ export default function SettingsScreen() {
     },
   });
 
-  const health = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('health');
-      if (error) throw error;
-      return data;
-    },
-  });
-
+  const health = useMutation({ mutationFn: () => runEdgeProbe('health') });
   const spike = useMutation({
-    mutationFn: async (probe: 'config' | 'chat') => {
-      const { data, error } = await supabase.functions.invoke('openai-spike', {
-        body: { probe },
-      });
-      if (error) throw error;
-      return data;
-    },
+    mutationFn: (probe: 'config' | 'chat') => runEdgeProbe('openai-spike', { probe }),
   });
 
   const confirmDeleteAccount = () => {
@@ -112,7 +89,7 @@ export default function SettingsScreen() {
         <TextField
           value={displayName}
           onChangeText={(t) => {
-            setDisplayName(t.slice(0, DISPLAY_NAME_MAX));
+            setDraftName(t.slice(0, DISPLAY_NAME_MAX));
             setSavedFlash(false);
           }}
           maxLength={DISPLAY_NAME_MAX}
@@ -196,6 +173,7 @@ export default function SettingsScreen() {
         </Text>
       ) : null}
 
+      {__DEV__ ? (
       <Pressable
         onPress={() => setDevOpen((v) => !v)}
         hitSlop={8}
@@ -207,7 +185,8 @@ export default function SettingsScreen() {
           {devOpen ? 'Hide developer' : 'Developer'}
         </Text>
       </Pressable>
-      {devOpen ? (
+      ) : null}
+      {__DEV__ && devOpen ? (
         <View className="gap-2">
           <Button variant="quiet" size="sm" onPress={() => health.mutate()}>
             health

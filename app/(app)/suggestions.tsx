@@ -1,6 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
-import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
@@ -8,72 +6,19 @@ import { Button, EmptyState, Eyebrow } from '@/components/ui';
 import { WorkspacePage } from '@/components/workspace-page';
 import { SuggestionReviewRow } from '@/components/work-row';
 import {
-  pendingSuggestionIds,
-  suggestionKindLabel,
-} from '@/features/notes/services/pending-suggestions';
-import { approveSuggestionWithEdit } from '@/features/notes/services/suggestion-edit-save';
-import {
-  approveSuggestion,
-  listPendingSuggestions,
-  rejectSuggestion,
-  type TaskSuggestion,
-} from '@/features/notes/services/suggestions-service';
+  usePendingSuggestions,
+  useSuggestionReview,
+} from '@/features/notes/hooks/use-suggestion-review';
+import { suggestionKindLabel } from '@/features/notes/services/pending-suggestions';
 import { errorMessageForUi } from '@/lib/api-error';
-import {
-  SUGGESTION_ROW_MUTATION_KEY,
-  usePendingRowIds,
-} from '@/lib/use-pending-row-ids';
 import { colors } from '@/theme';
 
 export default function SuggestionsScreen() {
-  const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<TaskSuggestion | null>(null);
-
-  const pending = useQuery({
-    queryKey: ['suggestions', 'pending'],
-    queryFn: () => listPendingSuggestions(100),
-  });
-
-  const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
-    await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    await queryClient.invalidateQueries({ queryKey: ['notes'] });
-    await queryClient.invalidateQueries({ queryKey: ['reminders'] });
-  };
-
-  const approve = useMutation({
-    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
-    mutationFn: (s: { id: string }) => approveSuggestion(s.id),
-    onSuccess: invalidate,
-  });
-
-  const reject = useMutation({
-    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
-    mutationFn: (s: { id: string }) => rejectSuggestion(s.id),
-    onSuccess: invalidate,
-  });
-  const pendingRowIds = usePendingRowIds(SUGGESTION_ROW_MUTATION_KEY);
-
-  const approveAll = useMutation({
-    mutationFn: async (ids: string[]) => {
-      for (const id of ids) {
-        await approveSuggestion(id);
-      }
-    },
-    onSuccess: invalidate,
-  });
-
-  const saveEdit = useMutation({
-    mutationFn: approveSuggestionWithEdit,
-    onSuccess: async () => {
-      setEditing(null);
-      await invalidate();
-    },
-  });
+  const pending = usePendingSuggestions();
+  const review = useSuggestionReview();
 
   const rows = pending.data ?? [];
-  const ids = pendingSuggestionIds(rows);
-  const busy = pendingRowIds.length > 0 || approveAll.isPending || saveEdit.isPending;
+  const ids = rows.map((r) => r.id);
 
   return (
     <WorkspacePage>
@@ -91,10 +36,10 @@ export default function SuggestionsScreen() {
           <Button
             variant="quiet"
             size="sm"
-            disabled={busy}
-            onPress={() => approveAll.mutate(ids)}
+            disabled={review.anyBusy}
+            onPress={() => review.approveAll(ids)}
           >
-            {approveAll.isPending ? 'Approving…' : 'Approve all'}
+            {review.approvingAll ? 'Approving…' : 'Approve all'}
           </Button>
         ) : null}
       </View>
@@ -114,10 +59,10 @@ export default function SuggestionsScreen() {
               kindLabel={suggestionKindLabel(s.kind)}
               dueAt={s.due_at}
               sourceNoteId={s.note_id}
-              busy={approveAll.isPending || pendingRowIds.includes(s.id)}
-              onApprove={() => approve.mutate(s)}
-              onDismiss={() => reject.mutate(s)}
-              onEdit={() => setEditing(s)}
+              busy={review.isBusy(s.id)}
+              onApprove={() => review.approve(s)}
+              onDismiss={() => review.dismiss(s)}
+              onEdit={() => review.edit(s)}
             />
           ))}
         </View>
@@ -136,39 +81,13 @@ export default function SuggestionsScreen() {
         </>
       )}
 
-      {approve.error || reject.error || approveAll.error ? (
+      {review.error ? (
         <Text className="font-sans text-destructive">
-          {errorMessageForUi(
-            approve.error ?? reject.error ?? approveAll.error,
-            'Update failed',
-          )}
+          {errorMessageForUi(review.error, 'Update failed')}
         </Text>
       ) : null}
 
-      <EditNextStepSheet
-        open={editing !== null}
-        onClose={() => {
-          if (!saveEdit.isPending) setEditing(null);
-        }}
-        initialTitle={editing?.title ?? ''}
-        initialDueAt={editing?.due_at ?? null}
-        mode="suggestion"
-        busy={saveEdit.isPending}
-        error={
-          saveEdit.error
-            ? errorMessageForUi(saveEdit.error, 'Save failed')
-            : null
-        }
-        onSave={(draft) => {
-          if (!editing) return;
-          saveEdit.mutate({
-            suggestion: editing,
-            title: draft.title,
-            dueAt: draft.dueAt,
-            reminderHours: draft.reminderHours,
-          });
-        }}
-      />
+      <EditNextStepSheet {...review.sheet} />
     </WorkspacePage>
   );
 }

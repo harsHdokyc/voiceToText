@@ -14,9 +14,9 @@ import {
   NOTE_CATEGORY_FILTERS,
   type NoteCategoryFilter,
 } from '@/features/notes/services/note-category';
-import { listNotes } from '@/features/notes/services/notes-service';
-import { deleteNote } from '@/features/settings/services/account-service';
+import { deleteNote, listNotes } from '@/features/notes/services/notes-service';
 import { errorMessageForUi } from '@/lib/api-error';
+import { invalidateWorkspace } from '@/lib/query-client';
 import { cn } from '@/lib/cn';
 import { colors } from '@/theme';
 
@@ -35,11 +35,7 @@ export default function VoiceNotesScreen() {
 
   const removeNote = useMutation({
     mutationFn: (noteId: string) => deleteNote(noteId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['notes'] });
-      await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
+    onSuccess: () => invalidateWorkspace(queryClient),
   });
 
   return (

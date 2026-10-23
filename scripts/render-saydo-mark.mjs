@@ -2,6 +2,7 @@
  * Renders assets/brand/saydo-mark.svg into Expo + Landing favicon/icon PNGs.
  * Usage: node scripts/render-saydo-mark.mjs
  */
+import { Buffer } from "node:buffer";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

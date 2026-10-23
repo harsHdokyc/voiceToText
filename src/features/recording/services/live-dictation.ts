@@ -3,6 +3,7 @@
  * Web Speech here; native uses live-dictation.native.ts. Product capture
  * still records via expo-audio.
  */
+import { joinSpeechText } from '@/features/recording/services/speech-text';
 
 type SpeechResultLike = { 0?: { transcript?: string } };
 type SpeechRecLike = {
@@ -64,10 +65,8 @@ export function startLiveDictation(opts: {
   rec.continuous = true;
   rec.interimResults = true;
   rec.lang = opts.lang ?? 'en-US';
-  const prefix = opts.baseText.trim() ? `${opts.baseText.trimEnd()} ` : '';
-
   rec.onresult = (e) => {
-    opts.onUpdate(prefix + transcriptFromSpeechResults(e.results));
+    opts.onUpdate(joinSpeechText(opts.baseText, transcriptFromSpeechResults(e.results)));
   };
   rec.onerror = (e) => {
     if (e.error === 'not-allowed') {

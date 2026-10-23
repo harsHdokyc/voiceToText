@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams, type Href } from 'expo-router';
-import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
 import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
@@ -27,27 +26,20 @@ import {
   audioRetryUnavailableLabel,
   displayTranscript,
   isNoteAudioPurged,
+  isNoteProcessing,
+  noteRefetchIntervalMs,
   noteStatusLabel,
   showProcessingRetry,
 } from '@/features/notes/services/note-status';
+import { useSuggestionReview } from '@/features/notes/hooks/use-suggestion-review';
 import {
   getNote,
   retryTranscription,
 } from '@/features/notes/services/notes-service';
 import { suggestionKindLabel } from '@/features/notes/services/pending-suggestions';
-import { approveSuggestionWithEdit } from '@/features/notes/services/suggestion-edit-save';
-import {
-  approveSuggestion,
-  getSuggestions,
-  isPendingSuggestion,
-  rejectSuggestion,
-  type TaskSuggestion,
-} from '@/features/notes/services/suggestions-service';
+import { getSuggestions } from '@/features/notes/services/suggestions-service';
 import { errorMessageForUi } from '@/lib/api-error';
-import {
-  SUGGESTION_ROW_MUTATION_KEY,
-  usePendingRowIds,
-} from '@/lib/use-pending-row-ids';
+import { invalidateWorkspace } from '@/lib/query-client';
 import { cn } from '@/lib/cn';
 import { colors } from '@/theme';
 
@@ -60,25 +52,13 @@ export default function NoteDetailScreen() {
   const { noteId } = useLocalSearchParams<{ noteId: string }>();
   const queryClient = useQueryClient();
   const wide = useWorkspaceWide();
-  const [editingSuggestion, setEditingSuggestion] =
-    useState<TaskSuggestion | null>(null);
+  const review = useSuggestionReview();
 
   const note = useQuery({
     queryKey: ['notes', noteId],
     queryFn: () => getNote(noteId),
     enabled: Boolean(noteId),
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (
-        status === 'queued' ||
-        status === 'transcribing' ||
-        status === 'extracting' ||
-        status === 'uploading'
-      ) {
-        return 2000;
-      }
-      return false;
-    },
+    refetchInterval: (query) => noteRefetchIntervalMs(query.state.data?.status),
   });
 
   const suggestions = useQuery({
@@ -87,44 +67,12 @@ export default function NoteDetailScreen() {
     enabled: Boolean(noteId) && note.data?.status === 'review_ready',
   });
 
-  const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['notes', noteId] });
-    await queryClient.invalidateQueries({ queryKey: ['notes'] });
-    await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
-    await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
-    await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-  };
-
   const retry = useMutation({
     mutationFn: async () => {
       if (!note.data) throw new Error('Note missing');
       await retryTranscription(note.data);
     },
-    onSuccess: invalidate,
-  });
-
-  const approve = useMutation({
-    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
-    mutationFn: (s: { id: string }) => approveSuggestion(s.id),
-    onSuccess: invalidate,
-  });
-
-  const reject = useMutation({
-    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
-    mutationFn: (s: { id: string }) => rejectSuggestion(s.id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['suggestions', noteId] });
-      await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
-    },
-  });
-  const pendingRowIds = usePendingRowIds(SUGGESTION_ROW_MUTATION_KEY);
-
-  const saveSuggestionEdit = useMutation({
-    mutationFn: approveSuggestionWithEdit,
-    onSuccess: async () => {
-      setEditingSuggestion(null);
-      await invalidate();
-    },
+    onSuccess: () => invalidateWorkspace(queryClient),
   });
 
   if (note.isLoading) {
@@ -147,14 +95,8 @@ export default function NoteDetailScreen() {
 
   const row = note.data;
   const transcript = displayTranscript(row);
-  const processing =
-    row.status === 'queued' ||
-    row.status === 'transcribing' ||
-    row.status === 'extracting' ||
-    row.status === 'uploading';
-  const pendingSuggestions = (suggestions.data ?? []).filter((s) =>
-    isPendingSuggestion(s.status),
-  );
+  const processing = isNoteProcessing(row.status);
+  const pendingSuggestions = (suggestions.data ?? []).filter((s) => s.status === 'pending');
   const displayTitle = row.title?.trim() || 'A new thought';
   const audioPurged = isNoteAudioPurged(row);
   const retryBlocked = audioRetryUnavailableLabel(row);
@@ -241,10 +183,10 @@ export default function NoteDetailScreen() {
                   kindLabel={suggestionKindLabel(s.kind)}
                   dueAt={s.due_at}
                   sourceNoteId={null}
-                  busy={pendingRowIds.includes(s.id)}
-                  onApprove={() => approve.mutate(s)}
-                  onDismiss={() => reject.mutate(s)}
-                  onEdit={() => setEditingSuggestion(s)}
+                  busy={review.isBusy(s.id)}
+                  onApprove={() => review.approve(s)}
+                  onDismiss={() => review.dismiss(s)}
+                  onEdit={() => review.edit(s)}
                 />
               ))
             ) : (
@@ -263,14 +205,9 @@ export default function NoteDetailScreen() {
               body="Process this note to extract next steps."
             />
           )}
-          {approve.error ? (
+          {review.error ? (
             <Text className="mt-2 font-sans text-destructive">
-              {errorMessageForUi(approve.error, 'Approve failed')}
-            </Text>
-          ) : null}
-          {reject.error ? (
-            <Text className="mt-2 font-sans text-destructive">
-              {errorMessageForUi(reject.error, 'Reject failed')}
+              {errorMessageForUi(review.error, 'Update failed')}
             </Text>
           ) : null}
         </View>
@@ -304,30 +241,7 @@ export default function NoteDetailScreen() {
         </Text>
       ) : null}
 
-      <EditNextStepSheet
-        open={editingSuggestion !== null}
-        onClose={() => {
-          if (!saveSuggestionEdit.isPending) setEditingSuggestion(null);
-        }}
-        initialTitle={editingSuggestion?.title ?? ''}
-        initialDueAt={editingSuggestion?.due_at ?? null}
-        mode="suggestion"
-        busy={saveSuggestionEdit.isPending}
-        error={
-          saveSuggestionEdit.error
-            ? errorMessageForUi(saveSuggestionEdit.error, 'Save failed')
-            : null
-        }
-        onSave={(draft) => {
-          if (!editingSuggestion) return;
-          saveSuggestionEdit.mutate({
-            suggestion: editingSuggestion,
-            title: draft.title,
-            dueAt: draft.dueAt,
-            reminderHours: draft.reminderHours,
-          });
-        }}
-      />
+      <EditNextStepSheet {...review.sheet} />
     </WorkspacePage>
   );
 }

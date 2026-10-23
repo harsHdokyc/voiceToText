@@ -6,7 +6,6 @@ import {
   buildReopenTaskPatch,
   buildTaskEdits,
   canTransitionTaskStatus,
-  normalizeTaskSearchQuery,
   taskMatchesSearch,
 } from '@/features/tasks/services/task-status';
 
@@ -26,22 +25,22 @@ describe('assertTaskStatusTransition', () => {
   });
 });
 
-describe('normalizeTaskSearchQuery', () => {
-  it('returns undefined for blank input', () => {
-    expect(normalizeTaskSearchQuery('   ')).toBeUndefined();
-  });
-
-  it('strips wildcards and filter metacharacters', () => {
-    expect(normalizeTaskSearchQuery('  buy%milk_ (x)  ')).toBe('buymilk x');
-  });
-});
-
 describe('taskMatchesSearch', () => {
   it('matches title or details case-insensitively', () => {
     const task = { title: 'Buy Milk', details: 'From store' };
     expect(taskMatchesSearch(task, 'milk')).toBe(true);
-    expect(taskMatchesSearch(task, 'STORE')).toBe(true);
+    expect(taskMatchesSearch(task, '  STORE ')).toBe(true);
     expect(taskMatchesSearch(task, 'eggs')).toBe(false);
+  });
+
+  it('matches punctuation literally (follow_up is not followup)', () => {
+    const task = { title: 'Send follow_up deck', details: null };
+    expect(taskMatchesSearch(task, 'follow_up')).toBe(true);
+    expect(taskMatchesSearch(task, 'followup')).toBe(false);
+  });
+
+  it('treats a blank query as match-all', () => {
+    expect(taskMatchesSearch({ title: 'Anything', details: null }, '   ')).toBe(true);
   });
 });
 

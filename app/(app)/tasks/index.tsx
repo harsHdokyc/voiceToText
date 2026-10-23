@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
@@ -7,81 +6,22 @@ import { EditNextStepSheet } from '@/components/edit-next-step-sheet';
 import { Button, EmptyState, Eyebrow } from '@/components/ui';
 import { WorkspacePage } from '@/components/workspace-page';
 import { TaskProgressRow } from '@/components/work-row';
-import {
-  completeTask,
-  deleteTask,
-  listTasks,
-  reopenTask,
-  type TaskRow,
-} from '@/features/tasks/services/tasks-service';
 import { suggestionKindLabel } from '@/features/notes/services/pending-suggestions';
-import {
-  createTaskFromSheet,
-  saveTaskFromEditSheet,
-} from '@/features/tasks/services/task-edit-save';
+import { useTaskActions, useTaskList } from '@/features/tasks/hooks/use-task-actions';
 import {
   TASK_LIST_FILTERS,
   taskListQueryForFilter,
   type TaskListFilter,
 } from '@/features/tasks/services/task-due-label';
 import { errorMessageForUi } from '@/lib/api-error';
-import {
-  TASK_ROW_MUTATION_KEY,
-  usePendingRowIds,
-} from '@/lib/use-pending-row-ids';
 import { colors } from '@/theme';
 
 export default function TasksScreen() {
-  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<TaskListFilter>('Open');
-  const [editing, setEditing] = useState<TaskRow | null>(null);
-  const [creating, setCreating] = useState(false);
-
-  const params = taskListQueryForFilter(filter);
-  const tasks = useQuery({
-    queryKey: ['tasks', filter],
-    queryFn: () => listTasks(params),
-  });
-
-  const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    await queryClient.invalidateQueries({ queryKey: ['reminders'] });
-  };
-
-  const toggleComplete = useMutation({
-    mutationKey: TASK_ROW_MUTATION_KEY,
-    mutationFn: async (task: TaskRow) => {
-      if (task.status === 'completed') return reopenTask(task.id);
-      return completeTask(task.id);
-    },
-    onSuccess: invalidate,
-  });
-
-  const remove = useMutation({
-    mutationKey: TASK_ROW_MUTATION_KEY,
-    mutationFn: (task: { id: string }) => deleteTask(task.id),
-    onSuccess: invalidate,
-  });
-  const pendingRowIds = usePendingRowIds(TASK_ROW_MUTATION_KEY);
-
-  const saveEdit = useMutation({
-    mutationFn: saveTaskFromEditSheet,
-    onSuccess: async () => {
-      setEditing(null);
-      await invalidate();
-    },
-  });
-
-  const create = useMutation({
-    mutationFn: createTaskFromSheet,
-    onSuccess: async () => {
-      setCreating(false);
-      await invalidate();
-    },
-  });
+  const tasks = useTaskList(taskListQueryForFilter(filter));
+  const actions = useTaskActions();
 
   const rows = tasks.data ?? [];
-  const sheetMutation = creating ? create : saveEdit;
 
   return (
     <WorkspacePage>
@@ -92,7 +32,7 @@ export default function TasksScreen() {
             Make <Text className="font-sans-italic text-cobalt">progress.</Text>
           </Text>
         </View>
-        <Button variant="cta" size="lg" onPress={() => setCreating(true)}>
+        <Button variant="cta" size="lg" onPress={actions.startCreate}>
           <Ionicons name="add" size={18} color={colors.card} />
           <Text className="font-sans-medium text-[15px] text-card">New task</Text>
         </Button>
@@ -127,10 +67,10 @@ export default function TasksScreen() {
               dueAt={task.due_at}
               sourceNoteId={task.source_note_id}
               done={task.status === 'completed'}
-              busy={pendingRowIds.includes(task.id)}
-              onToggleDone={() => toggleComplete.mutate(task)}
-              onEdit={() => setEditing(task)}
-              onRemove={() => remove.mutate(task)}
+              busy={actions.isBusy(task.id)}
+              onToggleDone={() => actions.toggle(task)}
+              onEdit={() => actions.edit(task)}
+              onRemove={() => actions.remove(task)}
             />
           ))}
         </View>
@@ -149,49 +89,13 @@ export default function TasksScreen() {
         />
       )}
 
-      {toggleComplete.error || remove.error ? (
+      {actions.error ? (
         <Text className="font-sans text-destructive">
-          {errorMessageForUi(
-            toggleComplete.error ?? remove.error,
-            'Update failed',
-          )}
+          {errorMessageForUi(actions.error, 'Update failed')}
         </Text>
       ) : null}
 
-      <EditNextStepSheet
-        open={creating || editing !== null}
-        onClose={() => {
-          if (sheetMutation.isPending) return;
-          setCreating(false);
-          setEditing(null);
-          create.reset();
-        }}
-        initialTitle={editing?.title ?? ''}
-        initialDueAt={editing?.due_at ?? null}
-        mode={creating ? 'create' : 'task'}
-        busy={sheetMutation.isPending}
-        error={
-          sheetMutation.error
-            ? errorMessageForUi(
-                sheetMutation.error,
-                creating ? 'Create failed' : 'Save failed',
-              )
-            : null
-        }
-        onSave={(draft) => {
-          if (creating) {
-            create.mutate(draft);
-            return;
-          }
-          if (!editing) return;
-          saveEdit.mutate({
-            task: editing,
-            title: draft.title,
-            dueAt: draft.dueAt,
-            reminderHours: draft.reminderHours,
-          });
-        }}
-      />
+      <EditNextStepSheet {...actions.sheet} />
     </WorkspacePage>
   );
 }

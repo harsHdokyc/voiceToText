@@ -49,10 +49,6 @@ export type ButtonSize = 'sm' | 'md' | 'lg' | 'xl' | 'icon';
 export const iconPressClassName =
   'items-center justify-center rounded-md p-2 web:transition-colors web:duration-200 hover:bg-lime active:bg-lime/80';
 
-/** Soft row/nav hover (sidebar + list chrome). */
-export const navPressClassName =
-  'web:transition-colors web:duration-200 hover:bg-white/8 active:bg-white/12';
-
 // Hover / active mirror ui/goals-in-motion-55 button.tsx (+ NativeWind web hover).
 const variantClass: Record<ButtonVariant, string> = {
   cta: 'bg-cobalt rounded-pill web:transition-[background-color,transform] web:duration-300 hover:bg-cobalt-deep active:scale-[0.98]',

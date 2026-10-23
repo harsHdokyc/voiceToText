@@ -1,4 +1,15 @@
-/** Pure MIME/extension helpers for note audio upload paths. */
+/** Pure MIME/extension/duration helpers for note audio upload paths. */
+
+import { MAX_AUDIO_DURATION_SECONDS } from '@/lib/constants';
+
+/**
+ * Whole seconds for upload, within 1..MAX. The recorder state is polled, so a late
+ * auto-stop can read past the cap; client and server both reject anything over it.
+ */
+export function clipDurationSeconds(durationMillis: number | null | undefined) {
+  const secs = Math.round((durationMillis ?? 0) / 1000);
+  return Math.min(MAX_AUDIO_DURATION_SECONDS, Math.max(1, secs));
+}
 
 export function extensionForMime(mimeType: string) {
   if (mimeType.includes('webm')) return 'webm';

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Platform, Text, View } from 'react-native';
 
 import { Button, Sheet, TextField } from '@/components/ui';
@@ -81,28 +81,27 @@ export function EditNextStepSheet({
   const [reminderHours, setReminderHours] =
     useState<ReminderHourPreset | null>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    setTitle(initialTitle);
-    setDueKey(localDateKeyFromDueAt(initialDueAt));
-    setReminderHours(null);
-  }, [open, initialTitle, initialDueAt]);
+  const draftFor = open ? `${initialTitle}\n${initialDueAt ?? ''}` : null;
+  const [seededFor, setSeededFor] = useState(draftFor);
+  if (draftFor !== seededFor) {
+    setSeededFor(draftFor);
+    if (draftFor !== null) {
+      setTitle(initialTitle);
+      setDueKey(localDateKeyFromDueAt(initialDueAt));
+      setReminderHours(null);
+    }
+  }
 
   function applyPreset(preset: DuePreset) {
     setDueKey(dueDateKeyForPreset(preset));
   }
 
+  const dueAt = dueKey ? dueAtFromLocalDateKey(dueKey) : null;
+  const dueInvalid = dueKey !== null && dueAt === null;
+
   function submit() {
     const trimmed = title.trim();
-    if (!trimmed || busy) return;
-    let dueAt: string | null = null;
-    if (dueKey) {
-      try {
-        dueAt = dueAtFromLocalDateKey(dueKey);
-      } catch {
-        return;
-      }
-    }
+    if (!trimmed || busy || dueInvalid) return;
     onSave({ title: trimmed, dueAt, reminderHours });
   }
 
@@ -177,6 +176,10 @@ export function EditNextStepSheet({
         </View>
         {!dueKey ? (
           <Text className="font-sans text-xs text-stone">No due date · Anytime</Text>
+        ) : dueInvalid ? (
+          <Text className="font-sans text-xs text-destructive" accessibilityRole="alert">
+            Enter a real date as YYYY-MM-DD
+          </Text>
         ) : null}
       </View>
 
@@ -238,7 +241,7 @@ export function EditNextStepSheet({
       <Button
         variant="cta"
         size="lg"
-        disabled={busy || !title.trim()}
+        disabled={busy || !title.trim() || dueInvalid}
         onPress={submit}
         className="mt-2 self-start rounded-pill px-6"
       >

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+    assertDisplayName,
     assertEmail,
     assertOtp,
     assertPassword,
@@ -8,6 +9,17 @@ import {
     authErrorMessage,
     normalizeEmail,
 } from '@/features/auth/services/auth-validation';
+
+describe('assertDisplayName', () => {
+  it('rejects a blank name', () => {
+    expect(() => assertDisplayName('   ')).toThrow('Enter your name');
+  });
+
+  it('trims and clamps to the 30-character profile limit', () => {
+    expect(assertDisplayName('  Maya  ')).toBe('Maya');
+    expect(assertDisplayName('x'.repeat(40))).toBe('x'.repeat(30));
+  });
+});
 
 describe('normalizeEmail', () => {
   it('trims and lowercases', () => {

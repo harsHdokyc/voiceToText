@@ -37,14 +37,19 @@ export function assertNoteStatusTransition(from: NoteStatus, to: NoteStatus) {
   }
 }
 
-/** Statuses that may be claimed by process-note for transcription. */
-export function isClaimableForTranscription(status: NoteStatus) {
-  return status === 'queued' || status === 'transcription_failed';
+/** Server is still working on the note (upload → transcript → suggestions). */
+export function isNoteProcessing(status: NoteStatus | undefined) {
+  return (
+    status === 'uploading' ||
+    status === 'queued' ||
+    status === 'transcribing' ||
+    status === 'extracting'
+  );
 }
 
-/** Statuses that may be claimed by process-note for extraction-only retry. */
-export function isClaimableForExtraction(status: NoteStatus) {
-  return status === 'extraction_failed' || status === 'extracting';
+/** Note detail polls every 2s while processing, otherwise not at all. */
+export function noteRefetchIntervalMs(status: NoteStatus | undefined) {
+  return isNoteProcessing(status) ? 2000 : false;
 }
 
 /** Client retry button — failed or still-queued notes. */
@@ -125,14 +130,7 @@ export function noteStatusShort(status: NoteStatus) {
   ) {
     return 'Fail';
   }
-  if (
-    status === 'uploading' ||
-    status === 'queued' ||
-    status === 'transcribing' ||
-    status === 'extracting'
-  ) {
-    return 'Live';
-  }
+  if (isNoteProcessing(status)) return 'Live';
   return 'Draft';
 }
 
@@ -146,17 +144,7 @@ export function displayTranscript(note: {
   return note.transcript?.trim() || null;
 }
 
-export function normalizeNoteSearchQuery(query: string): string | undefined {
-  const trimmed = query
-    .trim()
-    .replaceAll('%', '')
-    .replaceAll('_', '')
-    .replace(/[(),.*]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
+/** Case-insensitive substring match on title/transcript; blank query matches all. */
 export function noteMatchesSearch(
   note: {
     title: string | null;
@@ -165,7 +153,7 @@ export function noteMatchesSearch(
   },
   query: string,
 ): boolean {
-  const needle = normalizeNoteSearchQuery(query)?.toLowerCase();
+  const needle = query.trim().toLowerCase();
   if (!needle) return true;
   const hay = `${note.title ?? ''}\n${displayTranscript(note) ?? ''}`.toLowerCase();
   return hay.includes(needle);
@@ -181,14 +169,4 @@ export function assertAudioDurationSeconds(durationSeconds: number) {
     );
   }
   return durationSeconds;
-}
-
-export function buildNoteAudioPath(params: {
-  userId: string;
-  noteId: string;
-  extension?: string;
-}) {
-  const ext = (params.extension ?? 'm4a').replace(/^\./, '');
-  // First segment = auth.uid() for Storage RLS. Never expose to client API.
-  return `${params.userId}/notes/${params.noteId}/original.${ext}`;
 }

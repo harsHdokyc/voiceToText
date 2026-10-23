@@ -1,4 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 import { router } from 'expo-router';
 import {
   createContext,
@@ -28,19 +30,13 @@ import {
 } from '@/features/recording/services/live-dictation';
 import {
   ensureRecordingPermission,
-  mimeFromUri,
   NOTE_RECORDING_PRESET,
-  useAudioRecorder,
-  useAudioRecorderState,
-  MAX_AUDIO_DURATION_SECONDS,
 } from '@/features/recording/services/recording';
-import {
-  createDraftNote,
-  requestTranscription,
-  updateNoteContent,
-  uploadNoteAudio,
-} from '@/features/notes/services/notes-service';
+import { clipDurationSeconds } from '@/features/recording/services/recording-format';
+import { captureNote } from '@/features/notes/services/notes-service';
 import { errorMessageForUi } from '@/lib/api-error';
+import { MAX_AUDIO_DURATION_SECONDS } from '@/lib/constants';
+import { invalidateWorkspace } from '@/lib/query-client';
 import { cn } from '@/lib/cn';
 import { colors, space } from '@/theme';
 
@@ -65,13 +61,18 @@ export function useCaptureOptional() {
 
 export function CaptureProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const openCapture = useCallback(() => setOpen(true), []);
+  const [session, setSession] = useState(0);
+  const openCapture = useCallback(() => {
+    setSession((s) => s + 1);
+    setOpen(true);
+  }, []);
   const closeCapture = useCallback(() => setOpen(false), []);
 
   return (
     <CaptureContext.Provider value={{ openCapture, closeCapture }}>
       {children}
-      <CaptureSheet open={open} onClose={closeCapture} />
+      {/* New key per open = fresh draft state; the closing sheet keeps its content while fading out. */}
+      <CaptureSheet key={session} open={open} onClose={closeCapture} />
     </CaptureContext.Provider>
   );
 }
@@ -87,6 +88,7 @@ function CaptureSheet({
   open: boolean;
   onClose: () => void;
 }) {
+  const queryClient = useQueryClient();
   const recorder = useAudioRecorder(NOTE_RECORDING_PRESET);
   const state = useAudioRecorderState(recorder, 200);
   const { width, height } = useWindowDimensions();
@@ -125,39 +127,6 @@ function CaptureSheet({
     dictationRef.current = null;
   }, []);
 
-  const reset = useCallback(() => {
-    stopDictation();
-    setBusy(false);
-    setError(null);
-    setDraftTitle('');
-    setDraftThought('');
-    thoughtRef.current = '';
-    setReadyUri(null);
-    setReadyDuration(0);
-    autoStopped.current = false;
-  }, [stopDictation]);
-
-  useEffect(() => {
-    if (!open) {
-      if (state.isRecording) {
-        void recorder.stop().catch(() => undefined);
-      }
-      reset();
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (
-      open &&
-      isRecording &&
-      durationSeconds >= MAX_AUDIO_DURATION_SECONDS &&
-      !autoStopped.current
-    ) {
-      autoStopped.current = true;
-      void stopListening();
-    }
-  }, [durationSeconds, isRecording, open]);
-
   async function startListening() {
     setError(null);
     setReadyUri(null);
@@ -183,18 +152,16 @@ function CaptureSheet({
     }
   }
 
-  async function stopListening(): Promise<{
+  const durationMillis = state.durationMillis;
+  const stopListening = useCallback(async (): Promise<{
     uri: string;
     durationSeconds: number;
-  } | null> {
+  } | null> => {
     stopDictation();
     try {
       await recorder.stop();
       const uri = recorder.uri;
-      const secs = Math.max(
-        1,
-        Math.round((state.durationMillis ?? 0) / 1000),
-      );
+      const secs = clipDurationSeconds(durationMillis);
       if (!uri) {
         setError('No recording file produced');
         return null;
@@ -206,7 +173,19 @@ function CaptureSheet({
       setError(errorMessageForUi(e, 'Could not stop recording'));
       return null;
     }
-  }
+  }, [recorder, durationMillis, stopDictation]);
+
+  useEffect(() => {
+    if (
+      open &&
+      isRecording &&
+      durationSeconds >= MAX_AUDIO_DURATION_SECONDS &&
+      !autoStopped.current
+    ) {
+      autoStopped.current = true;
+      void stopListening();
+    }
+  }, [durationSeconds, isRecording, open, stopListening]);
 
   async function toggleSpeak() {
     if (busy) return;
@@ -228,6 +207,29 @@ function CaptureSheet({
     return null;
   }
 
+  async function save(
+    clip: { uri: string; durationSeconds: number } | null,
+    process: boolean,
+    failure: string,
+  ) {
+    try {
+      const note = await captureNote({
+        title: draftTitle,
+        thought: draftThought,
+        clip,
+        process,
+      });
+      void invalidateWorkspace(queryClient);
+      onClose();
+      router.push({
+        pathname: '/(app)/notes/[noteId]',
+        params: { noteId: note.id },
+      });
+    } catch (e) {
+      setError(errorMessageForUi(e, failure));
+    }
+  }
+
   /** Prototype “Turn into next steps” — stop listening, then upload + process. */
   async function turnIntoNextSteps() {
     if (!canProcess) return;
@@ -239,30 +241,7 @@ function CaptureSheet({
         setError('Speak a voice note first');
         return;
       }
-      const mimeType = mimeFromUri(clip.uri);
-      const note = await createDraftNote();
-      const title = draftTitle.trim();
-      const thought = draftThought.trim();
-      if (title || thought) {
-        await updateNoteContent(note.id, {
-          ...(title ? { title } : {}),
-          ...(thought ? { edited_transcript: thought } : {}),
-        });
-      }
-      const queued = await uploadNoteAudio({
-        note,
-        uri: clip.uri,
-        mimeType,
-        durationSeconds: clip.durationSeconds,
-      });
-      await requestTranscription(queued.id);
-      onClose();
-      router.push({
-        pathname: '/(app)/notes/[noteId]',
-        params: { noteId: queued.id },
-      });
-    } catch (e) {
-      setError(errorMessageForUi(e, 'Upload failed'));
+      await save(clip, true, 'Upload failed');
     } finally {
       setBusy(false);
     }
@@ -274,31 +253,11 @@ function CaptureSheet({
     setBusy(true);
     setError(null);
     try {
-      const note = await createDraftNote();
-      const title = draftTitle.trim();
-      const thought = draftThought.trim();
-      if (title || thought) {
-        await updateNoteContent(note.id, {
-          ...(title ? { title } : {}),
-          ...(thought ? { edited_transcript: thought } : {}),
-        });
-      }
-      if (readyUri) {
-        const mimeType = mimeFromUri(readyUri);
-        await uploadNoteAudio({
-          note,
-          uri: readyUri,
-          mimeType,
-          durationSeconds: readyDuration,
-        });
-      }
-      onClose();
-      router.push({
-        pathname: '/(app)/notes/[noteId]',
-        params: { noteId: note.id },
-      });
-    } catch (e) {
-      setError(errorMessageForUi(e, 'Save failed'));
+      await save(
+        readyUri ? { uri: readyUri, durationSeconds: readyDuration } : null,
+        false,
+        'Save failed',
+      );
     } finally {
       setBusy(false);
     }
@@ -314,6 +273,9 @@ function CaptureSheet({
   }
 
   function onThoughtChange(text: string) {
+    // ponytail: typing ends the live preview so speech can't overwrite the edit; the audio keeps
+    // recording and is transcribed server-side. Resume-after-typing would need cursor-aware merging.
+    stopDictation();
     thoughtRef.current = text;
     setDraftThought(text);
   }

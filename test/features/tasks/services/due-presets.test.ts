@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { dueLabel } from '@/features/tasks/services/task-due-label';
 
 import {
   dueAtFromLocalDateKey,
@@ -24,23 +26,38 @@ describe('dueDateKeyForPreset', () => {
   });
 });
 
-describe('dueAtFromLocalDateKey', () => {
-  it('stores noon UTC for the local date key', () => {
-    expect(dueAtFromLocalDateKey('2026-10-13')).toBe(
-      '2026-10-13T12:00:00.000Z',
-    );
+describe('due date convention (timezone-sensitive)', () => {
+  const originalTz = process.env.TZ;
+  beforeEach(() => {
+    process.env.TZ = 'Asia/Kolkata'; // UTC+5:30
+  });
+  afterEach(() => {
+    process.env.TZ = originalTz;
   });
 
-  it('rejects bad keys', () => {
-    expect(() => dueAtFromLocalDateKey('13-10-2026')).toThrow('Invalid');
+  it('stores a date key as local noon', () => {
+    expect(dueAtFromLocalDateKey('2026-10-13')).toBe('2026-10-13T06:30:00.000Z');
   });
-});
 
-describe('localDateKeyFromDueAt', () => {
-  it('reads the YYYY-MM-DD prefix', () => {
-    expect(localDateKeyFromDueAt('2026-10-13T12:00:00.000Z')).toBe(
-      '2026-10-13',
-    );
+  it('returns null for malformed or impossible dates', () => {
+    expect(dueAtFromLocalDateKey('13-10-2026')).toBeNull();
+    expect(dueAtFromLocalDateKey('2026-13-01')).toBeNull();
+    expect(dueAtFromLocalDateKey('2026-02-30')).toBeNull();
+  });
+
+  it('reads back the same local day the list label shows, not the UTC day', () => {
+    const aiDueAt = '2026-10-13T22:00:00.000Z'; // Oct 14, 03:30 in UTC+5:30
+    expect(localDateKeyFromDueAt(aiDueAt)).toBe('2026-10-14');
+    expect(dueLabel(aiDueAt, new Date(2026, 9, 14, 9))).toBe('Today');
+  });
+
+  it('round-trips a key even at UTC+14', () => {
+    process.env.TZ = 'Pacific/Kiritimati';
+    expect(localDateKeyFromDueAt(dueAtFromLocalDateKey('2026-10-13'))).toBe('2026-10-13');
+  });
+
+  it('keeps reading legacy noon-UTC values as their calendar day', () => {
+    expect(localDateKeyFromDueAt('2026-10-13T12:00:00.000Z')).toBe('2026-10-13');
     expect(localDateKeyFromDueAt(null)).toBeNull();
   });
 });

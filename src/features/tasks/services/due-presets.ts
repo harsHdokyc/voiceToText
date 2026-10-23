@@ -1,6 +1,7 @@
 /**
  * Due-date presets for the Edit next step sheet (prototype Today / Tomorrow / Next week).
- * Stored as local YYYY-MM-DD → noon UTC ISO (same convention as task detail).
+ * A due date is a local calendar day, stored as local noon, so the sheet, list labels
+ * and task detail all read back the same day in any timezone.
  */
 
 export type DuePreset = 'today' | 'tomorrow' | 'next_week';
@@ -26,18 +27,18 @@ export function dueDateKeyForPreset(preset: DuePreset, now = new Date()): string
   return localDateKey(d);
 }
 
-/** Map local date key → due_at ISO (noon UTC). */
-export function dueAtFromLocalDateKey(key: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) {
-    throw new Error('Invalid due date');
-  }
-  return new Date(`${key}T12:00:00.000Z`).toISOString();
+/** Local date key → due_at ISO at local noon. Null unless it is a real calendar date. */
+export function dueAtFromLocalDateKey(key: string): string | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!match) return null;
+  const [year, month, day] = match.slice(1).map(Number);
+  const date = new Date(year, month - 1, day, 12);
+  return date.getMonth() === month - 1 && date.getDate() === day ? date.toISOString() : null;
 }
 
-/** ISO due_at → local YYYY-MM-DD for chip selection (UTC date slice). */
+/** ISO due_at → local YYYY-MM-DD: the same calendar day `dueLabel` shows. */
 export function localDateKeyFromDueAt(dueAt: string | null | undefined): string | null {
   if (!dueAt) return null;
   const ms = Date.parse(dueAt);
-  if (!Number.isFinite(ms)) return null;
-  return dueAt.slice(0, 10);
+  return Number.isFinite(ms) ? localDateKey(new Date(ms)) : null;
 }

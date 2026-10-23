@@ -3,10 +3,8 @@ import {
   buildSuggestionEdits,
   type TaskSuggestion,
 } from '@/features/notes/services/suggestions-service';
-import { reminderAtHoursFromNow } from '@/features/reminders/services/reminder-schedule';
-import { scheduleReminder } from '@/features/reminders/services/reminders-service';
-import { registerForPushNotifications } from '@/features/reminders/services/push-registration';
 import type { ReminderHourPreset } from '@/features/reminders/services/reminder-schedule';
+import { scheduleReminderPreset } from '@/features/reminders/services/reminders-service';
 
 /**
  * Pending suggestions cannot be field-updated under RLS — edits apply via approve.
@@ -28,12 +26,6 @@ export async function approveSuggestionWithEdit(params: {
   });
   const body = await approveSuggestion(suggestion.id, edits);
   const taskId = body.taskId;
-  if (taskId && reminderHours) {
-    await registerForPushNotifications().catch(() => undefined);
-    await scheduleReminder({
-      taskId,
-      scheduledFor: reminderAtHoursFromNow(reminderHours),
-    });
-  }
+  if (taskId && reminderHours) await scheduleReminderPreset(taskId, reminderHours);
   return body;
 }

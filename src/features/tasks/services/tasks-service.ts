@@ -6,7 +6,6 @@ import {
   buildCompleteTaskPatch,
   buildReopenTaskPatch,
   buildTaskEdits,
-  normalizeTaskSearchQuery,
   taskMatchesSearch,
   type TaskEditDraft,
   type TaskPriority,
@@ -54,9 +53,7 @@ async function loadTask(taskId: string) {
 }
 
 export async function listTasks(params: ListTasksParams = {}) {
-  const search = params.query
-    ? normalizeTaskSearchQuery(params.query)
-    : undefined;
+  const search = params.query?.trim();
 
   return withApiLog(
     'api.tasks.list',

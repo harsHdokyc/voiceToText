@@ -1,11 +1,20 @@
 import { supabase } from '@/lib/supabase';
 import { ApiError } from '@/lib/api-error';
 import { withApiLog } from '@/lib/with-api-log';
+import { registerForPushNotifications } from '@/features/reminders/services/push-registration';
 import {
   assertReminderSchedule,
   buildReminderIdempotencyKey,
+  reminderAtHoursFromNow,
+  type ReminderHourPreset,
 } from '@/features/reminders/services/reminder-schedule';
 import { trackProductEvent } from '@/lib/product-analytics';
+
+/** Edit-sheet reminder chip: best-effort push registration, then schedule. */
+export async function scheduleReminderPreset(taskId: string, hours: ReminderHourPreset) {
+  await registerForPushNotifications().catch(() => undefined);
+  await scheduleReminder({ taskId, scheduledFor: reminderAtHoursFromNow(hours) });
+}
 
 export type ReminderStatus =
   | 'scheduled'

@@ -29,11 +29,9 @@ import {
   type WorkspaceNavItem,
 } from '@/components/workspace-nav';
 import { countPendingSuggestions } from '@/features/notes/services/suggestions-service';
-import { greetingName } from '@/features/settings/services/greeting-name';
-import { getOwnProfile } from '@/features/settings/services/profile-service';
+import { useProfile } from '@/features/settings/hooks/use-profile';
 import { SaydoWordmark } from '@/components/saydo-mark';
 import { cn } from '@/lib/cn';
-import { useAuth } from '@/providers/auth-provider';
 import { colors, layout, space } from '@/theme';
 
 const NAV_ICONS: Record<
@@ -66,18 +64,8 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
   const desktop = width >= layout.desktopMin;
   const [collapsed, setCollapsed] = useState(false);
-  const { user } = useAuth();
   const { openCapture } = useCapture();
-  const profile = useQuery({
-    queryKey: ['profile'],
-    queryFn: getOwnProfile,
-    staleTime: 60_000,
-  });
-  const display = greetingName(
-    profile.data?.display_name ??
-      (user?.user_metadata?.display_name as string | undefined),
-    user?.email,
-  );
+  const { name: display } = useProfile();
   const initial = display.charAt(0).toUpperCase();
 
   const pending = useQuery({

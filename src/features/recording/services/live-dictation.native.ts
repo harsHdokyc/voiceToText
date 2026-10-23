@@ -5,10 +5,11 @@
  */
 import type { ExpoSpeechRecognitionModule as SpeechModule } from 'expo-speech-recognition';
 
-import { joinSpeechText } from '@/features/recording/services/speech-text';
+import { applySpeechResult } from '@/features/recording/services/speech-text';
 
 let speech: typeof SpeechModule | null = null;
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- native module is absent in Expo Go; a static import would crash there
   speech = require('expo-speech-recognition').ExpoSpeechRecognitionModule;
 } catch {
   speech = null;
@@ -38,18 +39,13 @@ export function startLiveDictation(opts: {
   const mod = speech;
   if (!mod || !isLiveDictationAvailable()) return null;
 
-  // Android emits one final per phrase; iOS emits a growing transcript.
   let committed = opts.baseText;
   let stopped = false;
   const subs = [
     mod.addListener('result', (e) => {
-      const text = e.results[0]?.transcript ?? '';
-      if (e.isFinal) {
-        committed = joinSpeechText(committed, text);
-        opts.onUpdate(committed);
-      } else {
-        opts.onUpdate(joinSpeechText(committed, text));
-      }
+      const next = applySpeechResult(committed, e.results[0]?.transcript ?? '', e.isFinal);
+      committed = next.committed;
+      opts.onUpdate(next.display);
     }),
     mod.addListener('error', (e) => {
       if (e.error === 'not-allowed') {

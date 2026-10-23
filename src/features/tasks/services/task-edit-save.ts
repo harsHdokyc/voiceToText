@@ -1,20 +1,10 @@
-import { reminderAtHoursFromNow } from '@/features/reminders/services/reminder-schedule';
-import { scheduleReminder } from '@/features/reminders/services/reminders-service';
-import { registerForPushNotifications } from '@/features/reminders/services/push-registration';
 import type { ReminderHourPreset } from '@/features/reminders/services/reminder-schedule';
+import { scheduleReminderPreset } from '@/features/reminders/services/reminders-service';
 import {
   createManualTask,
   updateTask,
   type TaskRow,
 } from '@/features/tasks/services/tasks-service';
-
-async function scheduleReminderPreset(taskId: string, hours: ReminderHourPreset) {
-  await registerForPushNotifications().catch(() => undefined);
-  await scheduleReminder({
-    taskId,
-    scheduledFor: reminderAtHoursFromNow(hours),
-  });
-}
 
 /** Save title/due from the edit sheet; optionally schedule a reminder preset. */
 export async function saveTaskFromEditSheet(params: {

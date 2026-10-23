@@ -2,6 +2,7 @@ import { fetch as expoFetch } from 'expo/fetch';
 
 import { getPublicEnv } from '@/lib/env';
 import { ApiError } from '@/lib/api-error';
+import { edgeResult } from '@/lib/invoke-edge';
 import { supabase } from '@/lib/supabase';
 import { withApiLog } from '@/lib/with-api-log';
 
@@ -73,20 +74,13 @@ export async function proxyUploadNoteAudio(params: {
         body: form,
       });
 
-      const body = (await response.json().catch(() => null)) as {
-        ok?: boolean;
-        error?: string;
-        reason?: string;
-        note?: NoteAudioUploadResult['note'];
-      } | null;
-
-      if (!response.ok || !body?.ok || !body.note) {
-        throw new ApiError(
-          body?.error ?? `http_${response.status}`,
-          body?.reason ?? body?.error ?? `Audio upload proxy failed (${response.status})`,
-        );
-      }
-
+      const body = edgeResult<{ note?: NoteAudioUploadResult['note'] }>(
+        'note-audio',
+        'audio_upload',
+        await response.json().catch(() => null),
+        response.ok ? null : { message: `Audio upload proxy failed (HTTP ${response.status})` },
+      );
+      if (!body.note) throw new ApiError('audio_upload_empty', 'note-audio returned no note');
       return body.note;
     },
   );
@@ -108,14 +102,9 @@ export async function proxyDownloadNoteAudio(noteId: string) {
     });
 
     if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as {
-        error?: string;
-        reason?: string;
-      } | null;
-      throw new ApiError(
-        body?.error ?? `http_${response.status}`,
-        body?.reason ?? body?.error ?? `Audio download proxy failed (${response.status})`,
-      );
+      edgeResult('note-audio', 'audio_download', await response.json().catch(() => null), {
+        message: `Audio download proxy failed (HTTP ${response.status})`,
+      });
     }
 
     const mimeType = response.headers.get('Content-Type') ?? 'audio/mp4';

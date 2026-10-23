@@ -61,7 +61,7 @@ function write(level: LogLevel, scope: string, fields?: LogFields) {
   const line = formatLogLine(level, scope, fields);
   // Metro / Expo terminal only (not browser console)
   if (Platform.OS !== 'web') {
-    // eslint-disable-next-line no-console
+     
     const sink = level === 'debug' ? console.log : console[level];
     sink(line);
   }

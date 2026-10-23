@@ -3,23 +3,46 @@ import { describe, expect, it } from 'vitest';
 import {
     assertAudioDurationSeconds,
     assertNoteStatusTransition,
-    buildNoteAudioPath,
     canPlayNoteAudio,
     canTransitionNoteStatus,
     displayTranscript,
-    isClaimableForExtraction,
-    isClaimableForTranscription,
     AUDIO_DELETED_LABEL,
     AUDIO_RETRY_UNAVAILABLE_LABEL,
     audioRetryUnavailableLabel,
     isNoteAudioPurged,
+    isNoteProcessing,
     isRetryableProcessing,
+    noteRefetchIntervalMs,
     noteMatchesSearch,
     retryProcessingPlan,
     showProcessingRetry,
     noteStatusLabel,
     noteStatusShort,
 } from '@/features/notes/services/note-status';
+
+describe('isNoteProcessing', () => {
+  it('is true only while the server is working on the note', () => {
+    expect(['uploading', 'queued', 'transcribing', 'extracting'].every((s) => isNoteProcessing(s as never))).toBe(true);
+    expect(
+      ['draft', 'review_ready', 'upload_failed', 'transcription_failed', 'extraction_failed'].some((s) =>
+        isNoteProcessing(s as never),
+      ),
+    ).toBe(false);
+  });
+
+  it('is false before the note has loaded', () => {
+    expect(isNoteProcessing(undefined)).toBe(false);
+  });
+});
+
+describe('noteRefetchIntervalMs', () => {
+  it('polls every 2s while processing and stops once done or failed', () => {
+    expect(noteRefetchIntervalMs('transcribing')).toBe(2000);
+    expect(noteRefetchIntervalMs('review_ready')).toBe(false);
+    expect(noteRefetchIntervalMs('extraction_failed')).toBe(false);
+    expect(noteRefetchIntervalMs(undefined)).toBe(false);
+  });
+});
 
 describe('canTransitionNoteStatus', () => {
   it('allows draft to uploading', () => {
@@ -44,22 +67,6 @@ describe('assertNoteStatusTransition', () => {
     expect(() => assertNoteStatusTransition('review_ready', 'draft')).toThrow(
       /Invalid note status transition: review_ready -> draft/,
     );
-  });
-});
-
-describe('isClaimableForTranscription', () => {
-  it('claims queued and transcription_failed only', () => {
-    expect(isClaimableForTranscription('queued')).toBe(true);
-    expect(isClaimableForTranscription('transcription_failed')).toBe(true);
-    expect(isClaimableForTranscription('review_ready')).toBe(false);
-  });
-});
-
-describe('isClaimableForExtraction', () => {
-  it('claims extraction_failed and stuck extracting', () => {
-    expect(isClaimableForExtraction('extraction_failed')).toBe(true);
-    expect(isClaimableForExtraction('extracting')).toBe(true);
-    expect(isClaimableForExtraction('queued')).toBe(false);
   });
 });
 
@@ -290,31 +297,6 @@ describe('assertAudioDurationSeconds', () => {
   });
 });
 
-describe('buildNoteAudioPath', () => {
-  it('builds the ownership path pattern', () => {
-    expect(
-      buildNoteAudioPath({
-        userId: 'user-1',
-        noteId: 'note-2',
-        extension: 'm4a',
-      }),
-    ).toBe('user-1/notes/note-2/original.m4a');
-  });
-
-  it('strips a leading dot and defaults extension to m4a', () => {
-    expect(
-      buildNoteAudioPath({
-        userId: 'u',
-        noteId: 'n',
-        extension: '.webm',
-      }),
-    ).toBe('u/notes/n/original.webm');
-    expect(buildNoteAudioPath({ userId: 'u', noteId: 'n' })).toBe(
-      'u/notes/n/original.m4a',
-    );
-  });
-});
-
 describe('displayTranscript / noteMatchesSearch', () => {
   it('prefers edited transcript', () => {
     expect(
@@ -332,6 +314,13 @@ describe('displayTranscript / noteMatchesSearch', () => {
       edited_transcript: null,
     };
     expect(noteMatchesSearch(note, 'milk')).toBe(true);
+    expect(noteMatchesSearch(note, ' GROCERY ')).toBe(true);
     expect(noteMatchesSearch(note, 'eggs')).toBe(false);
+  });
+
+  it('matches punctuation literally (follow_up is not followup)', () => {
+    const note = { title: null, transcript: 'send the follow_up deck', edited_transcript: null };
+    expect(noteMatchesSearch(note, 'follow_up')).toBe(true);
+    expect(noteMatchesSearch(note, 'followup')).toBe(false);
   });
 });

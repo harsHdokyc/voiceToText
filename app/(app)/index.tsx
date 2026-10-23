@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
-import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { useCapture } from '@/components/capture-sheet';
@@ -23,33 +22,16 @@ import {
   SuggestionReviewRow,
   TaskProgressRow,
 } from '@/components/work-row';
-import { listNotes } from '@/features/notes/services/notes-service';
+import {
+  usePendingSuggestions,
+  useSuggestionReview,
+} from '@/features/notes/hooks/use-suggestion-review';
+import { deleteNote, listNotes } from '@/features/notes/services/notes-service';
 import { suggestionKindLabel } from '@/features/notes/services/pending-suggestions';
-import { approveSuggestionWithEdit } from '@/features/notes/services/suggestion-edit-save';
-import {
-  approveSuggestion,
-  listPendingSuggestions,
-  rejectSuggestion,
-  type TaskSuggestion,
-} from '@/features/notes/services/suggestions-service';
-import { deleteNote } from '@/features/settings/services/account-service';
-import { greetingName } from '@/features/settings/services/greeting-name';
-import { getOwnProfile } from '@/features/settings/services/profile-service';
-import { saveTaskFromEditSheet } from '@/features/tasks/services/task-edit-save';
-import {
-  completeTask,
-  deleteTask,
-  listTasks,
-  reopenTask,
-  type TaskRow,
-} from '@/features/tasks/services/tasks-service';
+import { useProfile } from '@/features/settings/hooks/use-profile';
+import { useTaskActions, useTaskList } from '@/features/tasks/hooks/use-task-actions';
 import { errorMessageForUi } from '@/lib/api-error';
-import {
-  SUGGESTION_ROW_MUTATION_KEY,
-  TASK_ROW_MUTATION_KEY,
-  usePendingRowIds,
-} from '@/lib/use-pending-row-ids';
-import { useAuth } from '@/providers/auth-provider';
+import { invalidateWorkspace } from '@/lib/query-client';
 import { cn } from '@/lib/cn';
 import { colors, space } from '@/theme';
 
@@ -58,87 +40,27 @@ import { colors, space } from '@/theme';
  * wired to live notes / suggestions / tasks.
  */
 export default function OverviewScreen() {
-  const { user } = useAuth();
   const { openCapture } = useCapture();
   const queryClient = useQueryClient();
   const desktop = useWorkspaceDesktop();
   const wide = useWorkspaceWide();
-  const [editingTask, setEditingTask] = useState<TaskRow | null>(null);
-  const [editingSuggestion, setEditingSuggestion] =
-    useState<TaskSuggestion | null>(null);
 
-  const profile = useQuery({ queryKey: ['profile'], queryFn: getOwnProfile });
+  const { name } = useProfile();
   const notes = useQuery({
     queryKey: ['notes', ''],
     queryFn: () => listNotes(),
   });
-  const pending = useQuery({
-    queryKey: ['suggestions', 'pending'],
-    queryFn: () => listPendingSuggestions(20),
-  });
-  const tasks = useQuery({
-    queryKey: ['tasks', 'open'],
-    queryFn: () => listTasks({ status: 'open' }),
-  });
-
-  const invalidateAll = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['notes'] });
-    await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
-    await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    await queryClient.invalidateQueries({ queryKey: ['reminders'] });
-  };
+  const pending = usePendingSuggestions();
+  const tasks = useTaskList({ status: 'open' });
+  const review = useSuggestionReview();
+  const taskActions = useTaskActions();
 
   const removeNote = useMutation({
     mutationFn: (noteId: string) => deleteNote(noteId),
-    onSuccess: invalidateAll,
+    onSuccess: () => invalidateWorkspace(queryClient),
   });
-  const approve = useMutation({
-    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
-    mutationFn: (s: { id: string }) => approveSuggestion(s.id),
-    onSuccess: invalidateAll,
-  });
-  const reject = useMutation({
-    mutationKey: SUGGESTION_ROW_MUTATION_KEY,
-    mutationFn: (s: { id: string }) => rejectSuggestion(s.id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['suggestions'] });
-    },
-  });
-  const toggleTask = useMutation({
-    mutationKey: TASK_ROW_MUTATION_KEY,
-    mutationFn: async (task: TaskRow) => {
-      if (task.status === 'completed') return reopenTask(task.id);
-      return completeTask(task.id);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-  const removeTask = useMutation({
-    mutationKey: TASK_ROW_MUTATION_KEY,
-    mutationFn: (t: { id: string }) => deleteTask(t.id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    },
-  });
-  const saveTaskEdit = useMutation({
-    mutationFn: saveTaskFromEditSheet,
-    onSuccess: async () => {
-      setEditingTask(null);
-      await invalidateAll();
-    },
-  });
-  const saveSuggestionEdit = useMutation({
-    mutationFn: approveSuggestionWithEdit,
-    onSuccess: async () => {
-      setEditingSuggestion(null);
-      await invalidateAll();
-    },
-  });
-  const pendingSuggestionRowIds = usePendingRowIds(SUGGESTION_ROW_MUTATION_KEY);
-  const pendingTaskRowIds = usePendingRowIds(TASK_ROW_MUTATION_KEY);
+  const actionError = removeNote.error ?? review.error ?? taskActions.error;
 
-  const name = greetingName(profile.data?.display_name, user?.email);
   const pendingRows = pending.data ?? [];
   const openTasks = tasks.data ?? [];
   const recent = (notes.data ?? []).slice(0, 6);
@@ -281,10 +203,10 @@ export default function OverviewScreen() {
                 kindLabel={suggestionKindLabel(s.kind)}
                 dueAt={s.due_at}
                 sourceNoteId={s.note_id}
-                busy={pendingSuggestionRowIds.includes(s.id)}
-                onApprove={() => approve.mutate(s)}
-                onDismiss={() => reject.mutate(s)}
-                onEdit={() => setEditingSuggestion(s)}
+                busy={review.isBusy(s.id)}
+                onApprove={() => review.approve(s)}
+                onDismiss={() => review.dismiss(s)}
+                onEdit={() => review.edit(s)}
               />
             ))
           ) : (
@@ -324,10 +246,10 @@ export default function OverviewScreen() {
                 dueAt={t.due_at}
                 sourceNoteId={t.source_note_id}
                 done={t.status === 'completed'}
-                busy={pendingTaskRowIds.includes(t.id)}
-                onToggleDone={() => toggleTask.mutate(t)}
-                onEdit={() => setEditingTask(t)}
-                onRemove={() => removeTask.mutate(t)}
+                busy={taskActions.isBusy(t.id)}
+                onToggleDone={() => taskActions.toggle(t)}
+                onEdit={() => taskActions.edit(t)}
+                onRemove={() => taskActions.remove(t)}
               />
             ))
           ) : (
@@ -339,54 +261,14 @@ export default function OverviewScreen() {
         </View>
       </View>
 
-      <EditNextStepSheet
-        open={editingTask !== null}
-        onClose={() => {
-          if (!saveTaskEdit.isPending) setEditingTask(null);
-        }}
-        initialTitle={editingTask?.title ?? ''}
-        initialDueAt={editingTask?.due_at ?? null}
-        mode="task"
-        busy={saveTaskEdit.isPending}
-        error={
-          saveTaskEdit.error
-            ? errorMessageForUi(saveTaskEdit.error, 'Save failed')
-            : null
-        }
-        onSave={(draft) => {
-          if (!editingTask) return;
-          saveTaskEdit.mutate({
-            task: editingTask,
-            title: draft.title,
-            dueAt: draft.dueAt,
-            reminderHours: draft.reminderHours,
-          });
-        }}
-      />
-      <EditNextStepSheet
-        open={editingSuggestion !== null}
-        onClose={() => {
-          if (!saveSuggestionEdit.isPending) setEditingSuggestion(null);
-        }}
-        initialTitle={editingSuggestion?.title ?? ''}
-        initialDueAt={editingSuggestion?.due_at ?? null}
-        mode="suggestion"
-        busy={saveSuggestionEdit.isPending}
-        error={
-          saveSuggestionEdit.error
-            ? errorMessageForUi(saveSuggestionEdit.error, 'Save failed')
-            : null
-        }
-        onSave={(draft) => {
-          if (!editingSuggestion) return;
-          saveSuggestionEdit.mutate({
-            suggestion: editingSuggestion,
-            title: draft.title,
-            dueAt: draft.dueAt,
-            reminderHours: draft.reminderHours,
-          });
-        }}
-      />
+      {actionError ? (
+        <Text className="font-sans text-destructive">
+          {errorMessageForUi(actionError, 'Update failed')}
+        </Text>
+      ) : null}
+
+      <EditNextStepSheet {...taskActions.sheet} />
+      <EditNextStepSheet {...review.sheet} />
     </WorkspacePage>
   );
 }

@@ -23,31 +23,15 @@ export function assertTaskStatusTransition(from: TaskStatus, to: TaskStatus) {
   }
 }
 
-/** Normalize search input; strip characters that would break filters. */
-export function normalizeTaskSearchQuery(query: string): string | undefined {
-  const trimmed = query
-    .trim()
-    .replaceAll('%', '')
-    .replaceAll('_', '')
-    .replace(/[(),.*]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-/** Case-insensitive substring match on title/details. */
+/** Case-insensitive substring match on title/details; blank query matches all. */
 export function taskMatchesSearch(
   task: { title: string; details: string | null },
   query: string,
 ): boolean {
-  const needle = normalizeTaskSearchQuery(query)?.toLowerCase();
+  const needle = query.trim().toLowerCase();
   if (!needle) return true;
   const haystack = `${task.title}\n${task.details ?? ''}`.toLowerCase();
   return haystack.includes(needle);
-}
-
-export function taskStatusLabel(status: TaskStatus) {
-  return status.replaceAll('_', ' ');
 }
 
 export function buildCompleteTaskPatch(now = new Date()) {

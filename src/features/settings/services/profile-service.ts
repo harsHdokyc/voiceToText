@@ -8,12 +8,6 @@ export type ProfileRow = {
   display_name: string | null;
 };
 
-export {
-  DISPLAY_NAME_MAX,
-  greetingName,
-  normalizeDisplayName,
-} from '@/features/settings/services/greeting-name';
-
 export async function getOwnProfile() {
   return withApiLog('api.profile.get', {}, async () => {
     const {
