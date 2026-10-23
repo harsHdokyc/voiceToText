@@ -4,17 +4,14 @@ import {
   attemptTimeoutMs,
   bytesToBase64,
   describeProcessError,
-  failTargetForStage,
   isRetiredModelError,
   isRetryableHttpStatus,
   isRetryableUpstream,
-  isStuckExtracting,
   messageContentToText,
   mimeTypeForAudioFile,
   parseModelJson,
   publicAiConfigView,
   sanitizeNoteTitle,
-  STUCK_EXTRACTING_MS,
   uniqueChatModels,
   upstreamHttpStatus,
 } from '@supabaseShared/ai/provider-utils';
@@ -90,21 +87,6 @@ describe('upstreamHttpStatus', () => {
   });
 });
 
-describe('failTargetForStage', () => {
-  it('maps stage to the correct note failure status', () => {
-    expect(failTargetForStage('transcribing')).toEqual({
-      failStatus: 'transcription_failed',
-      expectStatus: 'transcribing',
-      fallbackCode: 'transcription_failed',
-    });
-    expect(failTargetForStage('extracting')).toEqual({
-      failStatus: 'extraction_failed',
-      expectStatus: 'extracting',
-      fallbackCode: 'extraction_failed',
-    });
-  });
-});
-
 describe('describeProcessError', () => {
   it('uses upstream_unavailable for 503 provider errors instead of the message as code', () => {
     const err = Object.assign(
@@ -130,6 +112,23 @@ describe('describeProcessError', () => {
       code: 'audio_download_failed',
       reason: 'audio_download_failed: object not found',
     });
+  });
+
+  it('keeps the machine code when the DB detail happens to contain 503', () => {
+    expect(
+      describeProcessError(
+        new Error('suggestion_load_failed: invalid input syntax for type uuid: "a503"'),
+        'rejection_failed',
+      ).code,
+    ).toBe('suggestion_load_failed');
+  });
+
+  it('uses the fallback code for errors without a machine prefix', () => {
+    expect(describeProcessError(new Error('boom'), 'delete_failed')).toEqual({
+      code: 'delete_failed',
+      reason: 'boom',
+    });
+    expect(describeProcessError('weird', 'delete_failed').code).toBe('delete_failed');
   });
 
   it('truncates long provider reasons to 300 chars', () => {
@@ -210,23 +209,6 @@ describe('parseModelJson', () => {
 
   it('throws on non-JSON', () => {
     expect(() => parseModelJson('not-json')).toThrow();
-  });
-});
-
-describe('isStuckExtracting', () => {
-  const now = Date.parse('2026-10-20T17:00:00.000Z');
-
-  it('is true only for extracting older than the stale window', () => {
-    const staleAt = new Date(now - STUCK_EXTRACTING_MS - 1).toISOString();
-    expect(isStuckExtracting('extracting', staleAt, now)).toBe(true);
-  });
-
-  it('is false when still fresh, wrong status, or bad timestamp', () => {
-    const freshAt = new Date(now - 30_000).toISOString();
-    expect(isStuckExtracting('extracting', freshAt, now)).toBe(false);
-    expect(isStuckExtracting('review_ready', freshAt, now)).toBe(false);
-    expect(isStuckExtracting('extracting', 'not-a-date', now)).toBe(false);
-    expect(isStuckExtracting(null, null, now)).toBe(false);
   });
 });
 

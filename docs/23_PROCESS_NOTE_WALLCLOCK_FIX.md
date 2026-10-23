@@ -98,7 +98,7 @@ Hard delete only via product `delete-note` / account delete — respect RLS and 
 1. `task-extraction-provider.ts` — AbortSignal / timeout  
 2. `process-note/index.ts` — optional early return after transcribe; fail path sets `extraction_failed`  
 3. App notes service / capture sheet — two-step invoke + Retry on `extraction_failed`  
-4. Stale reclaim (Edge claim start or small SQL/cron)  
+4. Stale reclaim (Edge claim start or small SQL/cron) — shipped as `noteLifecycle().reclaimStuckExtracting()` in `_shared/notes/note-lifecycle.ts`, called at the start of `extract-note`  
 5. UI: delete abandoned note (wire `delete-note`)  
 6. Tests: timeout → failed status; stale reclaim; extract-only claim  
 7. One-off: flip current stuck rows in hosted (`5b597706-…`, `fca4d3e6-…`, any similar)

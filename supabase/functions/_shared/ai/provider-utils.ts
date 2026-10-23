@@ -74,24 +74,6 @@ export function attemptTimeoutMs(remainingMs: number, modelsLeft: number) {
   return Math.floor(remainingMs / modelsLeft);
 }
 
-export type ProcessStage = "transcribing" | "extracting";
-
-/** Map the failing pipeline stage to the note status machine outcome. */
-export function failTargetForStage(stage: ProcessStage) {
-  if (stage === "extracting") {
-    return {
-      failStatus: "extraction_failed" as const,
-      expectStatus: "extracting" as const,
-      fallbackCode: "extraction_failed",
-    };
-  }
-  return {
-    failStatus: "transcription_failed" as const,
-    expectStatus: "transcribing" as const,
-    fallbackCode: "transcription_failed",
-  };
-}
-
 /**
  * Stable machine `code` + truncated human `reason` from provider/DB errors.
  * Never treat a bare "503 …" message as the code (that broke Phase 4 fail routing).
@@ -112,16 +94,22 @@ export function describeProcessError(
     };
   }
 
+  const fromPrefix = reason.includes(":")
+    ? reason.split(":")[0]?.trim()
+    : undefined;
+  // A thrown `machine_code: detail` wins even if the detail (e.g. a UUID) contains "503".
+  if (fromPrefix && /^[a-z][a-z0-9_]{0,63}$/.test(fromPrefix)) {
+    return { code: fromPrefix, reason };
+  }
+
   if (/503|temporarily unavailable/i.test(reason)) {
     return { code: "upstream_unavailable", reason };
   }
 
-  const fromPrefix = reason.includes(":")
-    ? reason.split(":")[0]?.trim()
-    : undefined;
-  const code = (fromPrefix && fromPrefix.length > 0 && fromPrefix.length <= 64
-    ? fromPrefix
-    : fallbackCode).slice(0, 80);
+  const code =
+    (fromPrefix && fromPrefix.length > 0 && fromPrefix.length <= 64
+      ? fromPrefix
+      : fallbackCode).slice(0, 80);
 
   return { code, reason };
 }
@@ -204,53 +192,4 @@ export function sanitizeNoteTitle(
   const sliced = cleaned.slice(0, maxLen);
   const lastSpace = sliced.lastIndexOf(" ");
   return (lastSpace > 24 ? sliced.slice(0, lastSpace) : sliced).trim();
-}
-
-/** Default stale window for wall-clock-killed `extracting` notes. */
-export const STUCK_EXTRACTING_MS = 3 * 60 * 1000;
-
-/** Pure: true when status is extracting and updatedAt is older than staleMs. */
-export function isStuckExtracting(
-  status: string | null | undefined,
-  updatedAt: string | null | undefined,
-  nowMs: number = Date.now(),
-  staleMs: number = STUCK_EXTRACTING_MS,
-): boolean {
-  if (status !== "extracting" || !updatedAt) return false;
-  const updatedMs = Date.parse(updatedAt);
-  if (Number.isNaN(updatedMs)) return false;
-  return updatedMs < nowMs - staleMs;
-}
-
-/** Flip stuck `extracting` (>3 min) → `extraction_failed` so extract can reclaim. */
-// deno-lint-ignore no-explicit-any
-export async function reclaimStuckExtracting(
-  supabase: any,
-  noteId: string,
-  userId: string,
-  nowMs: number = Date.now(),
-): Promise<boolean> {
-  const { data: note } = await supabase
-    .from("notes")
-    .select("status, updated_at")
-    .eq("id", noteId)
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (!isStuckExtracting(note?.status, note?.updated_at, nowMs)) {
-    return false;
-  }
-
-  const { error } = await supabase
-    .from("notes")
-    .update({
-      status: "extraction_failed",
-      last_error_code: "stuck_extracting",
-      updated_at: new Date(nowMs).toISOString(),
-    })
-    .eq("id", noteId)
-    .eq("user_id", userId)
-    .eq("status", "extracting");
-
-  return !error;
 }

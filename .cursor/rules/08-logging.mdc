@@ -4,7 +4,7 @@ alwaysApply: true
 ---
 # Logging (structured, useful)
 
-Use `[vtw]` structured logs for app API work and Edge Functions. Full catalog: `docs/LOGGING_COMBINED.md`.
+Use `[vtw]` structured logs for app API work and Edge Functions. Full catalog: `docs/16_LOGGING_COMBINED.md`.
 
 ## Required
 - Wrap client API/backend ops with `withApiLog(scope, fields, fn)` (`src/lib/with-api-log.ts`).

@@ -1,7 +1,11 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
-
+import { edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
+import {
+  hasCronSecret,
+  serviceClient,
+  type ServiceClient,
+} from "../_shared/service-role.ts";
 import {
   AUDIO_PURGE_BATCH_LIMIT,
   audioRetentionCutoff,
@@ -19,6 +23,7 @@ type OrphanRow = {
   updated_at: string | null;
 };
 
+const SCOPE = "edge.purge-note-audio";
 const CANDIDATE_COLUMNS = "id, audio_path, created_at, audio_purged_at";
 
 /**
@@ -33,40 +38,20 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    const started = Date.now();
-    const cronSecret = Deno.env.get("CRON_SECRET")?.trim();
-    const provided = req.headers.get("x-cron-secret")?.trim();
-    if (!cronSecret || !provided || provided !== cronSecret) {
-      edgeLog("error", "edge.purge-note-audio", {
-        event: "fail",
-        code: "unauthorized",
-        reason: "Missing or invalid x-cron-secret",
-      });
-      return Response.json({ ok: false, error: "unauthorized" }, {
-        status: 401,
-      });
+    const r = edgeRequest(SCOPE);
+    if (!hasCronSecret(req)) {
+      return r.fail(401, "unauthorized", "Missing or invalid x-cron-secret");
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? Deno.env.get("SB_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      Deno.env.get("SB_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceKey) {
-      edgeLog("error", "edge.purge-note-audio", {
-        event: "fail",
-        code: "misconfigured",
-        reason: "Missing SUPABASE_URL or service role key",
-      });
-      return Response.json({ ok: false, error: "misconfigured" }, {
-        status: 500,
-      });
+    let admin: ServiceClient;
+    try {
+      admin = serviceClient();
+    } catch (error) {
+      return r.fail(500, "misconfigured", (error as Error).message);
     }
-
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
 
     const now = new Date();
-    edgeLog("info", "edge.purge-note-audio", { event: "start" });
+    edgeLog("info", SCOPE, { event: "start" });
 
     try {
       const cutoff = audioRetentionCutoff(now).toISOString();
@@ -98,7 +83,7 @@ export default {
       const orphans = await purgeOrphans(admin, cutoff, now);
       const anyFailed = failed > 0 || orphans.failed > 0;
 
-      edgeLog(anyFailed ? "warn" : "info", "edge.purge-note-audio", {
+      edgeLog(anyFailed ? "warn" : "info", SCOPE, {
         event: anyFailed ? "partial" : "ok",
         scanned: rows.length,
         purged,
@@ -107,7 +92,7 @@ export default {
         orphansScanned: orphans.scanned,
         orphansRemoved: orphans.removed,
         orphansFailed: orphans.failed,
-        durationMs: Date.now() - started,
+        durationMs: r.ms(),
       });
 
       return Response.json({
@@ -121,23 +106,13 @@ export default {
         orphansFailed: orphans.failed,
       });
     } catch (error) {
-      const reason = error instanceof Error
-        ? error.message.slice(0, 200)
-        : "purge_failed";
-      const code = reason.split(":")[0]?.trim() || "purge_failed";
-      edgeLog("error", "edge.purge-note-audio", {
-        event: "fail",
-        code,
-        reason,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: code, reason }, { status: 502 });
+      return r.failFrom(error, "purge_failed");
     }
   },
 };
 
 async function purgeOne(
-  admin: ReturnType<typeof createClient>,
+  admin: ServiceClient,
   row: CandidateRow,
   now: Date,
 ): Promise<"purged" | "failed" | "skipped"> {
@@ -151,7 +126,7 @@ async function purgeOne(
     .remove([path]);
 
   if (!storageDeleteConfirmed(storageError, removed, path)) {
-    edgeLog("warn", "edge.purge-note-audio", {
+    edgeLog("warn", SCOPE, {
       event: "storage_cleanup_failed",
       code: "storage_delete_failed",
       reason: (storageError?.message ?? "storage remove was not confirmed")
@@ -175,7 +150,7 @@ async function purgeOne(
     .select("id");
 
   if (updateError) {
-    edgeLog("warn", "edge.purge-note-audio", {
+    edgeLog("warn", SCOPE, {
       event: "purge_mark_failed",
       code: "purge_mark_failed",
       reason: updateError.message.slice(0, 200),
@@ -185,7 +160,7 @@ async function purgeOne(
   }
 
   if (!updated?.length) {
-    edgeLog("warn", "edge.purge-note-audio", {
+    edgeLog("warn", SCOPE, {
       event: "purge_mark_lost",
       code: "purge_mark_lost",
       reason: "Storage object removed but the note row no longer matched",
@@ -198,7 +173,7 @@ async function purgeOne(
 }
 
 async function purgeOrphans(
-  admin: ReturnType<typeof createClient>,
+  admin: ServiceClient,
   cutoff: string,
   now: Date,
 ): Promise<{ scanned: number; removed: number; failed: number }> {
@@ -207,7 +182,7 @@ async function purgeOrphans(
     p_limit: AUDIO_PURGE_BATCH_LIMIT,
   });
   if (error) {
-    edgeLog("warn", "edge.purge-note-audio", {
+    edgeLog("warn", SCOPE, {
       event: "orphan_query_failed",
       code: "orphan_query_failed",
       reason: error.message.slice(0, 200),
@@ -237,7 +212,7 @@ async function purgeOrphans(
       .from("note-audio")
       .remove([name]);
     if (!storageDeleteConfirmed(storageError, gone, name)) {
-      edgeLog("warn", "edge.purge-note-audio", {
+      edgeLog("warn", SCOPE, {
         event: "orphan_delete_failed",
         code: "storage_delete_failed",
         reason: (storageError?.message ?? "storage remove was not confirmed")

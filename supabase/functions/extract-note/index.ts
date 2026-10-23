@@ -1,13 +1,14 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 
-import {
-  describeProcessError,
-  reclaimStuckExtracting,
-} from "../_shared/ai/provider-utils.ts";
+import { describeProcessError } from "../_shared/ai/provider-utils.ts";
 import { extractTasks } from "../_shared/ai/task-extraction-provider.ts";
+import { edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
+import { noteLifecycle } from "../_shared/notes/note-lifecycle.ts";
 import { reextractClaimStatuses } from "../_shared/storage/audio-retention.ts";
+
+const SCOPE = "edge.extract-note";
 
 function parseDueAt(raw: string | null): string | null {
   if (!raw) return null;
@@ -26,35 +27,19 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    const started = Date.now();
+    const r = edgeRequest(SCOPE);
     const userId = ctx.userClaims?.id;
     if (!userId) {
-      edgeLog("error", "edge.extract-note", {
-        event: "fail",
-        code: "unauthorized",
-        reason: "Missing user claims",
-      });
-      return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+      return r.fail(401, "unauthorized", "Missing user claims");
     }
 
     const body = (await req.json().catch(() => ({}))) as { noteId?: string };
     const noteId = body.noteId?.trim();
     if (!noteId) {
-      edgeLog("error", "edge.extract-note", {
-        event: "fail",
-        code: "note_id_required",
-        reason: "Body.noteId missing",
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: "note_id_required" }, {
-        status: 400,
-      });
+      return r.fail(400, "note_id_required", "Body.noteId missing");
     }
 
-    edgeLog("info", "edge.extract-note", {
-      event: "start",
-      noteId,
-    });
+    edgeLog("info", SCOPE, { event: "start", noteId });
 
     const { data: existing, error: loadError } = await ctx.supabase
       .from("notes")
@@ -64,38 +49,24 @@ export default {
       .maybeSingle();
 
     if (loadError) {
-      edgeLog("error", "edge.extract-note", {
-        event: "fail",
-        code: "note_load_failed",
-        reason: loadError.message,
-        noteId,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: "note_load_failed" }, {
-        status: 500,
-      });
+      return r.fail(500, "note_load_failed", loadError.message, { noteId });
     }
     if (!existing) {
-      edgeLog("error", "edge.extract-note", {
-        event: "fail",
-        code: "note_not_found",
-        reason: "Note missing or not owned by caller",
-        noteId,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: "note_not_found" }, {
-        status: 404,
-      });
+      return r.fail(
+        404,
+        "note_not_found",
+        "Note missing or not owned by caller",
+        {
+          noteId,
+        },
+      );
     }
 
+    const note = noteLifecycle(ctx.supabase, noteId, userId);
+
     // Flip stale wall-clock kills to extraction_failed, then continue claim.
-    const reclaimed = await reclaimStuckExtracting(
-      ctx.supabase,
-      noteId,
-      userId,
-    );
-    if (reclaimed) {
-      edgeLog("warn", "edge.extract-note", {
+    if (await note.reclaimStuckExtracting()) {
+      edgeLog("warn", SCOPE, {
         event: "stale_reclaim",
         noteId,
         status: existing.status,
@@ -111,13 +82,13 @@ export default {
       audio_purged_at: existing.audio_purged_at,
     });
     if (!claimStatuses) {
-      edgeLog("info", "edge.extract-note", {
+      edgeLog("info", SCOPE, {
         event: "skip",
         code: "not_claimable",
         reason: `Status ${existing.status} is not claimable for extraction`,
         noteId,
         status: existing.status,
-        durationMs: Date.now() - started,
+        durationMs: r.ms(),
       });
       return Response.json({
         ok: true,
@@ -128,27 +99,19 @@ export default {
     }
 
     try {
-      const { data: claimed, error: claimError } = await ctx.supabase
-        .from("notes")
-        .update({
-          status: "extracting",
-          processing_attempts: (existing.processing_attempts ?? 0) + 1,
-          last_error_code: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", noteId)
-        .eq("user_id", userId)
-        .in("status", claimStatuses)
-        .select("id, status")
-        .maybeSingle();
+      const { row: claimed, error: claimError } = await note.claim(
+        "extract",
+        claimStatuses,
+        { processing_attempts: (existing.processing_attempts ?? 0) + 1 },
+      );
 
       if (claimError || !claimed) {
-        edgeLog("info", "edge.extract-note", {
+        edgeLog("info", SCOPE, {
           event: "skip",
           code: "claim_lost",
-          reason: claimError?.message ?? "Conditional claim matched no row",
+          reason: claimError ?? "Conditional claim matched no row",
           noteId,
-          durationMs: Date.now() - started,
+          durationMs: r.ms(),
         });
         return Response.json({
           ok: true,
@@ -198,32 +161,27 @@ export default {
       }
 
       // Keep a user-entered capture title; otherwise use the AI card title.
-      const userTitle =
-        typeof existing.title === "string" ? existing.title.trim() : "";
-      const { data: final, error: finalSaveError } = await ctx.supabase
-        .from("notes")
-        .update({
-          status: "review_ready",
-          last_error_code: null,
-          updated_at: new Date().toISOString(),
+      const userTitle = typeof existing.title === "string"
+        ? existing.title.trim()
+        : "";
+      const { row: final, error: finalSaveError } = await note.complete(
+        "extract",
+        "review_ready",
+        {
           title: userTitle || extractionResult.noteTitle,
           category: extractionResult.noteCategory,
-        })
-        .eq("id", noteId)
-        .eq("user_id", userId)
-        .eq("status", "extracting")
-        .select("id, status")
-        .maybeSingle();
+        },
+      );
 
       if (finalSaveError || !final) {
         throw new Error(
-          finalSaveError?.message
-            ? `final_status_update_failed: ${finalSaveError.message}`
+          finalSaveError
+            ? `final_status_update_failed: ${finalSaveError}`
             : "final_status_update_failed",
         );
       }
 
-      edgeLog("info", "edge.extract-note", {
+      edgeLog("info", SCOPE, {
         event: "ok",
         noteId,
         status: final.status,
@@ -231,7 +189,7 @@ export default {
         extractionModel: extractionResult.model,
         textLength: transcriptText.length,
         suggestionCount: insertedCount,
-        durationMs: Date.now() - started,
+        durationMs: r.ms(),
       });
 
       return Response.json({
@@ -245,34 +203,14 @@ export default {
     } catch (error) {
       const { code, reason } = describeProcessError(error, "extraction_failed");
 
-      await ctx.supabase
-        .from("notes")
-        .update({
-          status: "extraction_failed",
-          last_error_code: code.slice(0, 80),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", noteId)
-        .eq("user_id", userId)
-        .eq("status", "extracting");
+      await note.fail("extract", code);
 
-      edgeLog("error", "edge.extract-note", {
-        event: "fail",
+      return r.fail(
+        502,
         code,
         reason,
-        noteId,
-        status: "extraction_failed",
-        durationMs: Date.now() - started,
-      });
-
-      return Response.json(
-        {
-          ok: false,
-          error: code,
-          reason,
-          status: "extraction_failed",
-        },
-        { status: 502 },
+        { noteId, status: "extraction_failed" },
+        { status: "extraction_failed" },
       );
     }
   }),

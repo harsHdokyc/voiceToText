@@ -3,9 +3,14 @@ import { withSupabase } from "@supabase/server";
 
 import { describeProcessError } from "../_shared/ai/provider-utils.ts";
 import { transcribeAudio } from "../_shared/ai/transcription-provider.ts";
+import { edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
+import {
+  noteLifecycle,
+  TRANSCRIBE_CLAIMABLE,
+} from "../_shared/notes/note-lifecycle.ts";
 
-const TRANSCRIBE_CLAIMABLE = new Set(["queued", "transcription_failed"]);
+const SCOPE = "edge.process-note";
 /** Phase 7: daily process-note cap per user (content-free quota). */
 const DAILY_PROCESS_NOTE_LIMIT = 40;
 
@@ -21,35 +26,19 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    const started = Date.now();
+    const r = edgeRequest(SCOPE);
     const userId = ctx.userClaims?.id;
     if (!userId) {
-      edgeLog("error", "edge.process-note", {
-        event: "fail",
-        code: "unauthorized",
-        reason: "Missing user claims",
-      });
-      return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+      return r.fail(401, "unauthorized", "Missing user claims");
     }
 
     const body = (await req.json().catch(() => ({}))) as { noteId?: string };
     const noteId = body.noteId?.trim();
     if (!noteId) {
-      edgeLog("error", "edge.process-note", {
-        event: "fail",
-        code: "note_id_required",
-        reason: "Body.noteId missing",
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: "note_id_required" }, {
-        status: 400,
-      });
+      return r.fail(400, "note_id_required", "Body.noteId missing");
     }
 
-    edgeLog("info", "edge.process-note", {
-      event: "start",
-      noteId,
-    });
+    edgeLog("info", SCOPE, { event: "start", noteId });
 
     const { data: existing, error: loadError } = await ctx.supabase
       .from("notes")
@@ -59,39 +48,27 @@ export default {
       .maybeSingle();
 
     if (loadError) {
-      edgeLog("error", "edge.process-note", {
-        event: "fail",
-        code: "note_load_failed",
-        reason: loadError.message,
-        noteId,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: "note_load_failed" }, {
-        status: 500,
-      });
+      return r.fail(500, "note_load_failed", loadError.message, { noteId });
     }
     if (!existing) {
-      edgeLog("error", "edge.process-note", {
-        event: "fail",
-        code: "note_not_found",
-        reason: "Note missing or not owned by caller",
-        noteId,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: "note_not_found" }, {
-        status: 404,
-      });
+      return r.fail(
+        404,
+        "note_not_found",
+        "Note missing or not owned by caller",
+        {
+          noteId,
+        },
+      );
     }
 
-    const needsTranscribe = TRANSCRIBE_CLAIMABLE.has(existing.status);
-    if (!needsTranscribe) {
-      edgeLog("info", "edge.process-note", {
+    if (!TRANSCRIBE_CLAIMABLE.includes(existing.status)) {
+      edgeLog("info", SCOPE, {
         event: "skip",
         code: "not_claimable",
         reason: `Status ${existing.status} is not claimable for transcription`,
         noteId,
         status: existing.status,
-        durationMs: Date.now() - started,
+        durationMs: r.ms(),
       });
       return Response.json({
         ok: true,
@@ -102,21 +79,14 @@ export default {
     }
 
     if (!existing.audio_path) {
-      const purged = Boolean(existing.audio_purged_at);
-      const code = purged ? "audio_purged" : "audio_missing";
-      const reason = purged
-        ? "Audio deleted after the 3 day retention window"
-        : "audio_path is null";
-      edgeLog("error", "edge.process-note", {
-        event: "fail",
-        code,
-        reason,
-        noteId,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: code, reason }, {
-        status: 400,
-      });
+      return existing.audio_purged_at
+        ? r.fail(
+          400,
+          "audio_purged",
+          "Audio deleted after the 3 day retention window",
+          { noteId },
+        )
+        : r.fail(400, "audio_missing", "audio_path is null", { noteId });
     }
 
     const { data: usageCount, error: usageError } = await ctx.supabase.rpc(
@@ -124,7 +94,7 @@ export default {
       { p_user_id: userId, p_kind: "process_note" },
     );
     if (usageError) {
-      edgeLog("warn", "edge.process-note", {
+      edgeLog("warn", SCOPE, {
         event: "usage_count_failed",
         code: "usage_count_failed",
         reason: usageError.message.slice(0, 200),
@@ -134,46 +104,29 @@ export default {
       typeof usageCount === "number" &&
       usageCount >= DAILY_PROCESS_NOTE_LIMIT
     ) {
-      edgeLog("error", "edge.process-note", {
-        event: "fail",
-        code: "rate_limited",
-        reason: `Daily process-note limit ${DAILY_PROCESS_NOTE_LIMIT} reached`,
-        noteId,
-        usageCount,
-        durationMs: Date.now() - started,
-      });
-      return Response.json(
-        {
-          ok: false,
-          error: "rate_limited",
-          reason: `Daily process-note limit ${DAILY_PROCESS_NOTE_LIMIT} reached`,
-        },
-        { status: 429 },
+      return r.fail(
+        429,
+        "rate_limited",
+        `Daily process-note limit ${DAILY_PROCESS_NOTE_LIMIT} reached`,
+        { noteId, usageCount },
       );
     }
 
+    const note = noteLifecycle(ctx.supabase, noteId, userId);
     try {
-      const { data: claimed, error: claimError } = await ctx.supabase
-        .from("notes")
-        .update({
-          status: "transcribing",
-          processing_attempts: (existing.processing_attempts ?? 0) + 1,
-          last_error_code: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", noteId)
-        .eq("user_id", userId)
-        .in("status", ["queued", "transcription_failed"])
-        .select("*")
-        .maybeSingle();
+      const { row: claimed, error: claimError } = await note.claim(
+        "transcribe",
+        TRANSCRIBE_CLAIMABLE,
+        { processing_attempts: (existing.processing_attempts ?? 0) + 1 },
+      );
 
       if (claimError || !claimed) {
-        edgeLog("info", "edge.process-note", {
+        edgeLog("info", SCOPE, {
           event: "skip",
           code: "claim_lost",
-          reason: claimError?.message ?? "Conditional claim matched no row",
+          reason: claimError ?? "Conditional claim matched no row",
           noteId,
-          durationMs: Date.now() - started,
+          durationMs: r.ms(),
         });
         return Response.json({
           ok: true,
@@ -203,37 +156,27 @@ export default {
       const result = await transcribeAudio({ file });
 
       // Title/category come from extract-note (AI). Do not paste transcript prefix.
-      const { data: transcribed, error: transcriptSaveError } = await ctx
-        .supabase
-        .from("notes")
-        .update({
+      const { row: transcribed, error: transcriptSaveError } = await note
+        .complete("transcribe", "extracting", {
           transcript: result.text,
-          status: "extracting",
           language: result.language ?? null,
-          last_error_code: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", noteId)
-        .eq("user_id", userId)
-        .eq("status", "transcribing")
-        .select("id, status, transcript")
-        .maybeSingle();
+        });
 
       if (transcriptSaveError || !transcribed) {
         throw new Error(
-          transcriptSaveError?.message
-            ? `transcript_persist_failed: ${transcriptSaveError.message}`
+          transcriptSaveError
+            ? `transcript_persist_failed: ${transcriptSaveError}`
             : "transcript_persist_failed",
         );
       }
 
-      edgeLog("info", "edge.process-note", {
+      edgeLog("info", SCOPE, {
         event: "transcribe_ok",
         noteId,
         provider: result.provider,
         model: result.model,
         textLength: result.text.length,
-        durationMs: Date.now() - started,
+        durationMs: r.ms(),
       });
 
       await ctx.supabase.from("ai_usage_events").insert({
@@ -241,7 +184,7 @@ export default {
         kind: "process_note",
         model: result.model,
         provider: result.provider,
-        duration_ms: Date.now() - started,
+        duration_ms: r.ms(),
         audio_seconds: existing.audio_duration_seconds ?? null,
         suggestion_count: 0,
       });
@@ -260,34 +203,14 @@ export default {
         "transcription_failed",
       );
 
-      await ctx.supabase
-        .from("notes")
-        .update({
-          status: "transcription_failed",
-          last_error_code: code.slice(0, 80),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", noteId)
-        .eq("user_id", userId)
-        .eq("status", "transcribing");
+      await note.fail("transcribe", code);
 
-      edgeLog("error", "edge.process-note", {
-        event: "fail",
+      return r.fail(
+        502,
         code,
         reason,
-        noteId,
-        status: "transcription_failed",
-        durationMs: Date.now() - started,
-      });
-
-      return Response.json(
-        {
-          ok: false,
-          error: code,
-          reason,
-          status: "transcription_failed",
-        },
-        { status: 502 },
+        { noteId, status: "transcription_failed" },
+        { status: "transcription_failed" },
       );
     }
   }),

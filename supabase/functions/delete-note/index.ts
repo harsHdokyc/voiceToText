@@ -1,8 +1,11 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
-import { createClient } from "npm:@supabase/supabase-js@^2";
 
+import { edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
+import { serviceClient } from "../_shared/service-role.ts";
+
+const SCOPE = "edge.delete-note";
 
 /**
  * Delete a note the user owns: remove private audio object, then DB row (cascade).
@@ -14,23 +17,19 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    const started = Date.now();
+    const r = edgeRequest(SCOPE);
     const userId = ctx.userClaims?.id;
     if (!userId) {
-      return Response.json({ ok: false, error: "unauthorized" }, {
-        status: 401,
-      });
+      return r.fail(401, "unauthorized", "Missing user claims");
     }
 
     const body = (await req.json().catch(() => ({}))) as { noteId?: string };
     const noteId = body.noteId?.trim();
     if (!noteId) {
-      return Response.json({ ok: false, error: "note_id_required" }, {
-        status: 400,
-      });
+      return r.fail(400, "note_id_required", "Body.noteId missing");
     }
 
-    edgeLog("info", "edge.delete-note", { event: "start", noteId });
+    edgeLog("info", SCOPE, { event: "start", noteId });
 
     try {
       const { data: note, error: loadError } = await ctx.supabase
@@ -41,18 +40,22 @@ export default {
         .maybeSingle();
       if (loadError) throw new Error(`note_load_failed: ${loadError.message}`);
       if (!note) {
-        return Response.json({ ok: false, error: "note_not_found" }, {
-          status: 404,
-        });
+        return r.fail(
+          404,
+          "note_not_found",
+          "Note missing or not owned by caller",
+          {
+            noteId,
+          },
+        );
       }
 
       if (note.audio_path) {
-        const admin = serviceClient();
-        const { error: storageError } = await admin.storage
+        const { error: storageError } = await serviceClient().storage
           .from("note-audio")
           .remove([note.audio_path]);
         if (storageError) {
-          edgeLog("warn", "edge.delete-note", {
+          edgeLog("warn", SCOPE, {
             event: "storage_cleanup_failed",
             code: "storage_delete_failed",
             reason: storageError.message.slice(0, 200),
@@ -71,37 +74,10 @@ export default {
         throw new Error(`note_delete_failed: ${deleteError.message}`);
       }
 
-      edgeLog("info", "edge.delete-note", {
-        event: "ok",
-        noteId,
-        durationMs: Date.now() - started,
-      });
+      edgeLog("info", SCOPE, { event: "ok", noteId, durationMs: r.ms() });
       return Response.json({ ok: true, noteId });
     } catch (error) {
-      const reason = error instanceof Error
-        ? error.message.slice(0, 200)
-        : "delete_failed";
-      const code = reason.split(":")[0]?.trim() || "delete_failed";
-      edgeLog("error", "edge.delete-note", {
-        event: "fail",
-        code,
-        reason,
-        noteId,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: code, reason }, { status: 502 });
+      return r.failFrom(error, "delete_failed", { noteId });
     }
   }),
 };
-
-function serviceClient() {
-  const url = Deno.env.get("SUPABASE_URL") ?? Deno.env.get("SB_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-    Deno.env.get("SB_SERVICE_ROLE_KEY");
-  if (!url || !key) {
-    throw new Error("misconfigured: missing service role for storage delete");
-  }
-  return createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}

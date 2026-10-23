@@ -7,7 +7,7 @@
 6. Don't treat hard-to-guess paths as authorization.
 7. Validate JWT, ownership, IDs, payloads, MIME, size, and duration at server boundaries.
 8. Add quotas/rate limits for expensive AI endpoints.
-9. Don't log raw audio, transcripts, prompts, auth headers, signed URLs, or secrets. Do log structured `[vtw]` lines with error **code** + **reason** (see [LOGGING_COMBINED.md](./LOGGING_COMBINED.md)).
+9. Don't log raw audio, transcripts, prompts, auth headers, signed URLs, or secrets. Do log structured `[vtw]` lines with error **code** + **reason** (see [16_LOGGING_COMBINED.md](./16_LOGGING_COMBINED.md)).
 10. Validate and bound model-generated text.
 11. Audio files in `note-audio` are deleted 3 days after recording. That window is the retry window for every note status, with or without a transcript. Orphan objects older than 3 days with no note row are deleted through the Storage API. Transcripts, notes, suggestions, tasks, and reminders are kept. Account deletion remains a separate user action.
 12. Keep original transcript distinct from edited text.

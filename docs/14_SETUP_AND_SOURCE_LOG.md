@@ -24,7 +24,7 @@ Never prefix secrets with `EXPO_PUBLIC_` / never put `service_role` in Vite or V
 
 Marketing deploy status: [20_STATUS.md](./20_STATUS.md), [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
 
-If older `OPENAI_*` / Naga secrets are still set on the project, **replace** them with `GOOGLE_API_KEY` — stale OpenAI env is unused by the new adapters. See `DECISIONS.md`.
+If older `OPENAI_*` / Naga secrets are still set on the project, **replace** them with `GOOGLE_API_KEY` — stale OpenAI env is unused by the new adapters. See `17_DECISIONS.md`.
 
 ## Official docs to verify
 - Supabase Expo quickstart: https://supabase.com/docs/guides/getting-started/quickstarts/expo-react-native
@@ -46,7 +46,7 @@ If older `OPENAI_*` / Naga secrets are still set on the project, **replace** the
 - Resend example: https://supabase.com/docs/guides/functions/examples/send-emails
 - Edge Function limits (idle/wall clock): https://supabase.com/docs/guides/functions/limits
 
-V1 locked choices live in `DECISIONS.md` — don’t re-open without new evidence.
+V1 locked choices live in `17_DECISIONS.md` — don’t re-open without new evidence.
 
 ## Competitors
 https://voicenotes.com/ | https://audiopen.ai/ | https://otter.ai/ | https://fireflies.ai/ | https://www.granola.ai/ | https://www.notion.so/product/ai | https://todoist.com/

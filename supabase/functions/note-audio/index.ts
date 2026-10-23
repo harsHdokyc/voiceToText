@@ -1,9 +1,15 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 
+import { type EdgeRequest, edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
+import {
+  noteLifecycle,
+  UPLOAD_CLAIMABLE,
+} from "../_shared/notes/note-lifecycle.ts";
 import { buildNoteAudioPath } from "../_shared/storage/note-audio-path.ts";
 
+const SCOPE = "edge.note-audio";
 const MAX_BYTES = 10 * 1024 * 1024;
 const NOTE_PUBLIC_COLUMNS =
   "id, title, audio_mime_type, audio_duration_seconds, transcript, edited_transcript, language, status, processing_attempts, last_error_code, audio_purged_at, created_at, updated_at";
@@ -21,15 +27,10 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    const started = Date.now();
+    const r = edgeRequest(SCOPE);
     const userId = ctx.userClaims?.id;
     if (!userId) {
-      edgeLog("error", "edge.note-audio", {
-        event: "fail",
-        code: "unauthorized",
-        reason: "Missing user claims",
-      });
-      return Response.json({ ok: false, error: "unauthorized" }, { status: 401 });
+      return r.fail(401, "unauthorized", "Missing user claims");
     }
 
     const url = new URL(req.url);
@@ -38,7 +39,7 @@ export default {
     const actionParam = url.searchParams.get("action");
 
     if (isMultipart || actionParam === "upload") {
-      return handleUpload(req, ctx, userId, started);
+      return handleUpload(req, ctx, userId, r);
     }
 
     const body = (await req.json().catch(() => ({}))) as {
@@ -48,34 +49,30 @@ export default {
     const action = body.action ?? actionParam ?? "download";
     if (action === "download") {
       const noteId = body.noteId ?? url.searchParams.get("noteId") ?? "";
-      return handleDownload(ctx, userId, noteId.trim(), started);
+      return handleDownload(ctx, userId, noteId.trim(), r);
     }
 
-    edgeLog("error", "edge.note-audio", {
-      event: "fail",
-      code: "invalid_action",
-      reason: `Unknown action ${action}`,
-      durationMs: Date.now() - started,
-    });
-    return Response.json({ ok: false, error: "invalid_action" }, {
-      status: 400,
-    });
+    return r.fail(400, "invalid_action", `Unknown action ${action}`);
   }),
 };
 
-// deno-lint-ignore no-explicit-any
-async function handleUpload(req: Request, ctx: any, userId: string, started: number) {
+async function handleUpload(
+  req: Request,
+  // deno-lint-ignore no-explicit-any
+  ctx: any,
+  userId: string,
+  r: EdgeRequest,
+) {
   const form = await req.formData();
   const noteId = String(form.get("noteId") ?? "").trim();
   const durationRaw = String(form.get("durationSeconds") ?? "");
   const durationSeconds = Number(durationRaw);
   const file = form.get("file");
-  const mimeType =
-    String(form.get("mimeType") ?? "").trim() ||
+  const mimeType = String(form.get("mimeType") ?? "").trim() ||
     (file instanceof File ? file.type : "") ||
     "audio/mp4";
 
-  edgeLog("info", "edge.note-audio", {
+  edgeLog("info", SCOPE, {
     event: "start",
     op: "upload",
     noteId: noteId || null,
@@ -84,40 +81,31 @@ async function handleUpload(req: Request, ctx: any, userId: string, started: num
   });
 
   if (!noteId) {
-    return fail(started, "upload", "note_id_required", "multipart noteId missing", noteId, 400);
+    return r.fail(400, "note_id_required", "multipart noteId missing", {
+      op: "upload",
+      noteId: noteId || null,
+    });
   }
   if (
     !Number.isFinite(durationSeconds) || durationSeconds <= 0 ||
     durationSeconds > 60
   ) {
-    return fail(
-      started,
-      "upload",
-      "invalid_duration",
-      `durationSeconds=${durationRaw}`,
-      noteId,
-      400,
-    );
+    return r.fail(400, "invalid_duration", `durationSeconds=${durationRaw}`, {
+      op: "upload",
+      noteId: noteId || null,
+    });
   }
   if (!(file instanceof File) || file.size <= 0) {
-    return fail(
-      started,
-      "upload",
-      "file_required",
-      "multipart file missing or empty",
-      noteId,
-      400,
-    );
+    return r.fail(400, "file_required", "multipart file missing or empty", {
+      op: "upload",
+      noteId: noteId || null,
+    });
   }
   if (file.size > MAX_BYTES) {
-    return fail(
-      started,
-      "upload",
-      "file_too_large",
-      `size=${file.size}`,
-      noteId,
-      413,
-    );
+    return r.fail(413, "file_too_large", `size=${file.size}`, {
+      op: "upload",
+      noteId: noteId || null,
+    });
   }
 
   const { data: existing, error: loadError } = await ctx.supabase
@@ -128,50 +116,36 @@ async function handleUpload(req: Request, ctx: any, userId: string, started: num
     .maybeSingle();
 
   if (loadError) {
-    return fail(started, "upload", "note_load_failed", loadError.message, noteId, 500);
+    return r.fail(500, "note_load_failed", loadError.message, {
+      op: "upload",
+      noteId: noteId || null,
+    });
   }
   if (!existing) {
-    return fail(
-      started,
-      "upload",
-      "note_not_found",
-      "Note missing or not owned",
-      noteId,
-      404,
-    );
+    return r.fail(404, "note_not_found", "Note missing or not owned", {
+      op: "upload",
+      noteId: noteId || null,
+    });
   }
-  if (!["draft", "upload_failed", "uploading"].includes(existing.status)) {
-    return fail(
-      started,
-      "upload",
-      "invalid_upload_status",
-      `status=${existing.status}`,
-      noteId,
-      409,
-    );
+  if (![...UPLOAD_CLAIMABLE, "uploading"].includes(existing.status)) {
+    return r.fail(409, "invalid_upload_status", `status=${existing.status}`, {
+      op: "upload",
+      noteId: noteId || null,
+    });
   }
 
+  const note = noteLifecycle(ctx.supabase, noteId, userId);
   if (existing.status !== "uploading") {
-    const { data: claimed, error: claimError } = await ctx.supabase
-      .from("notes")
-      .update({
-        status: "uploading",
-        last_error_code: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", noteId)
-      .eq("user_id", userId)
-      .in("status", ["draft", "upload_failed"])
-      .select("id")
-      .maybeSingle();
+    const { row: claimed, error: claimError } = await note.claim(
+      "upload",
+      UPLOAD_CLAIMABLE,
+    );
     if (claimError || !claimed) {
-      return fail(
-        started,
-        "upload",
-        "status_transition_lost",
-        claimError?.message ?? "Could not move to uploading",
-        noteId,
+      return r.fail(
         409,
+        "status_transition_lost",
+        claimError ?? "Could not move to uploading",
+        { op: "upload", noteId: noteId || null },
       );
     }
   }
@@ -187,77 +161,65 @@ async function handleUpload(req: Request, ctx: any, userId: string, started: num
     });
 
   if (uploadError) {
-    await ctx.supabase
-      .from("notes")
-      .update({
-        status: "upload_failed",
-        last_error_code: "storage_upload_failed",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", noteId)
-      .eq("user_id", userId)
-      .eq("status", "uploading");
+    await note.fail("upload", "storage_upload_failed");
 
-    return fail(
-      started,
-      "upload",
-      "storage_upload_failed",
-      uploadError.message,
-      noteId,
-      502,
-    );
+    return r.fail(502, "storage_upload_failed", uploadError.message, {
+      op: "upload",
+      noteId: noteId || null,
+    });
   }
 
-  const { data: queued, error: queueError } = await ctx.supabase
-    .from("notes")
-    .update({
-      status: "queued",
+  const { row: queued, error: queueError } = await note.complete(
+    "upload",
+    "queued",
+    {
       audio_path: audioPath,
       audio_mime_type: mimeType,
       audio_duration_seconds: durationSeconds,
-      last_error_code: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", noteId)
-    .eq("user_id", userId)
-    .eq("status", "uploading")
-    .select(NOTE_PUBLIC_COLUMNS)
-    .maybeSingle();
+    },
+    NOTE_PUBLIC_COLUMNS,
+  );
 
   if (queueError || !queued) {
-    return fail(
-      started,
-      "upload",
-      "queue_persist_failed",
-      queueError?.message ?? "Could not mark queued",
-      noteId,
+    return r.fail(
       500,
+      "queue_persist_failed",
+      queueError ?? "Could not mark queued",
+      { op: "upload", noteId: noteId || null },
     );
   }
 
-  edgeLog("info", "edge.note-audio", {
+  edgeLog("info", SCOPE, {
     event: "ok",
     op: "upload",
     noteId,
     status: queued.status,
     bytes: file.size,
     mimeType,
-    durationMs: Date.now() - started,
+    durationMs: r.ms(),
   });
 
   return Response.json({ ok: true, note: queued });
 }
 
-// deno-lint-ignore no-explicit-any
-async function handleDownload(ctx: any, userId: string, noteId: string, started: number) {
-  edgeLog("info", "edge.note-audio", {
+async function handleDownload(
+  // deno-lint-ignore no-explicit-any
+  ctx: any,
+  userId: string,
+  noteId: string,
+  r: EdgeRequest,
+) {
+  edgeLog("info", SCOPE, {
     event: "start",
     op: "download",
     noteId: noteId || null,
   });
 
   if (!noteId) {
-    return fail(started, "download", "note_id_required", "noteId missing", noteId, 400);
+    return r.fail(400, "note_id_required", "noteId missing", {
+      op: "download",
+      noteId: noteId || null,
+    });
   }
 
   const { data: existing, error: loadError } = await ctx.supabase
@@ -268,30 +230,30 @@ async function handleDownload(ctx: any, userId: string, noteId: string, started:
     .maybeSingle();
 
   if (loadError) {
-    return fail(started, "download", "note_load_failed", loadError.message, noteId, 500);
+    return r.fail(500, "note_load_failed", loadError.message, {
+      op: "download",
+      noteId: noteId || null,
+    });
   }
   if (!existing) {
-    return fail(
-      started,
-      "download",
-      "note_not_found",
-      "Note missing or not owned",
-      noteId,
-      404,
-    );
+    return r.fail(404, "note_not_found", "Note missing or not owned", {
+      op: "download",
+      noteId: noteId || null,
+    });
   }
   if (!existing.audio_path) {
     if (existing.audio_purged_at) {
-      return fail(
-        started,
-        "download",
+      return r.fail(
+        404,
         "audio_purged",
         "Audio deleted after the 3 day retention window",
-        noteId,
-        404,
+        { op: "download", noteId: noteId || null },
       );
     }
-    return fail(started, "download", "audio_missing", "audio_path is null", noteId, 404);
+    return r.fail(404, "audio_missing", "audio_path is null", {
+      op: "download",
+      noteId: noteId || null,
+    });
   }
 
   const { data: fileData, error: downloadError } = await ctx.supabase.storage
@@ -299,26 +261,24 @@ async function handleDownload(ctx: any, userId: string, noteId: string, started:
     .download(existing.audio_path);
 
   if (downloadError || !fileData) {
-    return fail(
-      started,
-      "download",
+    return r.fail(
+      502,
       "audio_download_failed",
       downloadError?.message ?? "empty body",
-      noteId,
-      502,
+      { op: "download", noteId: noteId || null },
     );
   }
 
   const mime = existing.audio_mime_type ?? "audio/mp4";
   const bytes = await fileData.arrayBuffer();
 
-  edgeLog("info", "edge.note-audio", {
+  edgeLog("info", SCOPE, {
     event: "ok",
     op: "download",
     noteId,
     mimeType: mime,
     bytes: bytes.byteLength,
-    durationMs: Date.now() - started,
+    durationMs: r.ms(),
   });
 
   return new Response(bytes, {
@@ -330,25 +290,6 @@ async function handleDownload(ctx: any, userId: string, noteId: string, started:
       "X-Note-Id": noteId,
     },
   });
-}
-
-function fail(
-  started: number,
-  op: string,
-  code: string,
-  reason: string,
-  noteId: string,
-  status: number,
-) {
-  edgeLog("error", "edge.note-audio", {
-    event: "fail",
-    op,
-    code,
-    reason,
-    noteId: noteId || null,
-    durationMs: Date.now() - started,
-  });
-  return Response.json({ ok: false, error: code, reason }, { status });
 }
 
 function extensionForMime(mimeType: string) {

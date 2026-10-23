@@ -1,5 +1,5 @@
 # Logging — Combined Reference
-Last updated: 2026-10-20.
+Last updated: 2026-10-23.
 
 Single source for **how we log**, **what appears in the terminal**, and **error codes**.  
 Agent rule: `.cursor/rules/08-logging.mdc`. Security: never log audio, transcripts, passwords, OTP, tokens, signed URLs, or API keys.
@@ -66,6 +66,7 @@ Edge Function logs: Supabase Dashboard → Edge Functions → `process-note` →
 | `src/lib/api-error.ts` | `ApiError`, `describeError`, `errorMessageForUi` |
 | `src/lib/with-api-log.ts` | wraps API calls: start → ok/fail + duration |
 | `supabase/functions/_shared/log.ts` | `edgeLog` |
+| `supabase/functions/_shared/http.ts` | `edgeRequest(scope)`: `fail` / `failFrom` log the fail line + return `{ ok:false, error, reason }` |
 
 ### App scopes (instrumented)
 | Scope | When |
@@ -81,7 +82,8 @@ Edge Function logs: Supabase Dashboard → Edge Functions → `process-note` →
 | `api.push.register` | Expo push token registration |
 | `api.notes.delete` / `api.account.delete` | Deletion |
 | `edge.note-audio` | Upload/download proxy (no storage key in responses) |
-| `edge.process-note` | Claim → download → STT → extract → persist |
+| `edge.process-note` | Claim → download → STT → persist transcript (status `extracting`) |
+| `edge.extract-note` | Stale reclaim → claim → extract → suggestions → `review_ready` |
 | `edge.ai.transcribe` | STT fail only (`code`, `reason`, `model`) |
 | `edge.ai.extract` | Chat fail / fallback retry (`code`, `reason`, `model`) |
 | `edge.approve-suggestion` | Approve suggestion + create task |
@@ -151,6 +153,15 @@ Prefer these `code` values in DB `last_error_code`, JSON `error`, and logs `code
 | `not_signed_in` | No session for a private op |
 | `invalid_upload_status` | Upload attempted from illegal status |
 | `status_transition_lost` | Conditional status update matched 0 rows |
+| `invalid_due_at` | approve-suggestion `edits.due_at` is not a valid date (400) |
+| `invalid_platform` / `token_required` | register-push-token body validation (400) |
+| `invalid_action` | note-audio action is not upload/download (400) |
+| `invalid_duration` / `file_required` / `file_too_large` | note-audio upload validation (400 / 413) |
+| `stuck_extracting` | `last_error_code` after stale reclaim of an `extracting` note |
+| `upstream_unavailable` / `upstream_timeout` | Provider 503 / per-model timeout (AI) |
+| `misconfigured` | Missing Edge env (service role / URL) |
+| `not_found` | `openai-spike` called without `ENABLE_DEBUG_FUNCTIONS=true` (404) |
+| `delete_failed` / `delete_account_failed` / `register_failed` / `dispatch_failed` / `purge_failed` | Fallback codes when a thrown error has no machine prefix |
 | `not_retryable` | Retry while status not queued/failed |
 | Supabase `code` (e.g. `23505`, `invalid_credentials`) | Passed through via `describeError` when present |
 
@@ -163,4 +174,5 @@ UI should show **`reason`** (via `authErrorMessage` / `errorMessageForUi`). Pers
 2. On failure: always `code` + `reason` (real cause).
 3. Never log content/secrets (see redaction lists in `logger.ts` / `_shared/log.ts`).
 4. Do not invent generic-only errors when a provider message exists — wrap it: `storage_upload_failed` + provider reason.
-5. New Edge Functions must use `_shared/log.ts` and return `{ ok, error, reason? }`.
+5. New Edge Functions use `edgeRequest(scope)` from `_shared/http.ts` for every failure (`r.fail(status, code, reason, fields)` or `r.failFrom(error, fallbackCode, fields)`) and `edgeLog` for start/ok/skip. Fail bodies are `{ ok:false, error, reason, ...extra }`.
+6. Thrown errors inside Edge: `throw new Error("machine_code: provider detail")`. `describeProcessError` keeps a snake_case prefix as the code (even if the detail contains `503`); otherwise an upstream HTTP status maps to `upstream_*`; otherwise the fallback code.

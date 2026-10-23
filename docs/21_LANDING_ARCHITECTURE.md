@@ -6,7 +6,7 @@ Last updated: 2026-10-19
 
 One Supabase project (`voiceToWork` / `ubqhyeicmgmdzethtids`) backs everything. The landing site is a separate Vite React app that only writes waitlist rows. Product accounts stay in Supabase Auth and are created when someone signs up in the Expo app (web today, App Store / Play Store later). No second database.
 
-**Deploy status (2026-10-19):** Marketing app is live on **Vercel** from repo root folder `LandingPage/` on `main`. Waitlist inserts hit hosted Supabase. See [Deployment (Vercel)](#deployment-vercel) below and [STATUS.md](./20_STATUS.md).
+**Deploy status (2026-10-19):** Marketing app is live on **Vercel** from repo root folder `LandingPage/` on `main`. Waitlist inserts hit hosted Supabase. See [Deployment (Vercel)](#deployment-vercel) below and [20_STATUS.md](./20_STATUS.md).
 
 ## Answers
 

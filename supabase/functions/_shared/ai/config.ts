@@ -2,7 +2,7 @@
  * Edge AI config — Google Gemini via LangChain (chat) + @google/genai (STT).
  * Secrets stay in Supabase Edge secrets / functions/.env — never EXPO_PUBLIC_*.
  *
- * See docs/DECISIONS.md / docs/17_DECISIONS.md.
+ * See docs/17_DECISIONS.md.
  */
 
 import { publicAiConfigView } from "./provider-utils.ts";

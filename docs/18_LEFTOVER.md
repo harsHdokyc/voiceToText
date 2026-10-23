@@ -1,8 +1,8 @@
 # Leftovers — what remains to finish the project
 
-Last updated: 2026-10-22 (audio retention code is in repo; hosted migration, function deploy, and schedule are still manual).
+Last updated: 2026-10-23 (audio retention + Edge shared-module refactor are in repo; hosted migration, function deploy, and schedule are still manual).
 
-Phases **0–7** are done. Code polish from this leftover pass is also in the app. Marketing landing is on Vercel — see [STATUS.md](./20_STATUS.md) + [LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).  
+Phases **0–7** are done. Code polish from this leftover pass is also in the app. Marketing landing is on Vercel — see [20_STATUS.md](./20_STATUS.md) + [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).  
 Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 
 ---
@@ -16,7 +16,7 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | A1 | Set Edge secret: `GOOGLE_API_KEY` (optional `AI_CHAT_MODEL` / `AI_TRANSCRIPTION_MODEL`) | [ ] |
 | A2 | Set Edge secret `CRON_SECRET` | [ ] |
 | A3 | Schedule `dispatch-reminders` ~every 1 min with header `x-cron-secret: <CRON_SECRET>` (Dashboard Cron or pg_cron + Vault) | [ ] |
-| A4 | Verify `openai-spike` → `config` → `chat`, then record a real note | [ ] |
+| A4 | Set `ENABLE_DEBUG_FUNCTIONS=true` briefly, verify `openai-spike` → `config` → `chat`, unset it, then record a real note | [ ] |
 | A5 | **Rotate** any provider key that appeared in git; purge history or unblock after rotate so `git push` works | [ ] |
 | A6 | Confirm Auth email OTP templates on hosted Supabase | [ ] |
 | A7 | Re-read Google Gemini + Supabase terms before broader launch | [ ] |
@@ -26,6 +26,7 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | A11 | Apply migration `20261022160000_audio_purge_any_status` (`list_orphan_note_audio` only). Do this before relying on orphan cleanup | [ ] |
 | A12 | `20261022180000_count_ai_usage_ownership` is applied and does not raise (definer owner exemption). Do not edit it | [x] |
 | A13 | Apply `20261022200000_count_ai_usage_invoker`. No function redeploy. As user A, `count_ai_usage_today(B)` must raise `42501`, not return 0 or B’s count | [ ] |
+| A14 | Redeploy all Edge functions except `health` (2026-10-23 shared-module refactor; no migration). Smoke: record → transcript → suggestions; reject a suggestion; delete a note | [ ] |
 
 ### B. Device smoke (blocks private beta confidence)
 
@@ -105,8 +106,8 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 
 ## References
 
-- [STATUS.md](./STATUS.md)  
+- [20_STATUS.md](./20_STATUS.md)  
 - [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md)  
 - [08_SECURITY_AND_PRIVACY.md](./08_SECURITY_AND_PRIVACY.md)  
 - [12_TESTING_STRATEGY.md](./12_TESTING_STRATEGY.md)  
-- [DECISIONS.md](./DECISIONS.md)  
+- [17_DECISIONS.md](./17_DECISIONS.md)  

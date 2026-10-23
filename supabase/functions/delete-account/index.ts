@@ -1,8 +1,11 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
-import { createClient } from "npm:@supabase/supabase-js@^2";
 
+import { edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
+import { serviceClient } from "../_shared/service-role.ts";
+
+const SCOPE = "edge.delete-account";
 
 /**
  * Delete the caller's app data + auth user.
@@ -15,22 +18,18 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    const started = Date.now();
+    const r = edgeRequest(SCOPE);
     const userId = ctx.userClaims?.id;
     if (!userId) {
-      return Response.json({ ok: false, error: "unauthorized" }, {
-        status: 401,
-      });
+      return r.fail(401, "unauthorized", "Missing user claims");
     }
 
     const body = (await req.json().catch(() => ({}))) as { confirm?: string };
     if (body.confirm !== "DELETE") {
-      return Response.json({ ok: false, error: "confirm_required" }, {
-        status: 400,
-      });
+      return r.fail(400, "confirm_required", 'Body.confirm must be "DELETE"');
     }
 
-    edgeLog("info", "edge.delete-account", { event: "start" });
+    edgeLog("info", SCOPE, { event: "start" });
 
     try {
       const admin = serviceClient();
@@ -47,7 +46,7 @@ export default {
           .from("note-audio")
           .remove(paths);
         if (storageError) {
-          edgeLog("warn", "edge.delete-account", {
+          edgeLog("warn", SCOPE, {
             event: "storage_cleanup_failed",
             code: "storage_delete_failed",
             reason: storageError.message.slice(0, 200),
@@ -74,35 +73,10 @@ export default {
         throw new Error(`auth_delete_failed: ${authError.message}`);
       }
 
-      edgeLog("info", "edge.delete-account", {
-        event: "ok",
-        durationMs: Date.now() - started,
-      });
+      edgeLog("info", SCOPE, { event: "ok", durationMs: r.ms() });
       return Response.json({ ok: true });
     } catch (error) {
-      const reason = error instanceof Error
-        ? error.message.slice(0, 200)
-        : "delete_account_failed";
-      const code = reason.split(":")[0]?.trim() || "delete_account_failed";
-      edgeLog("error", "edge.delete-account", {
-        event: "fail",
-        code,
-        reason,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: code, reason }, { status: 502 });
+      return r.failFrom(error, "delete_account_failed");
     }
   }),
 };
-
-function serviceClient() {
-  const url = Deno.env.get("SUPABASE_URL") ?? Deno.env.get("SB_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-    Deno.env.get("SB_SERVICE_ROLE_KEY");
-  if (!url || !key) {
-    throw new Error("misconfigured: missing service role");
-  }
-  return createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}

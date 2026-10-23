@@ -1,7 +1,7 @@
 # Voice-to-Work — docs map
 Prepared 2026-10-02. Blueprint for a mobile-first product that turns voice notes into user-approved tasks.
 
-Living status: **[STATUS.md](./STATUS.md)** (includes **Phase inventory + intentional leftovers**) · **[LEFTOVER.md](./LEFTOVER.md)** (everything still open to finish the project) · Decisions: **[DECISIONS.md](./DECISIONS.md)** · Agent rules: **[../.cursor/rules/](../.cursor/rules/)**
+Living status: **[20_STATUS.md](./20_STATUS.md)** (includes **Phase inventory + intentional leftovers**) · **[18_LEFTOVER.md](./18_LEFTOVER.md)** (everything still open to finish the project) · Decisions: **[17_DECISIONS.md](./17_DECISIONS.md)** · Terms: **[GLOSSARY.md](./25_GLOSSARY.md)** · Agent rules: **[../.cursor/rules/](../.cursor/rules/)**
 
 ## Read in order
 1. [00_PRODUCT_CONTEXT.md](./00_PRODUCT_CONTEXT.md) — problem, hypothesis, principles
@@ -20,9 +20,10 @@ Living status: **[STATUS.md](./STATUS.md)** (includes **Phase inventory + intent
 14. [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md) — vertical slices Phase 0–7
 15. [14_SETUP_AND_SOURCE_LOG.md](./14_SETUP_AND_SOURCE_LOG.md) — env vars and official docs
 16. [15_CURSOR_AGENT_PROMPT.md](./15_CURSOR_AGENT_PROMPT.md) — how agents should work here
-17. [LOGGING_COMBINED.md](./LOGGING_COMBINED.md) — structured `[vtw]` logs, scopes, error codes
+17. [16_LOGGING_COMBINED.md](./16_LOGGING_COMBINED.md) — structured `[vtw]` logs, scopes, error codes
+18. [25_GLOSSARY.md](./25_GLOSSARY.md) — domain terms (note lifecycle, suggestion, edge envelope) + architecture vocabulary
 
 ## Stack correction
-Frontend: Expo + React Native + TypeScript. Navigation: Expo Router, not `react-router-dom` in the mobile app. Server state: TanStack Query. Backend: Supabase Auth, PostgreSQL, private Storage, Edge Functions, RLS, Cron (`pg_cron`), optional Queues, Realtime only if needed, Vault for scheduled-job secrets. Push: Expo Notifications/Expo Push Service. Email: Resend from Edge Functions as the practical transactional email default. AI: LangChain `ChatGoogleGenerativeAI` + `@google/genai` STT on Edge (`gemini-3.8-flash` / `gemini-3.5-transcribe`; adapters; see `DECISIONS.md`). Auth for private beta: email + password + 8-digit OTP.
+Frontend: Expo + React Native + TypeScript. Navigation: Expo Router, not `react-router-dom` in the mobile app. Server state: TanStack Query. Backend: Supabase Auth, PostgreSQL, private Storage, Edge Functions, RLS, Cron (`pg_cron`), optional Queues, Realtime only if needed, Vault for scheduled-job secrets. Push: Expo Notifications/Expo Push Service. Email: Resend from Edge Functions as the practical transactional email default. AI: LangChain `ChatGoogleGenerativeAI` + `@google/genai` STT on Edge (`gemini-3.8-flash` / `gemini-3.5-transcribe`; adapters; see `17_DECISIONS.md`). Auth for private beta: email + password + 8-digit OTP.
 
 Expo is not a backend. Keep secrets out of `EXPO_PUBLIC_*`. This pack is a plan, not deployed infrastructure. Verify current APIs, model names, quotas, prices, and SDK compatibility before shipping.

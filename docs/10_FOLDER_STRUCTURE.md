@@ -31,16 +31,21 @@ voice-to-work/
 │   ├── migrations/
 │   ├── tests/database/
 │   └── functions/
-│       ├── _shared/{auth.ts,cors.ts,errors.ts,validation.ts}
-│       ├── _shared/ai/{transcription-provider.ts,task-extraction-provider.ts}
-│       ├── process-note/index.ts
-│       ├── approve-suggestion/index.ts
-│       ├── register-push-token/index.ts
-│       ├── dispatch-reminders/index.ts
-│       └── delete-note/index.ts
+│       ├── _shared/{http.ts,log.ts,service-role.ts}
+│       ├── _shared/notes/note-lifecycle.ts
+│       ├── _shared/ai/{config,provider-utils,transcription-provider,task-extraction-provider,…}.ts
+│       ├── _shared/storage/{note-audio-path,audio-retention}.ts
+│       ├── _shared/reminders/constants.ts
+│       ├── note-audio/ process-note/ extract-note/
+│       ├── approve-suggestion/ reject-suggestion/
+│       ├── register-push-token/ dispatch-reminders/ purge-note-audio/
+│       ├── delete-note/ delete-account/
+│       └── health/ openai-spike/      # debug; spike gated by ENABLE_DEBUG_FUNCTIONS
+├── test/                        # Vitest; mirrors src/ and supabase/functions/_shared/
 ├── docs/                        # product + engineering blueprint (lowercase)
-│   ├── STATUS.md                # living: current phase / next slice / blockers
-│   ├── DECISIONS.md             # living: material choices and open spikes
+│   ├── 20_STATUS.md                # living: current phase / next slice / blockers
+│   ├── 17_DECISIONS.md             # living: material choices and open spikes
+│   ├── 25_GLOSSARY.md           # living: domain + architecture terms
 │   └── …numbered pack docs…
 ├── assets/
 ├── .cursor/rules/               # single source of Cursor agent rules (repo root)

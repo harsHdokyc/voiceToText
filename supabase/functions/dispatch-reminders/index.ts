@@ -1,8 +1,14 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2.49.1";
-
+import { edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
 import { MAX_REMINDER_ATTEMPTS } from "../_shared/reminders/constants.ts";
+import {
+  hasCronSecret,
+  serviceClient,
+  type ServiceClient,
+} from "../_shared/service-role.ts";
+
+const SCOPE = "edge.dispatch-reminders";
 
 type ReminderRow = {
   id: string;
@@ -21,40 +27,19 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    const started = Date.now();
-    const cronSecret = Deno.env.get("CRON_SECRET")?.trim();
-    const provided = req.headers.get("x-cron-secret")?.trim();
-    if (!cronSecret || !provided || provided !== cronSecret) {
-      edgeLog("error", "edge.dispatch-reminders", {
-        event: "fail",
-        code: "unauthorized",
-        reason: "Missing or invalid x-cron-secret",
-      });
-      return Response.json({ ok: false, error: "unauthorized" }, {
-        status: 401,
-      });
+    const r = edgeRequest(SCOPE);
+    if (!hasCronSecret(req)) {
+      return r.fail(401, "unauthorized", "Missing or invalid x-cron-secret");
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") ??
-      Deno.env.get("SB_URL");
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-      Deno.env.get("SB_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceKey) {
-      edgeLog("error", "edge.dispatch-reminders", {
-        event: "fail",
-        code: "misconfigured",
-        reason: "Missing SUPABASE_URL or service role key",
-      });
-      return Response.json({ ok: false, error: "misconfigured" }, {
-        status: 500,
-      });
+    let admin: ServiceClient;
+    try {
+      admin = serviceClient();
+    } catch (error) {
+      return r.fail(500, "misconfigured", (error as Error).message);
     }
 
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    edgeLog("info", "edge.dispatch-reminders", { event: "start" });
+    edgeLog("info", SCOPE, { event: "start" });
 
     try {
       const { data: claimed, error: claimError } = await admin.rpc(
@@ -77,13 +62,13 @@ export default {
         else skipped += 1;
       }
 
-      edgeLog("info", "edge.dispatch-reminders", {
+      edgeLog("info", SCOPE, {
         event: "ok",
         claimed: reminders.length,
         sent,
         failed,
         skipped,
-        durationMs: Date.now() - started,
+        durationMs: r.ms(),
       });
 
       return Response.json({
@@ -94,23 +79,13 @@ export default {
         skipped,
       });
     } catch (error) {
-      const reason = error instanceof Error
-        ? error.message.slice(0, 200)
-        : "dispatch_failed";
-      const code = reason.split(":")[0]?.trim() || "dispatch_failed";
-      edgeLog("error", "edge.dispatch-reminders", {
-        event: "fail",
-        code,
-        reason,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: code, reason }, { status: 502 });
+      return r.failFrom(error, "dispatch_failed");
     }
   },
 };
 
 async function dispatchOne(
-  admin: ReturnType<typeof createClient>,
+  admin: ServiceClient,
   reminder: ReminderRow,
 ): Promise<"sent" | "failed" | "skipped"> {
   const attempt = reminder.attempt_count;
@@ -159,7 +134,7 @@ async function dispatchOne(
   const messages = tokens.map((t) => ({
     to: t.expo_push_token,
     title: "Task reminder",
-    body: task.title.slice(0, 120),
+    body: String(task.title).slice(0, 120),
     data: { taskId: task.id, reminderId: reminder.id },
   }));
 
@@ -225,7 +200,7 @@ async function dispatchOne(
 }
 
 async function recordDelivery(
-  admin: ReturnType<typeof createClient>,
+  admin: ServiceClient,
   reminder: ReminderRow,
   attempt: number,
   status: "accepted" | "failed" | "skipped",
@@ -247,7 +222,7 @@ async function recordDelivery(
 }
 
 async function finalizeReminder(
-  admin: ReturnType<typeof createClient>,
+  admin: ServiceClient,
   reminderId: string,
   status: "sent" | "failed" | "scheduled" | "cancelled",
   lastErrorCode: string | null,

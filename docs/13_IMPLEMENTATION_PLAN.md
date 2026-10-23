@@ -25,5 +25,5 @@ Deletion, privacy disclosure, rate limits, cost/latency metrics without content,
 
 Build one vertical slice at a time. Don't scaffold every future feature. After each slice report files, migrations/functions, tests run, exact results, limitations, next slice.
 
-**Living inventory of what shipped vs what was left intentionally:** [STATUS.md — Phase inventory + intentional leftovers](./STATUS.md#phase-inventory--intentional-leftovers).  
-**Full open checklist to finish the project:** [LEFTOVER.md](./LEFTOVER.md).
+**Living inventory of what shipped vs what was left intentionally:** [20_STATUS.md — Phase inventory + intentional leftovers](./20_STATUS.md#phase-inventory--intentional-leftovers).  
+**Full open checklist to finish the project:** [18_LEFTOVER.md](./18_LEFTOVER.md).

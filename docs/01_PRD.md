@@ -16,7 +16,7 @@ Team workspaces, meeting bots, calendar bots, autonomous actions, complex projec
 
 ## Functional requirements
 ### Auth
-Email/password for private beta (see `DECISIONS.md`); persistent session, sign out, protected routes, account deletion designed before public launch. Passwordless/OAuth deferred until deep linking is intentional work.
+Email/password for private beta (see `17_DECISIONS.md`); persistent session, sign out, protected routes, account deletion designed before public launch. Passwordless/OAuth deferred until deep linking is intentional work.
 ### Capture
 Start/stop recording; handle permissions; show duration; avoid duplicate submissions; upload to private Storage; enforce size/type/duration; allow retry.
 ### Notes

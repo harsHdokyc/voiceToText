@@ -5,6 +5,28 @@ Format: date · decision · context · alternatives considered · consequence.
 
 ---
 
+## 2026-10-23 · Edge shared modules: request envelope, note lifecycle, service role
+- **Context:** Architecture review of `supabase/functions`. Every function rebuilt its own fail log + JSON envelope; nine derived the error code with `reason.split(":")[0]`, a weaker copy of `describeProcessError`. Note status writes were spread over `note-audio`, `process-note`, `extract-note`, and `provider-utils`, with an unused `failTargetForStage`. Service-role client and cron-secret check were pasted into four / two functions with two `supabase-js` versions (two functions failed `deno check`).
+- **Alternatives:** Leave per-function code; a full `withUser` handler wrapper around every function; move note transitions into Postgres RPCs.
+- **Decision:**
+  - `_shared/http.ts` `edgeRequest(scope)` owns fail logging, `durationMs`, code derivation (`describeProcessError`), and the `{ ok:false, error, reason }` envelope. Every function uses it. Failure bodies now always carry `reason`.
+  - `describeProcessError`: a snake_case `machine_code:` prefix wins before the `503` text match (a UUID containing `503` no longer becomes `upstream_unavailable`).
+  - `_shared/notes/note-lifecycle.ts` owns claim / complete / fail / stale reclaim as conditional updates on the expected status (user-scoped client, RLS still applies). Glossary: [25_GLOSSARY.md](./25_GLOSSARY.md).
+  - `_shared/service-role.ts` owns `serviceClient()` (pinned `supabase-js@2.49.1`) and `hasCronSecret(req)`.
+- **Consequence:** No migration. Redeploy every Edge function except `health`. New Edge code must use these modules instead of inlining. Tests: `test/supabase/functions/_shared/{http,notes/note-lifecycle}.test.ts`.
+
+## 2026-10-23 · Reject stays in Edge; review bugs fixed in place
+- **Context:** Approve uses the `approve_suggestion` RPC; reject does read-then-update in Edge. Reject returned `ok:true` when a concurrent approve won and the update matched no row. Approve turned an invalid `edits.due_at` into a 502.
+- **Alternatives:** New `reject_suggestion` RPC + migration.
+- **Decision:** Keep reject in Edge. Its update now selects the row and returns `not_pending` when nothing changed. Approve validates `due_at` first and returns 400 `invalid_due_at`.
+- **Consequence:** Do not re-suggest a reject RPC unless reject gains multi-row work (it is a single conditional update, already atomic).
+
+## 2026-10-23 · Debug spike off by default
+- **Context:** Any signed-in user could call `openai-spike` chat/transcribe. It skips the 40/day cap and `ai_usage_events`.
+- **Alternatives:** Delete the function; admin allow-list; count it against the cap.
+- **Decision:** `openai-spike` returns 404 `not_found` unless the Edge secret `ENABLE_DEBUG_FUNCTIONS=true`. `health` stays open (no AI call).
+- **Consequence:** Settings → Developer “openai-spike” probes 404 on hosted unless the flag is set. Set it locally or briefly for A4 in LEFTOVER, then unset.
+
 ## 2026-10-22 · Usage count runs as the caller
 - **Context:** `20261022180000_count_ai_usage_ownership` was applied. Asking for another user’s count returned that count (0 when they had no rows today) and did not raise. Inside a `security definer` function the session role is the owner, `postgres`, which was on the exemption list, so the check never ran.
 - **Alternatives:** Delete the owner from the exemption and stay `security definer`. A later edit that trusts the session role breaks the same way, and a failed check still bypasses `ai_usage_events` RLS. Revoke `authenticated` and use only `service_role`. `process-note` calls the RPC with the user JWT; a failed count is logged and ignored, so the 40/day cap would stop.
@@ -57,7 +79,7 @@ Format: date · decision · context · alternatives considered · consequence.
   - Host static marketing on **Vercel** with **Root Directory = `LandingPage`**, production branch `main`.
   - Inject `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (and optional `VITE_APP_URL`) as Vercel env at build time.
   - Keep `tsc -b` scoped to `LandingPage/src` only — do not include `vite.config.ts` in that project unless `@types/node` is added.
-- **Consequence:** Deploy progress and ops checklist live in [LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md) and [STATUS.md](./20_STATUS.md). Never put `service_role` in Vercel.
+- **Consequence:** Deploy progress and ops checklist live in [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md) and [20_STATUS.md](./20_STATUS.md). Never put `service_role` in Vercel.
 
 ## 2026-10-18 · Marketing landing = Vite app + shared Supabase waitlist
 - **Context:** Marketing site was deferred from Expo; `LandingPage/` needed a real waitlist without a second backend. Reference UI already inserts into `waitlist` (table was missing on hosted).
@@ -66,7 +88,7 @@ Format: date · decision · context · alternatives considered · consequence.
   - One hosted project (`voiceToWork`). Add `public.waitlist` (email unique case-insensitive, optional `first_name`, RLS insert-only for anon/authenticated).
   - Ship marketing as Vite + React in `LandingPage/` pointing at the same publishable key.
   - Waitlist ≠ account; product sign-up stays in the Expo app (web + future store builds).
-- **Consequence:** Details in [LANDING_ARCHITECTURE.md](./LANDING_ARCHITECTURE.md). Do not invent a second database for early access.
+- **Consequence:** Details in [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md). Do not invent a second database for early access.
 
 ## 2026-10-18 · Product UI = Saydo workspace from `ui/goals-in-motion-55`
 - **Context:** Visual/interaction reference landed in `ui/goals-in-motion-55` (TanStack + Tailwind demo). Expo app needed the same **Workspace / dashboard (+ auth)** chrome without becoming a second demo runtime.
@@ -78,7 +100,7 @@ Format: date · decision · context · alternatives considered · consequence.
   - **Note category:** `Work | Ideas | Personal` (+ All notes chip); default **Ideas** on create.
   - **Capture:** `expo-audio` → private upload → `process-note` (Web Speech only as optional live **preview** on web). No Lovable / demo seeds / “Continue to demo”.
   - **Reminders:** durable schedule APIs (1h / 3h / 1d), not in-tab toast polling.
-- **Consequence:** UI work tracks `docs/ui-execution-planner.md`. Do not import `ui/` into the Expo runtime or ship demo footers (“changes are not saved”).
+- **Consequence:** UI work tracks `docs/22_ui-execution-planner.md`. Do not import `ui/` into the Expo runtime or ship demo footers (“changes are not saved”).
 
 ## 2026-10-02 · AI provider = official OpenAI (leave Naga :free)
 - **Context:** Naga `:free` hit shared daily rate limits (429) and flaky 503s during Phase 4 extraction; unsuitable for smooth testing with real private audio.
@@ -122,7 +144,7 @@ Format: date · decision · context · alternatives considered · consequence.
 ## 2026-10-02 · Phase 0 scaffold complete (runtime verify pending Docker)
 - **Context:** Phase 0 required Expo + Supabase client/session, Query, local config, first migration, Edge health + OpenAI spike, audio package/cap.
 - **Decision:** Ship the scaffold in-repo; treat `supabase start` + signed-in function invokes as the remaining machine-local exit checks.
-- **Consequence:** See STATUS.md “Manual next”. Do not begin Phase 2 notes schema until health invoke works against local Supabase.
+- **Consequence:** See 20_STATUS.md “Manual next”. Do not begin Phase 2 notes schema until health invoke works against local Supabase.
 
 ## 2026-10-02 · Auth for private beta = email + password
 - **Context:** PRD allows email/password or passwordless. Magic links/OTP need mobile deep-link setup; Expo’s Supabase guide notes email/password needs no extra redirect config for basic sign-in.
@@ -167,7 +189,7 @@ Format: date · decision · context · alternatives considered · consequence.
 ## 2026-10-02 · Structured `[vtw]` logging with code + real reason
 - **Context:** Metro showed almost no API/backend signal; failures were generic. Need greppable logs without logging secrets/content.
 - **Alternatives:** Rely on Supabase dashboard only; ad-hoc `console.log`; full APM.
-- **Decision:** One-line JSON logs prefixed `[vtw]` from app (`withApiLog` / `logger`) and Edge (`edgeLog`). Every failure includes stable `code` + human `reason` (provider/DB text when available). Catalog in `docs/LOGGING_COMBINED.md`. Rule: `.cursor/rules/08-logging.mdc`.
+- **Decision:** One-line JSON logs prefixed `[vtw]` from app (`withApiLog` / `logger`) and Edge (`edgeLog`). Every failure includes stable `code` + human `reason` (provider/DB text when available). Catalog in `docs/16_LOGGING_COMBINED.md`. Rule: `.cursor/rules/08-logging.mdc`.
 - **Consequence:** New API paths and Edge Functions must log start/ok/fail; UI shows reason; `last_error_code` stores code.
 
 ## 2026-10-02 · Unit tests must prove business behavior (not mock theater)

@@ -20,6 +20,14 @@ export default {
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204 });
     }
+    // Bypasses the daily AI cap and usage ledger, so it is off unless opted in.
+    if (Deno.env.get("ENABLE_DEBUG_FUNCTIONS") !== "true") {
+      return Response.json({
+        ok: false,
+        error: "not_found",
+        reason: "Debug functions are disabled (ENABLE_DEBUG_FUNCTIONS)",
+      }, { status: 404 });
+    }
 
     const config = getAiConfig();
     const contentType = req.headers.get("content-type") ?? "";
@@ -57,7 +65,7 @@ export default {
         skipped: false,
         ...publicAiConfig(config),
         notes: [
-          "Default provider is Google Gemini (see DECISIONS.md).",
+          "Default provider is Google Gemini (see docs/17_DECISIONS.md).",
           "STT: gemini-3.5-transcribe · chat: gemini-3.8-flash (fallback gemini-3.6-flash).",
           "Never put GOOGLE_API_KEY in Expo / EXPO_PUBLIC_*.",
         ],

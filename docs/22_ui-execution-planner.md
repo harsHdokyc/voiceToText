@@ -22,7 +22,7 @@
 1. Execute **one step at a time**. Do not start step *N+1* until step *N* exit criteria pass.
 2. Before each step, re-run the ladder: *Need it? Already exists? Stdlib/native? Existing dep? One line? Then minimum code.*
 3. Treat `ui/goals-in-motion-55` as a **pixel / copy / interaction reference**, not as code to paste wholesale (it is TanStack Start + Tailwind + DOM; the product is Expo Router + React Native).
-4. Prefer product truth from `docs/STATUS.md`, `docs/DECISIONS.md`, `docs/01_PRD.md`, `docs/02_V1_SCOPE.md`. If a demo feature fights those, keep the **UI intent** and keep the **real backend contract**.
+4. Prefer product truth from `docs/20_STATUS.md`, `docs/17_DECISIONS.md`, `docs/01_PRD.md`, `docs/02_V1_SCOPE.md`. If a demo feature fights those, keep the **UI intent** and keep the **real backend contract**.
 5. After each step that changes pure logic: side-by-side Vitest behavior tests (`.cursor/rules/07-testing.mdc`). Run `npm test` (+ `npm run typecheck` if types changed). Report exact results.
 
 ---
@@ -110,7 +110,7 @@ Canonical implementation: `ui/goals-in-motion-55/src/components/workspace/Worksp
 |---|---|---|
 | In-memory `useState` notes/tasks | Not durable / not multi-device | Existing Supabase services + TanStack Query |
 | Web Speech API dictation | Not the product capture path; weak on native | Existing `expo-audio` record → upload → `process-note` |
-| Lovable gateway `generateNextSteps` | Wrong provider; secrets wrong place | Existing Edge `process-note` (Gemini per `DECISIONS.md`) |
+| Lovable gateway `generateNextSteps` | Wrong provider; secrets wrong place | Existing Edge `process-note` (Gemini per `17_DECISIONS.md`) |
 | Browser `Notification` + 15s poll | Not durable | Existing reminders + Expo push |
 | Fake sign-in (navigate only) | No session | Existing auth screens + OTP flows |
 | “Demo mode” footers / sample seed as sole data | Misleading in real app | Empty states + real user data; optional seed only in storybook/demo flag if ever needed |
@@ -505,8 +505,8 @@ Each step: **goal → do → do not → exit**.
 - Happy path, failure path, auth boundary smoke.
 - `npm test` + `npm run typecheck`.
 - Grep diff for secrets, dead demo seeds, unused Lovable bits.
-- Update `docs/STATUS.md` Next slice / note that UI shell landed (when implementation happens).
-- `DECISIONS.md` entry when implementing: product UI = Saydo workspace from `ui/goals-in-motion-55`; brand = Saydo; marketing site deferred; note `category` + `profiles.display_name` in product UI.
+- Update `docs/20_STATUS.md` Next slice / note that UI shell landed (when implementation happens).
+- `17_DECISIONS.md` entry when implementing: product UI = Saydo workspace from `ui/goals-in-motion-55`; brand = Saydo; marketing site deferred; note `category` + `profiles.display_name` in product UI.
 
 **Do not**
 - Leave demo footers (“changes are not saved”) in production UI.
@@ -517,7 +517,7 @@ Each step: **goal → do → do not → exit**.
 - No regressions in note processing, approval idempotency, delete, reminders.
 - Categories + display name persist across reload.
 
-**Status: done (2026-10-18).** Hardening: grep clean of demo/Lovable/Voice-to-Work in `app/`+`src/`; `npm test` + `typecheck` green; `STATUS.md` + `DECISIONS.md` updated; workspace parity + DoD checklists ticked below.
+**Status: done (2026-10-18).** Hardening: grep clean of demo/Lovable/Voice-to-Work in `app/`+`src/`; `npm test` + `typecheck` green; `20_STATUS.md` + `17_DECISIONS.md` updated; workspace parity + DoD checklists ticked below.
 
 ---
 

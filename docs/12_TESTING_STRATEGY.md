@@ -17,7 +17,9 @@ What does **not** get Vitest screen tests:
 
 What stays integration/manual/RLS:
 
-- Supabase client calls, Storage ownership, Edge claim+download, Expo audio permissions, full screen flows.
+- Supabase client calls, Storage ownership, Edge download, Expo audio permissions, full screen flows.
+
+Exception: the note lifecycle (`_shared/notes/note-lifecycle.ts`) is unit-tested against a small in-memory `notes` table that implements only the query calls it makes (`update/eq/in/select/maybeSingle`). The table is the boundary; tests assert the resulting row status, never call shapes. Edge functions themselves are checked with `deno check` (Vitest cannot load `npm:` imports).
 
 ## Phase priority
 
@@ -25,7 +27,7 @@ Phases 0–3 onward: Vitest for pure helpers **as they land**; RLS/database test
 
 ## Unit
 
-Place `foo.test.ts` next to `foo.ts`. Cover happy path, invalid input, and boundaries with **concrete expected values** from the product rule (e.g. OTP length 8, max audio 60s, illegal status transitions). Prefer real behavior assertions over mock call-shape tests. A green suite that never runs the real rule is not a unit suite we keep.
+Place `foo.test.ts` under `test/` at the mirrored path (`src/lib/foo.ts` → `test/lib/foo.test.ts`, `supabase/functions/_shared/x.ts` → `test/supabase/functions/_shared/x.test.ts`; import via `@/` or `@supabaseShared/`). Cover happy path, invalid input, and boundaries with **concrete expected values** from the product rule (e.g. OTP length 8, max audio 60s, illegal status transitions). Prefer real behavior assertions over mock call-shape tests. A green suite that never runs the real rule is not a unit suite we keep.
 
 ## RLS/database
 

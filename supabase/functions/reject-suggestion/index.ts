@@ -1,7 +1,10 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 
+import { edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
+
+const SCOPE = "edge.reject-suggestion";
 
 /**
  * Reject a pending suggestion.
@@ -13,17 +16,10 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    const started = Date.now();
+    const r = edgeRequest(SCOPE);
     const userId = ctx.userClaims?.id;
     if (!userId) {
-      edgeLog("error", "edge.reject-suggestion", {
-        event: "fail",
-        code: "unauthorized",
-        reason: "Missing user claims",
-      });
-      return Response.json({ ok: false, error: "unauthorized" }, {
-        status: 401,
-      });
+      return r.fail(401, "unauthorized", "Missing user claims");
     }
 
     const body = (await req.json().catch(() => ({}))) as {
@@ -31,21 +27,10 @@ export default {
     };
     const suggestionId = body.suggestionId?.trim();
     if (!suggestionId) {
-      edgeLog("error", "edge.reject-suggestion", {
-        event: "fail",
-        code: "suggestion_id_required",
-        reason: "Body.suggestionId missing",
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: "suggestion_id_required" }, {
-        status: 400,
-      });
+      return r.fail(400, "suggestion_id_required", "Body.suggestionId missing");
     }
 
-    edgeLog("info", "edge.reject-suggestion", {
-      event: "start",
-      suggestionId,
-    });
+    edgeLog("info", SCOPE, { event: "start", suggestionId });
 
     try {
       const { data: suggestion, error: loadError } = await ctx.supabase
@@ -59,33 +44,24 @@ export default {
         throw new Error(`suggestion_load_failed: ${loadError.message}`);
       }
       if (!suggestion) {
-        edgeLog("error", "edge.reject-suggestion", {
-          event: "fail",
-          code: "suggestion_not_found",
-          reason: "Suggestion missing or not owned by caller",
-          suggestionId,
-          durationMs: Date.now() - started,
-        });
-        return Response.json({ ok: false, error: "suggestion_not_found" }, {
-          status: 404,
-        });
+        return r.fail(
+          404,
+          "suggestion_not_found",
+          "Suggestion missing or not owned by caller",
+          { suggestionId },
+        );
       }
       if (suggestion.status !== "pending") {
-        edgeLog("error", "edge.reject-suggestion", {
-          event: "fail",
-          code: "not_pending",
-          reason: `Suggestion status is ${suggestion.status}, not pending`,
-          suggestionId,
-          status: suggestion.status,
-          durationMs: Date.now() - started,
-        });
-        return Response.json(
-          { ok: false, error: "not_pending", status: suggestion.status },
-          { status: 400 },
+        return r.fail(
+          400,
+          "not_pending",
+          `Suggestion status is ${suggestion.status}, not pending`,
+          { suggestionId, status: suggestion.status },
+          { status: suggestion.status },
         );
       }
 
-      const { error: updateError } = await ctx.supabase
+      const { data: rejected, error: updateError } = await ctx.supabase
         .from("task_suggestions")
         .update({
           status: "rejected",
@@ -93,35 +69,32 @@ export default {
         })
         .eq("id", suggestionId)
         .eq("user_id", userId)
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
 
       if (updateError) {
         throw new Error(`rejection_update_failed: ${updateError.message}`);
       }
+      if (!rejected) {
+        return r.fail(
+          400,
+          "not_pending",
+          "Suggestion left pending before the reject was saved",
+          { suggestionId },
+        );
+      }
 
-      edgeLog("info", "edge.reject-suggestion", {
+      edgeLog("info", SCOPE, {
         event: "ok",
         suggestionId,
         noteId: suggestion.note_id,
-        durationMs: Date.now() - started,
+        durationMs: r.ms(),
       });
 
       return Response.json({ ok: true, suggestionId });
     } catch (error) {
-      const reason = error instanceof Error
-        ? error.message.slice(0, 200)
-        : "rejection_failed";
-      const code = reason.split(":")[0]?.trim() || "rejection_failed";
-
-      edgeLog("error", "edge.reject-suggestion", {
-        event: "fail",
-        code,
-        reason,
-        suggestionId,
-        durationMs: Date.now() - started,
-      });
-
-      return Response.json({ ok: false, error: code, reason }, { status: 502 });
+      return r.failFrom(error, "rejection_failed", { suggestionId });
     }
   }),
 };

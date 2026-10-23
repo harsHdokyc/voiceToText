@@ -1,7 +1,10 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 
+import { edgeRequest } from "../_shared/http.ts";
 import { edgeLog } from "../_shared/log.ts";
+
+const SCOPE = "edge.register-push-token";
 
 /**
  * Upsert Expo push token for the authenticated user.
@@ -13,17 +16,10 @@ export default {
       return new Response(null, { status: 204 });
     }
 
-    const started = Date.now();
+    const r = edgeRequest(SCOPE);
     const userId = ctx.userClaims?.id;
     if (!userId) {
-      edgeLog("error", "edge.register-push-token", {
-        event: "fail",
-        code: "unauthorized",
-        reason: "Missing user claims",
-      });
-      return Response.json({ ok: false, error: "unauthorized" }, {
-        status: 401,
-      });
+      return r.fail(401, "unauthorized", "Missing user claims");
     }
 
     const body = (await req.json().catch(() => ({}))) as {
@@ -32,28 +28,19 @@ export default {
     };
     const token = body.token?.trim();
     if (!token || token.length < 20 || token.length > 4096) {
-      edgeLog("error", "edge.register-push-token", {
-        event: "fail",
-        code: "token_required",
-        reason: "Body.token missing or invalid length",
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: "token_required" }, {
-        status: 400,
-      });
+      return r.fail(
+        400,
+        "token_required",
+        "Body.token missing or invalid length",
+      );
     }
 
     const platform = body.platform ?? "ios";
     if (!["ios", "android", "web"].includes(platform)) {
-      return Response.json({ ok: false, error: "invalid_platform" }, {
-        status: 400,
-      });
+      return r.fail(400, "invalid_platform", `platform=${platform}`);
     }
 
-    edgeLog("info", "edge.register-push-token", {
-      event: "start",
-      platform,
-    });
+    edgeLog("info", SCOPE, { event: "start", platform });
 
     try {
       const { error } = await ctx.supabase.from("device_tokens").upsert(
@@ -67,24 +54,10 @@ export default {
       );
       if (error) throw new Error(`token_upsert_failed: ${error.message}`);
 
-      edgeLog("info", "edge.register-push-token", {
-        event: "ok",
-        platform,
-        durationMs: Date.now() - started,
-      });
+      edgeLog("info", SCOPE, { event: "ok", platform, durationMs: r.ms() });
       return Response.json({ ok: true });
     } catch (error) {
-      const reason = error instanceof Error
-        ? error.message.slice(0, 200)
-        : "register_failed";
-      const code = reason.split(":")[0]?.trim() || "register_failed";
-      edgeLog("error", "edge.register-push-token", {
-        event: "fail",
-        code,
-        reason,
-        durationMs: Date.now() - started,
-      });
-      return Response.json({ ok: false, error: code, reason }, { status: 502 });
+      return r.failFrom(error, "register_failed");
     }
   }),
 };

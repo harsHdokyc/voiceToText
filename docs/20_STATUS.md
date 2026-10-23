@@ -1,11 +1,11 @@
 # Project Status
-Last updated: 2026-10-22 (Phases 0–7 complete + 3-day voice-audio retention in repo, not yet applied on hosted).
+Last updated: 2026-10-23 (Phases 0–7 complete + 3-day voice-audio retention + Edge shared-module refactor in repo, not yet deployed on hosted).
 
 ## Current phase
 **Phases 0–7 complete** against plan exit criteria (see inventory below). Hosted backend: [voiceToWork](https://supabase.com/dashboard/project/ubqhyeicmgmdzethtids).
-**AI provider:** Google Gemini via LangChain + `@google/genai` (see [DECISIONS.md](./17_DECISIONS.md)).
-**Product UI:** Saydo workspace/dashboard (+ auth) from `ui/goals-in-motion-55` reference — see [ui-execution-planner.md](./22_ui-execution-planner.md) (Steps 1–13).
-**Marketing:** Vite app in `LandingPage/` on **Vercel** + `waitlist` on the same hosted project — see [LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
+**AI provider:** Google Gemini via LangChain + `@google/genai` (see [17_DECISIONS.md](./17_DECISIONS.md)).
+**Product UI:** Saydo workspace/dashboard (+ auth) from `ui/goals-in-motion-55` reference — see [22_ui-execution-planner.md](./22_ui-execution-planner.md) (Steps 1–13).
+**Marketing:** Vite app in `LandingPage/` on **Vercel** + `waitlist` on the same hosted project — see [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
 
 Living phase map: [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md). P0/P1/P2: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 
@@ -72,6 +72,11 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 2. Redeploy `purge-note-audio` (`verify_jwt = false`) and `extract-note`. `note-audio` and `process-note` are unchanged by this rule.
 3. `CRON_SECRET` is the same header as reminders. Schedule `purge-note-audio` hourly if it is not scheduled yet.
 
+### Edge shared-module refactor (2026-10-23)
+**Shipped in repo:** `_shared/http.ts` (fail envelope), `_shared/notes/note-lifecycle.ts` (note status machine), `_shared/service-role.ts` (service client + cron secret). Fixes: reject no longer reports `ok` after losing a race; approve rejects a bad `due_at` with 400; DB reasons containing `503` keep their machine code; `dispatch-reminders` / `purge-note-audio` pass `deno check`; `openai-spike` gated by `ENABLE_DEBUG_FUNCTIONS`. Why: [17_DECISIONS.md](./17_DECISIONS.md) (2026-10-23). Terms: [25_GLOSSARY.md](./25_GLOSSARY.md).
+
+**Ops:** No migration. Redeploy all Edge functions except `health`. Do not set `ENABLE_DEBUG_FUNCTIONS` on hosted except briefly for a probe.
+
 ### Physical device smoke (Phase 7)
 - [ ] Sign in / session restore on device
 - [ ] Record ≤60s note → transcript → suggestions → approve → task appears after restart
@@ -83,7 +88,8 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 2. Schedule `dispatch-reminders` every minute with header `x-cron-secret: <CRON_SECRET>`
 3. Apply `20261022160000_audio_purge_any_status`, redeploy `purge-note-audio` and `extract-note`, schedule the purge hourly with the same `x-cron-secret` if it is not already scheduled
 4. Apply `20261022200000_count_ai_usage_invoker`. `20261022180000` is already applied and does not raise. No Edge function redeploy
-5. Re-check Google Gemini + Supabase terms before public launch
+5. Redeploy all Edge functions except `health` for the 2026-10-23 shared-module refactor (no migration)
+6. Re-check Google Gemini + Supabase terms before public launch
 
 ---
 
@@ -110,14 +116,15 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 ## AI / Edge
 | Function | Notes |
 |---|---|
-| `process-note` | STT + extract + **rate limit** + **ai_usage_events** |
+| `process-note` | STT only + **rate limit** + **ai_usage_events**; leaves note `extracting` |
+| `extract-note` | Suggestions + title/category → `review_ready`; stale reclaim; re-extract after audio purge |
 | `note-audio` | Upload/download by noteId |
 | `approve-suggestion` / `reject-suggestion` | Review path |
 | `register-push-token` | Upsert Expo token |
 | `dispatch-reminders` | Cron; claim → Expo push → delivery ledger |
 | `purge-note-audio` | Cron; delete `note-audio` files ≥3 days old (any status) plus unreferenced orphans; keep the note row |
 | `delete-note` / `delete-account` | Storage cleanup + DB wipe / auth delete |
-| `openai-spike` / `health` | Debug (spike slug historical; probes Gemini) |
+| `openai-spike` / `health` | Debug (spike slug historical; probes Gemini). `openai-spike` 404s unless `ENABLE_DEBUG_FUNCTIONS=true` |
 
 ## Deployed backend
 | Item | Status |
@@ -127,25 +134,27 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | `20261022160000_audio_purge_any_status` | **In repo only.** Not applied by this change |
 | `20261022180000_count_ai_usage_ownership` | Applied. Does not raise (definer owner exemption). Do not edit |
 | `20261022200000_count_ai_usage_invoker` | **In repo only.** Not applied by this change. No function redeploy |
-| Edge functions above | ACTIVE except `purge-note-audio`, which is not deployed yet |
+| Edge functions above | ACTIVE except `purge-note-audio`, which is not deployed yet. Hosted code predates the 2026-10-23 shared-module refactor |
 | Marketing static site | Vercel ← `LandingPage/` (see Marketing deploy above) |
 
 ## Logging
-See [LOGGING_COMBINED.md](./LOGGING_COMBINED.md).
+See [16_LOGGING_COMBINED.md](./16_LOGGING_COMBINED.md).
 
 ## Tests
 | Command | Last result |
 |---|---|
-| `npm run typecheck` | Two pre-existing errors remain: `global.css` side-effect import, `note-card` `backgroundImage`. This change added none |
-| `npm test` | 200 passed (2026-10-22). Includes a Postgres role test: the applied definer function returns B’s count to A; the invoker function raises `42501`. No `lint` script |
+| `npm run typecheck` | Clean (2026-10-23). Do not run `npm audit fix --force`: it jumps to Expo 58 / Tailwind 4, which breaks NativeWind (v3 only) and typecheck |
+| `npm test` | 241 passed, 2 skipped (2026-10-23). `test/rls/count-ai-usage-today.test.ts` needs Linux `sudo -u postgres psql`; it fails on Windows |
+| `npm run lint` | Clean (2026-10-23) |
+| `deno check` (per function, `npx deno@2 check --no-lock index.ts`) | All 12 functions pass (2026-10-23) |
 
 **Policy:** Unit tests under `test/` (`vitest` include `test/**/*.test.ts`). Behavior tests for pure helpers (greeting/display name, due presets, capture timer, live-dictation concat, dueLabel, etc.).
 
 ## Next slice
-**Saydo workspace UI (planner Steps 1–13) shipped in Expo. Marketing landing shipped on Vercel** (waitlist wired). Remaining work is mostly **manual / ops** — see **[LEFTOVER.md](./18_LEFTOVER.md)** §YOU DO THESE (secrets, cron, device smoke, RLS two-user) and §E marketing deploy follow-ups. Optional later: custom domain, invite mail, custom reminder datetime picker.
+**Saydo workspace UI (planner Steps 1–13) shipped in Expo. Marketing landing shipped on Vercel** (waitlist wired). Remaining work is mostly **manual / ops** — see **[18_LEFTOVER.md](./18_LEFTOVER.md)** §YOU DO THESE (secrets, cron, device smoke, RLS two-user) and §E marketing deploy follow-ups. Optional later: custom domain, invite mail, custom reminder datetime picker.
 
 ## Locked decisions
-See [DECISIONS.md](./DECISIONS.md).
+See [17_DECISIONS.md](./17_DECISIONS.md).
 
 ## Blockers
 None for code exit. Live reminders need `CRON_SECRET` + cron schedule; live AI needs `GOOGLE_API_KEY` Edge secret.
