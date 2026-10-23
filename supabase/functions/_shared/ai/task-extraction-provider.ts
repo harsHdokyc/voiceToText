@@ -60,7 +60,7 @@ const EXTRACTION_SYSTEM = [
   "  · idea — park a thought / concept (\"what if we priced by seat\")",
   "  · question — open question needing an answer (\"should we hire a designer?\")",
   "  · follow_up — continue/check back on something already in motion (\"check with Priya on the contract\")",
-  "- due_at: ISO-8601 with the speaker's UTC offset (e.g. 2026-10-24T17:00:00+05:30) only when a concrete date/time is clear; resolve relative phrases (\"tomorrow at 5\", \"Friday\") against the speaker's local time given with the transcript; else null (keep vague phrases in source_quote).",
+  "- due_at: ISO-8601 with the speaker's UTC offset from Speaker's local time (e.g. 2026-10-24T17:00:00+05:30) only when a concrete date/time is clear; resolve relative phrases (\"tomorrow at 5\", \"Friday\") against that local time; else null (keep vague phrases in source_quote). NEVER use Z or +00:00 for a spoken local clock — that offset must match the speaker's zone.",
   "  · Relative days (today, tonight, tomorrow, weekday names) ALWAYS come from the speaker's local time, even if the transcript claims a different date for \"today\" (speech-to-text often garbles spoken dates).",
   "  · A clock time without a day (\"meeting at 2 pm\") belongs to the day the speaker is talking about; never drop the time when one is spoken.",
   "- priority: only when urgency is explicit; else null.",

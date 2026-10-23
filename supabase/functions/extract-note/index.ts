@@ -31,7 +31,11 @@ export default {
       return r.fail(401, "unauthorized", "Missing user claims");
     }
 
-    const body = (await req.json().catch(() => ({}))) as { noteId?: string };
+    const body = (await req.json().catch(() => ({}))) as {
+      noteId?: string;
+      /** Device IANA zone; preferred over profile when the sync race loses. */
+      timeZone?: string;
+    };
     const noteId = body.noteId?.trim();
     if (!noteId) {
       return r.fail(400, "note_id_required", "Body.noteId missing");
@@ -135,7 +139,10 @@ export default {
         .select("timezone")
         .eq("id", userId)
         .maybeSingle();
-      const timeZone = resolveTimeZone(profile?.timezone);
+      // Device zone from the client wins when profile sync has not landed yet.
+      const timeZone = resolveTimeZone(
+        body.timeZone?.trim() || profile?.timezone,
+      );
 
       const extractionResult = await extractTasks({
         transcript: transcriptText,
@@ -190,6 +197,7 @@ export default {
       edgeLog("info", SCOPE, {
         event: "ok",
         noteId,
+        timeZone,
         status: final.status,
         extractionProvider: extractionResult.provider,
         extractionModel: extractionResult.model,

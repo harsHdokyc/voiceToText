@@ -44,21 +44,26 @@ export function localIso(ms: number, timeZone: string): string {
 }
 
 const HAS_OFFSET = /(Z|[+-]\d{2}:?\d{2})$/i;
+/** Models often stamp a local wall clock with Z / +00:00; those are not real UTC. */
+const UTC_DESIGNATOR = /(Z|[+-]00:?00)$/i;
 const NAIVE =
   /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?)?$/;
 
 /**
- * Model `due_at` → UTC ISO. Explicit offset/Z is trusted; a naive
- * date/time is the user's wall clock in `timeZone`. Anything else → null.
+ * Model `due_at` → UTC ISO. A non-zero offset is trusted. Z / ±00:00 and
+ * naive date/times are the user's wall clock in `timeZone`. Anything else → null.
  */
 export function parseDueAt(
   raw: string | null | undefined,
   timeZone: string,
 ): string | null {
-  const s = raw?.trim();
+  let s = raw?.trim();
   if (!s) return null;
 
-  if (HAS_OFFSET.test(s)) {
+  // Strip UTC designators so "2pm" stored as …T14:00:00Z still means 14:00 local.
+  if (UTC_DESIGNATOR.test(s)) {
+    s = s.replace(UTC_DESIGNATOR, "");
+  } else if (HAS_OFFSET.test(s)) {
     const ms = Date.parse(s);
     return Number.isNaN(ms) ? null : new Date(ms).toISOString();
   }

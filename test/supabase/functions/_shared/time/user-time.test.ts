@@ -51,12 +51,22 @@ describe('localIso', () => {
 });
 
 describe('parseDueAt', () => {
-  it('trusts explicit offsets and Z regardless of user zone', () => {
+  it('trusts a non-zero offset regardless of user zone', () => {
     expect(parseDueAt('2026-10-24T17:00:00+05:30', 'America/New_York')).toBe(
       '2026-10-24T11:30:00.000Z',
     );
-    expect(parseDueAt('2024-12-31T23:59:59.000Z', 'Asia/Kolkata')).toBe(
-      '2024-12-31T23:59:59.000Z',
+  });
+
+  it('reads Z / +00:00 as the user wall clock (models stamp local with Z)', () => {
+    // Spoken "2 pm" in India wrongly emitted as …T14:00:00Z → must become 08:30Z.
+    expect(parseDueAt('2026-07-24T14:00:00Z', 'Asia/Kolkata')).toBe(
+      '2026-07-24T08:30:00.000Z',
+    );
+    expect(parseDueAt('2026-07-24T14:00:00+00:00', 'Asia/Calcutta')).toBe(
+      '2026-07-24T08:30:00.000Z',
+    );
+    expect(parseDueAt('2026-07-24T14:00:00.000Z', 'UTC')).toBe(
+      '2026-07-24T14:00:00.000Z',
     );
   });
 

@@ -25,30 +25,30 @@ export default function TasksScreen() {
 
   return (
     <WorkspacePage>
-      <View className="flex-row flex-wrap items-end justify-between gap-4">
-        <View className="min-w-0 gap-2">
-          <Eyebrow>The things you chose</Eyebrow>
-          <Text className="font-display text-4xl text-ink">
-            Make <Text className="font-sans-italic text-cobalt">progress.</Text>
-          </Text>
-        </View>
-        <Button variant="cta" size="lg" onPress={actions.startCreate}>
-          <Ionicons name="add" size={18} color={colors.card} />
-          <Text className="font-sans-medium text-[15px] text-card">New task</Text>
-        </Button>
+      <View className="min-w-0 gap-2">
+        <Eyebrow>The things you chose</Eyebrow>
+        <Text className="font-display text-4xl text-ink">
+          Make <Text className="font-sans-italic text-cobalt">progress.</Text>
+        </Text>
       </View>
 
-      <View className="flex-row flex-wrap gap-2">
-        {TASK_LIST_FILTERS.map((f) => (
-          <Button
-            key={f}
-            variant={filter === f ? 'ink' : 'quiet'}
-            size="sm"
-            onPress={() => setFilter(f)}
-          >
-            {f}
-          </Button>
-        ))}
+      <View className="flex-row flex-wrap items-center justify-between gap-3">
+        <View className="min-w-0 flex-row flex-wrap gap-2">
+          {TASK_LIST_FILTERS.map((f) => (
+            <Button
+              key={f}
+              variant={filter === f ? 'ink' : 'quiet'}
+              size="sm"
+              onPress={() => setFilter(f)}
+            >
+              {f}
+            </Button>
+          ))}
+        </View>
+        <Button variant="cta" size="sm" onPress={actions.startCreate}>
+          <Ionicons name="add" size={16} color={colors.card} />
+          <Text className="font-sans-medium text-[14px] text-card">New task</Text>
+        </Button>
       </View>
 
       {tasks.isLoading ? (

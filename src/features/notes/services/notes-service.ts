@@ -20,6 +20,7 @@ import {
   extensionForMime,
   mimeFromUri,
 } from '@/features/recording/services/recording-format';
+import { deviceTimeZone } from '@/features/settings/services/time-zone';
 import { ApiError, describeError } from '@/lib/api-error';
 import { invokeEdge } from '@/lib/invoke-edge';
 import { logger } from '@/lib/logger';
@@ -227,7 +228,10 @@ async function requestTranscription(noteId: string) {
     // Step 2: Extract after transcription-only process-note (`extracting` + flag).
     if (body.extractionSkipped && body.status === 'extracting') {
       try {
-        const extracted = await invokeEdge<ExtractNoteResponse>('extract-note', 'extract_note', { noteId });
+        const extracted = await invokeEdge<ExtractNoteResponse>('extract-note', 'extract_note', {
+          noteId,
+          timeZone: deviceTimeZone() ?? undefined,
+        });
         trackProductEvent('extraction_succeeded', { noteId });
         return { ...body, ...extracted };
       } catch (e) {
@@ -300,7 +304,10 @@ export async function retryTranscription(note: NoteRow) {
       }
       let current = note;
       if (plan === 'extract') {
-        return invokeEdge<ExtractNoteResponse>('extract-note', 'extract_retry', { noteId: note.id });
+        return invokeEdge<ExtractNoteResponse>('extract-note', 'extract_retry', {
+          noteId: note.id,
+          timeZone: deviceTimeZone() ?? undefined,
+        });
       }
       // Transcription failures re-queue for a full pass
       if (note.status === 'transcription_failed') {

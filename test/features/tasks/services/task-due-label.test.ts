@@ -40,6 +40,27 @@ describe('dueLabel', () => {
       /^Today · 4:00\spm$/i,
     );
   });
+
+  it('does not mark a later time today as overdue before that clock time', () => {
+    vi.useFakeTimers();
+    // 00:36 local on Oct 24 — afternoon dues must still read Today, not Overdue.
+    vi.setSystemTime(new Date(2026, 9, 24, 0, 36));
+    expect(dueLabel(new Date(2026, 9, 24, 14).toISOString())).toMatch(
+      /^Today · 2:00\spm$/i,
+    );
+    expect(dueLabel(new Date(2026, 9, 24, 23).toISOString())).toMatch(
+      /^Today · 11:00\spm$/i,
+    );
+  });
+
+  it('marks a past calendar day overdue even when the clock time is later today', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 24, 0, 36));
+    // July 24 2pm local is months ago — Overdue is correct (wrong month is an extract bug).
+    expect(dueLabel(new Date(2026, 6, 24, 14).toISOString())).toMatch(
+      /^Overdue · (Jul 24|24 Jul) · 2:00\spm$/i,
+    );
+  });
 });
 
 describe('isOverdueDueLabel', () => {
