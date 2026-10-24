@@ -21,6 +21,7 @@
     "test:watch": "vitest",
     "brand:render": "node scripts/render-saydo-mark.mjs"
   },
+  
   "dependencies": {
     "@expo-google-fonts/geist": "^0.4.2",
     "@expo-google-fonts/geist-mono": "^0.4.3",
