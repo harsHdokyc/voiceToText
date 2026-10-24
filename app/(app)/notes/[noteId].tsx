@@ -27,6 +27,7 @@ import {
   displayTranscript,
   isNoteAudioPurged,
   isNoteProcessing,
+  isQuotaBlocked,
   noteRefetchIntervalMs,
   noteStatusLabel,
   showProcessingRetry,
@@ -61,7 +62,11 @@ export default function NoteDetailScreen() {
     queryKey: ['notes', noteId],
     queryFn: () => getNote(noteId),
     enabled: Boolean(noteId),
-    refetchInterval: (query) => noteRefetchIntervalMs(query.state.data?.status),
+    refetchInterval: (query) =>
+      noteRefetchIntervalMs(
+        query.state.data?.status,
+        query.state.data?.last_error_code,
+      ),
   });
 
   const suggestions = useQuery({
@@ -104,7 +109,7 @@ export default function NoteDetailScreen() {
 
   const row = note.data;
   const transcript = displayTranscript(row);
-  const processing = isNoteProcessing(row.status);
+  const processing = isNoteProcessing(row.status, row.last_error_code);
   const noteSuggestions = suggestions.data ?? [];
   const taskById = new Map((noteTasks.data ?? []).map((t) => [t.id, t]));
   const displayTitle = row.title?.trim() || 'A new thought';
@@ -138,8 +143,14 @@ export default function NoteDetailScreen() {
       </Text>
       {row.status !== 'review_ready' && !processing ? (
         <Text className="mt-2 font-sans text-[13px] text-stone">
-          {noteStatusLabel(row.status)}
-          {row.last_error_code ? ` · ${row.last_error_code}` : ''}
+          {isQuotaBlocked(row.last_error_code)
+            ? errorMessageForUi(
+                { code: row.last_error_code, message: row.last_error_code },
+                noteStatusLabel(row.status),
+              )
+            : `${noteStatusLabel(row.status)}${
+                row.last_error_code ? ` · ${row.last_error_code}` : ''
+              }`}
         </Text>
       ) : null}
 

@@ -140,7 +140,12 @@ describe('count_ai_usage_today ownership', () => {
       resolve(root, 'supabase/functions/process-note/index.ts'),
       'utf8',
     );
-    expect(src).toContain('const DAILY_PROCESS_NOTE_LIMIT = 40');
+    const quota = readFileSync(
+      resolve(root, 'supabase/functions/_shared/ai/process-note-quota.ts'),
+      'utf8',
+    );
+    expect(quota).toContain('export const DAILY_PROCESS_NOTE_LIMIT = 40');
+    expect(src).toContain('decideProcessNoteQuota');
     expect(src).toContain('ctx.supabase.rpc');
     expect(src).toContain('"count_ai_usage_today"');
     expect(src).toContain('p_user_id: userId');

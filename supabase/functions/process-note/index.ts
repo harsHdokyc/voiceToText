@@ -1,6 +1,10 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
 
+import {
+  DAILY_PROCESS_NOTE_LIMIT,
+  decideProcessNoteQuota,
+} from "../_shared/ai/process-note-quota.ts";
 import { describeProcessError } from "../_shared/ai/provider-utils.ts";
 import { transcribeAudio } from "../_shared/ai/transcription-provider.ts";
 import { edgeRequest } from "../_shared/http.ts";
@@ -11,8 +15,6 @@ import {
 } from "../_shared/notes/note-lifecycle.ts";
 
 const SCOPE = "edge.process-note";
-/** Phase 7: daily process-note cap per user (content-free quota). */
-const DAILY_PROCESS_NOTE_LIMIT = 40;
 
 /**
  * Transcription-only (free-tier wall-clock). Client chains `extract-note` next.
@@ -93,23 +95,31 @@ export default {
       "count_ai_usage_today",
       { p_user_id: userId, p_kind: "process_note" },
     );
-    if (usageError) {
-      edgeLog("warn", SCOPE, {
-        event: "usage_count_failed",
-        code: "usage_count_failed",
-        reason: usageError.message.slice(0, 200),
-        noteId,
-      });
-    } else if (
-      typeof usageCount === "number" &&
-      usageCount >= DAILY_PROCESS_NOTE_LIMIT
-    ) {
-      return r.fail(
-        429,
-        "rate_limited",
-        `Daily process-note limit ${DAILY_PROCESS_NOTE_LIMIT} reached`,
-        { noteId, usageCount },
-      );
+    const quota = decideProcessNoteQuota(
+      usageCount as number | null,
+      usageError?.message ?? null,
+    );
+    if (!quota.ok) {
+      // Leave status as queued/transcription_failed so retry works tomorrow;
+      // stamp the code so the app stops polling as if work is in flight.
+      await ctx.supabase
+        .from("notes")
+        .update({
+          last_error_code: quota.code,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", noteId)
+        .eq("user_id", userId);
+
+      if (quota.code === "rate_limited") {
+        return r.fail(
+          429,
+          "rate_limited",
+          `Daily process-note limit ${DAILY_PROCESS_NOTE_LIMIT} reached`,
+          { noteId, usageCount: quota.usageCount },
+        );
+      }
+      return r.fail(503, "usage_count_failed", quota.reason, { noteId });
     }
 
     const note = noteLifecycle(ctx.supabase, noteId, userId);

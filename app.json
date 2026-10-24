@@ -17,6 +17,7 @@
       "bundleIdentifier": "com.fanggore.voicetowork"
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "backgroundColor": "#dfff5a",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

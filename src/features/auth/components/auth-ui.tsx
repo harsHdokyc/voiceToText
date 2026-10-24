@@ -1,9 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, type Href } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -11,6 +14,7 @@ import {
   View,
   type TextInputProps,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SaydoMark } from '@/components/saydo-mark';
 import { Eyebrow, TextField, VoiceRibbon } from '@/components/ui';
@@ -34,7 +38,22 @@ export function AuthScreen({
   tabs?: ReactNode;
 }) {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const wide = width >= WIDE;
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const showEvt =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvt, () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener(hideEvt, () => setKeyboardOpen(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
 
   return (
     <View
@@ -44,21 +63,45 @@ export function AuthScreen({
       )}
     >
       {wide ? <AuthBrandPanel /> : null}
-      <ScrollView
+      {/*
+        justify-center + flexGrow made the form "fit" the screen with nothing to
+        scroll, so the keyboard covered the password field. When the keyboard is
+        open we top-align and add bottom inset so the field can scroll into view.
+        Android uses app.json softwareKeyboardLayoutMode=resize; iOS uses KAV.
+      */}
+      <KeyboardAvoidingView
         className="flex-1"
-        contentContainerClassName="w-full max-w-md flex-grow justify-center gap-3 self-center px-6 py-6"
-        keyboardShouldPersistTaps="handled"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={Platform.OS === 'ios'}
       >
-        <Eyebrow color={colors.cobalt}>{eyebrow}</Eyebrow>
-        <Text className="mb-1 font-display text-[40px] leading-[46px] text-ink">
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text className="mb-2 font-sans text-[15px] text-stone">{subtitle}</Text>
-        ) : null}
-        {tabs}
-        <View className="w-full gap-3">{children}</View>
-      </ScrollView>
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="w-full max-w-md gap-3 self-center px-6"
+          contentContainerStyle={{
+            flexGrow: 1,
+            justifyContent: keyboardOpen ? 'flex-start' : 'center',
+            paddingTop: keyboardOpen
+              ? Math.max(insets.top, 12) + 8
+              : 24,
+            paddingBottom: (keyboardOpen ? 48 : 24) + insets.bottom,
+          }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        >
+          <Eyebrow color={colors.cobalt}>{eyebrow}</Eyebrow>
+          <Text className="mb-1 font-display text-[40px] leading-[46px] text-ink">
+            {title}
+          </Text>
+          {subtitle ? (
+            <Text className="mb-2 font-sans text-[15px] text-stone">
+              {subtitle}
+            </Text>
+          ) : null}
+          {tabs}
+          <View className="w-full gap-3">{children}</View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

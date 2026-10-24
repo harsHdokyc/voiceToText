@@ -177,7 +177,7 @@ export function NoteCard({
         </View>
         <View className="flex-1 items-center border-r-[3px] border-ink px-1.5 py-3">
           <Text className={statValueClass} numberOfLines={1}>
-            {noteStatusShort(note.status)}
+            {noteStatusShort(note.status, note.last_error_code)}
           </Text>
           <Text className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-[1.2px] text-stone">
             State

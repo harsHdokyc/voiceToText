@@ -22,10 +22,11 @@ import {
   mimeFromUri,
 } from '@/features/recording/services/recording-format';
 import { deviceTimeZone } from '@/features/settings/services/time-zone';
-import { ApiError, describeError } from '@/lib/api-error';
+import { ApiError, describeError, errorMessageForUi } from '@/lib/api-error';
 import { invokeEdge } from '@/lib/invoke-edge';
 import { logger } from '@/lib/logger';
 import { trackProductEvent } from '@/lib/product-analytics';
+import { showToast } from '@/lib/toast';
 import { supabase } from '@/lib/supabase';
 import { withApiLog } from '@/lib/with-api-log';
 
@@ -349,6 +350,21 @@ export async function captureNote(params: {
   }
   // Audio is stored and the note is `queued`, which note detail can retry. Failing here would
   // keep the sheet open, and a second tap would create a duplicate note.
-  if (params.process && params.clip) await requestTranscription(note.id).catch(() => undefined);
+  if (params.process && params.clip) {
+    try {
+      await requestTranscription(note.id);
+    } catch (e) {
+      const { code, reason } = describeError(e);
+      logger.warn('api.notes.capture_process', {
+        event: 'fail',
+        noteId: note.id,
+        code,
+        reason,
+      });
+      if (code === 'rate_limited' || code === 'usage_count_failed') {
+        showToast(errorMessageForUi(e), { tone: 'destructive' });
+      }
+    }
+  }
   return note;
 }

@@ -135,6 +135,7 @@ Prefer these `code` values in DB `last_error_code`, JSON `error`, and logs `code
 | `task_status_transition_lost` | Complete/reopen matched no row |
 | `invalid_task_status_transition` | Illegal task status change |
 | `rate_limited` | Daily process-note quota reached |
+| `usage_count_failed` | `count_ai_usage_today` failed or returned no count (fail closed) |
 | `push_permission_denied` | Notification permission not granted |
 | `push_token_missing` | Expo token empty |
 | `push_register_failed` | register-push-token failed |

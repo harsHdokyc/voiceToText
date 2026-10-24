@@ -11,6 +11,7 @@ import {
     audioRetryUnavailableLabel,
     isNoteAudioPurged,
     isNoteProcessing,
+    isQuotaBlocked,
     isRetryableProcessing,
     noteRefetchIntervalMs,
     noteMatchesSearch,
@@ -33,6 +34,12 @@ describe('isNoteProcessing', () => {
   it('is false before the note has loaded', () => {
     expect(isNoteProcessing(undefined)).toBe(false);
   });
+
+  it('is false when queued but blocked by the daily AI quota', () => {
+    expect(isNoteProcessing('queued', 'rate_limited')).toBe(false);
+    expect(isNoteProcessing('queued', 'usage_count_failed')).toBe(false);
+    expect(isQuotaBlocked('rate_limited')).toBe(true);
+  });
 });
 
 describe('noteRefetchIntervalMs', () => {
@@ -41,6 +48,7 @@ describe('noteRefetchIntervalMs', () => {
     expect(noteRefetchIntervalMs('review_ready')).toBe(false);
     expect(noteRefetchIntervalMs('extraction_failed')).toBe(false);
     expect(noteRefetchIntervalMs(undefined)).toBe(false);
+    expect(noteRefetchIntervalMs('queued', 'rate_limited')).toBe(false);
   });
 });
 
@@ -283,6 +291,10 @@ describe('noteStatusShort', () => {
     expect(noteStatusShort('transcribing')).toBe('Live');
     expect(noteStatusShort('transcription_failed')).toBe('Fail');
     expect(noteStatusShort('draft')).toBe('Draft');
+  });
+
+  it('shows Limit when the daily quota blocked processing', () => {
+    expect(noteStatusShort('queued', 'rate_limited')).toBe('Limit');
   });
 });
 

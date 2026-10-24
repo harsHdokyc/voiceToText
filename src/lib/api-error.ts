@@ -75,6 +75,12 @@ export function errorMessageForUi(
   fallback = 'Something went wrong',
 ) {
   const { code, reason } = describeError(error);
+  if (code === 'rate_limited') {
+    return 'Daily AI limit reached. Try again tomorrow.';
+  }
+  if (code === 'usage_count_failed') {
+    return 'Could not check your daily AI limit. Try again in a moment.';
+  }
   if (code === 'unknown' && reason === 'Unknown error') return fallback;
   return reason;
 }

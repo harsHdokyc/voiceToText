@@ -37,8 +37,19 @@ export function assertNoteStatusTransition(from: NoteStatus, to: NoteStatus) {
   }
 }
 
+/** Quota / usage-count blocks — note stays queued but no worker is running. */
+export function isQuotaBlocked(lastErrorCode: string | null | undefined) {
+  return (
+    lastErrorCode === 'rate_limited' || lastErrorCode === 'usage_count_failed'
+  );
+}
+
 /** Server is still working on the note (upload → transcript → suggestions). */
-export function isNoteProcessing(status: NoteStatus | undefined) {
+export function isNoteProcessing(
+  status: NoteStatus | undefined,
+  lastErrorCode?: string | null,
+) {
+  if (isQuotaBlocked(lastErrorCode)) return false;
   return (
     status === 'uploading' ||
     status === 'queued' ||
@@ -48,8 +59,11 @@ export function isNoteProcessing(status: NoteStatus | undefined) {
 }
 
 /** Note detail polls every 2s while processing, otherwise not at all. */
-export function noteRefetchIntervalMs(status: NoteStatus | undefined) {
-  return isNoteProcessing(status) ? 2000 : false;
+export function noteRefetchIntervalMs(
+  status: NoteStatus | undefined,
+  lastErrorCode?: string | null,
+) {
+  return isNoteProcessing(status, lastErrorCode) ? 2000 : false;
 }
 
 /** Client retry button — failed or still-queued notes. */
@@ -121,7 +135,11 @@ export function noteStatusLabel(status: NoteStatus) {
 }
 
 /** Short card-stat label — fits a tight 3-up column. */
-export function noteStatusShort(status: NoteStatus) {
+export function noteStatusShort(
+  status: NoteStatus,
+  lastErrorCode?: string | null,
+) {
+  if (isQuotaBlocked(lastErrorCode)) return 'Limit';
   if (status === 'review_ready') return 'Ready';
   if (
     status === 'upload_failed' ||
@@ -130,7 +148,7 @@ export function noteStatusShort(status: NoteStatus) {
   ) {
     return 'Fail';
   }
-  if (isNoteProcessing(status)) return 'Live';
+  if (isNoteProcessing(status, lastErrorCode)) return 'Live';
   return 'Draft';
 }
 
