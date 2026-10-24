@@ -36,7 +36,7 @@ export default function TaskDetailScreen() {
 
   const cancelRemind = useMutation({
     mutationFn: (reminderId: string) => cancelReminder(reminderId),
-    onSuccess: () => invalidateWorkspace(queryClient),
+    onSuccess: () => invalidateWorkspace(queryClient, 'reminderChanged'),
   });
 
   if (task.isLoading) {

@@ -47,7 +47,7 @@ export default function OverviewScreen() {
 
   const { name } = useProfile();
   const notes = useQuery({
-    queryKey: ['notes', ''],
+    queryKey: ['notes'],
     queryFn: () => listNotes(),
   });
   const pending = usePendingSuggestions();
@@ -57,7 +57,7 @@ export default function OverviewScreen() {
 
   const removeNote = useMutation({
     mutationFn: (noteId: string) => deleteNote(noteId),
-    onSuccess: () => invalidateWorkspace(queryClient),
+    onSuccess: () => invalidateWorkspace(queryClient, 'noteDeleted'),
   });
   const actionError = removeNote.error ?? review.error ?? taskActions.error;
 

@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
 import { router, usePathname, type Href } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
@@ -28,7 +27,7 @@ import {
   workspaceSectionFromPath,
   type WorkspaceNavItem,
 } from '@/components/workspace-nav';
-import { countPendingSuggestions } from '@/features/notes/services/suggestions-service';
+import { usePendingSuggestions } from '@/features/notes/hooks/use-suggestion-review';
 import { useProfile } from '@/features/settings/hooks/use-profile';
 import { SaydoWordmark } from '@/components/saydo-mark';
 import { cn } from '@/lib/cn';
@@ -68,12 +67,9 @@ function WorkspaceShellInner({ children }: { children: ReactNode }) {
   const { name: display } = useProfile();
   const initial = display.charAt(0).toUpperCase();
 
-  const pending = useQuery({
-    queryKey: ['suggestions', 'pending-count'],
-    queryFn: countPendingSuggestions,
-    staleTime: 15_000,
-  });
-  const pendingCount = pending.data ?? 0;
+  // Same cache as Overview / Suggestions inbox — badge is just the list length.
+  const pending = usePendingSuggestions();
+  const pendingCount = pending.data?.length ?? 0;
   const reducedMotion = useReducedMotion();
   const routeIndex = workspaceNavIndex(section);
   // Ref tracks intent so route sync doesn't reverse an in-flight click tween.

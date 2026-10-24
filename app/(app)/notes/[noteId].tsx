@@ -81,7 +81,7 @@ export default function NoteDetailScreen() {
       if (!note.data) throw new Error('Note missing');
       await retryTranscription(note.data);
     },
-    onSuccess: () => invalidateWorkspace(queryClient),
+    onSuccess: () => invalidateWorkspace(queryClient, 'noteProcessing'),
   });
 
   if (note.isLoading) {

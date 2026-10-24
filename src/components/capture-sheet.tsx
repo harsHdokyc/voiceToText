@@ -219,7 +219,7 @@ function CaptureSheet({
         clip,
         process,
       });
-      void invalidateWorkspace(queryClient);
+      void invalidateWorkspace(queryClient, 'captureCompleted');
       onClose();
       router.push({
         pathname: '/(app)/notes/[noteId]',

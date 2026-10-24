@@ -2,15 +2,16 @@ import { proxyUploadNoteAudio } from '@/features/notes/services/note-audio-proxy
 import {
   DEFAULT_NOTE_CATEGORY,
   normalizeNoteCategory,
-  noteMatchesCategoryFilter,
   type NoteCategory,
-  type NoteCategoryFilter,
 } from '@/features/notes/services/note-category';
+import {
+  filterListedNotes,
+  type ListNotesParams,
+} from '@/features/notes/services/filter-listed-notes';
 import {
   assertAudioDurationSeconds,
   assertNoteStatusTransition,
   AUDIO_RETRY_UNAVAILABLE_LABEL,
-  noteMatchesSearch,
   retryProcessingPlan,
   showProcessingRetry,
   type NoteStatus,
@@ -59,18 +60,15 @@ function asNoteRow(row: NoteRow): NoteRow {
   };
 }
 
-type ListNotesParams = {
-  query?: string;
-  category?: NoteCategoryFilter;
-};
+export type { ListNotesParams };
+export { filterListedNotes };
 
+/** Always loads the full note list; pass params only when filtering outside React Query. */
 export async function listNotes(params: ListNotesParams = {}) {
-  const search = params.query?.trim();
-
   return withApiLog(
     'api.notes.list',
     {
-      hasQuery: !!search,
+      hasQuery: !!params.query?.trim(),
       category: params.category ?? 'All notes',
     },
     async () => {
@@ -79,14 +77,8 @@ export async function listNotes(params: ListNotesParams = {}) {
         .select(NOTE_PUBLIC_SELECT)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      let rows = ((data ?? []) as NoteRow[]).map(asNoteRow);
-      if (params.category && params.category !== 'All notes') {
-        rows = rows.filter((row) =>
-          noteMatchesCategoryFilter(row, params.category!),
-        );
-      }
-      if (!search) return rows;
-      return rows.filter((row) => noteMatchesSearch(row, search));
+      const rows = ((data ?? []) as NoteRow[]).map(asNoteRow);
+      return filterListedNotes(rows, params);
     },
   );
 }

@@ -11,6 +11,7 @@ import {
 } from '@/features/notes/services/suggestions-service';
 import { errorMessageForUi } from '@/lib/api-error';
 import { invalidateWorkspace } from '@/lib/query-client';
+import { showToast } from '@/lib/toast';
 import { SUGGESTION_ROW_MUTATION_KEY, usePendingRowIds } from '@/lib/use-pending-row-ids';
 
 /** One cache entry for every screen that lists pending suggestions. */
@@ -25,30 +26,56 @@ export function usePendingSuggestions() {
 export function useSuggestionReview() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<TaskSuggestion | null>(null);
-  const refresh = () => invalidateWorkspace(queryClient);
+  const refresh = () => invalidateWorkspace(queryClient, 'suggestionDecided');
 
   const approve = useMutation({
     mutationKey: SUGGESTION_ROW_MUTATION_KEY,
     mutationFn: (s: { id: string }) => approveSuggestion(s.id),
-    onSuccess: refresh,
+    onSuccess: () => {
+      showToast('Approved');
+      return refresh();
+    },
+    onError: (err) =>
+      showToast(errorMessageForUi(err, 'Approve failed'), {
+        tone: 'destructive',
+      }),
   });
   const dismiss = useMutation({
     mutationKey: SUGGESTION_ROW_MUTATION_KEY,
     mutationFn: (s: { id: string }) => rejectSuggestion(s.id),
-    onSuccess: refresh,
+    onSuccess: () => {
+      showToast('Dismissed');
+      return refresh();
+    },
+    onError: (err) =>
+      showToast(errorMessageForUi(err, 'Dismiss failed'), {
+        tone: 'destructive',
+      }),
   });
   const approveAll = useMutation({
     mutationFn: async (ids: string[]) => {
       for (const id of ids) await approveSuggestion(id);
     },
-    onSuccess: refresh,
+    onSuccess: () => {
+      showToast('Approved all');
+      return refresh();
+    },
+    onError: (err) =>
+      showToast(errorMessageForUi(err, 'Approve failed'), {
+        tone: 'destructive',
+      }),
   });
   const saveEdit = useMutation({
     mutationFn: approveSuggestionWithEdit,
     onSuccess: async () => {
       setEditing(null);
+      showToast('Approved');
       await refresh();
     },
+    onError: (err) =>
+      showToast(errorMessageForUi(err, 'Save failed'), {
+        tone: 'destructive',
+      }),
   });
   const busyIds = usePendingRowIds(SUGGESTION_ROW_MUTATION_KEY);
 

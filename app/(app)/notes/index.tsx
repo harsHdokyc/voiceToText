@@ -14,6 +14,7 @@ import {
   NOTE_CATEGORY_FILTERS,
   type NoteCategoryFilter,
 } from '@/features/notes/services/note-category';
+import { filterListedNotes } from '@/features/notes/services/filter-listed-notes';
 import { deleteNote, listNotes } from '@/features/notes/services/notes-service';
 import { errorMessageForUi } from '@/lib/api-error';
 import { invalidateWorkspace } from '@/lib/query-client';
@@ -29,13 +30,14 @@ export default function VoiceNotesScreen() {
     useState<NoteCategoryFilter>('All notes');
 
   const notes = useQuery({
-    queryKey: ['notes', query, category],
-    queryFn: () => listNotes({ query, category }),
+    queryKey: ['notes'],
+    queryFn: () => listNotes(),
+    select: (rows) => filterListedNotes(rows, { query, category }),
   });
 
   const removeNote = useMutation({
     mutationFn: (noteId: string) => deleteNote(noteId),
-    onSuccess: () => invalidateWorkspace(queryClient),
+    onSuccess: () => invalidateWorkspace(queryClient, 'noteDeleted'),
   });
 
   return (

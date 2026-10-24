@@ -12,6 +12,7 @@ Domain and code terms with one meaning across docs, code, and reviews. Add a ter
 | **Retention window** | 3 days after a note is recorded. The audio file is purged after it; the note, transcript, and tasks stay. Also the only window for retrying transcription. |
 | **Due** | `due_at` on a suggestion or task: one UTC instant. A **date-only due** is stored at 12:00 local and shows no time; a **timed due** shows its time and is overdue once that time passes. Helpers: `src/features/tasks/services/due-presets.ts`, label `task-due-label.ts`. |
 | **Daily cap** | 40 `process-note` runs per user per **local day** (`count_ai_usage_today`). |
+| **Toast** | Short in-app feedback banner (`showToast` / `ToastHost`). One message at a time; not a push notification. |
 
 ## Time
 | Term | Meaning |
