@@ -6,12 +6,14 @@ EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 ```
 
-Landing (`LandingPage/.env` locally; same names on **Vercel** project env — Root Directory `LandingPage`):
+Landing (`LandingPage/.env` locally; same names on **Vercel** project `voice-to-text` — Root Directory `LandingPage`):
 ```env
 VITE_SUPABASE_URL=
 VITE_SUPABASE_PUBLISHABLE_KEY=
-VITE_APP_URL=                      # optional; product/Expo web URL for Sign in
+VITE_APP_URL=https://getsaydo.vercel.app   # product Expo web (Sign in)
 ```
+
+Product Expo web on **Vercel** project `getsaydo` (repo root) uses the same `EXPO_PUBLIC_*` names as the client `.env` above.
 
 Edge / server secrets (Dashboard → Edge Functions → Secrets, or `supabase/functions/.env` locally):
 ```env
@@ -22,7 +24,7 @@ AI_CHAT_MODEL=gemini-3.8-flash
 ```
 Never prefix secrets with `EXPO_PUBLIC_` / never put `service_role` in Vite or Vercel. Don't commit filled `.env` files.
 
-Marketing deploy status: [20_STATUS.md](./20_STATUS.md), [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
+Deploy status (marketing + product web): [20_STATUS.md](./20_STATUS.md), [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
 
 ## Docker (web builds)
 `docker compose up --build -d` builds and serves the portal web export on http://localhost:3000 (`Dockerfile`) and the landing page on http://localhost:8080 (`LandingPage/Dockerfile`), both via nginx with SPA fallback. Build args are read from the root `.env`: `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`; the landing page falls back to those when `VITE_*` are unset, and `VITE_APP_URL` defaults to the portal URL. `.dockerignore` keeps every `.env*` out of the build context. Values are baked at build time, so rebuild after changing them. iOS/Android ship through EAS (`eas build`), not Docker.

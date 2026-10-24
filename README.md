@@ -138,7 +138,7 @@ Android and iOS are native apps, not containers: build them with `eas build` (se
 - **Validation**: Zod schemas
 
 ### Infrastructure
-- **Hosting**: Supabase (backend), Vercel (marketing site), EAS (iOS/Android builds)
+- **Hosting**: Supabase (backend); Vercel marketing https://saydooo.vercel.app/ + product web https://getsaydo.vercel.app/; EAS (iOS/Android builds)
 - **Containers**: Docker Compose for the portal web build + landing page (nginx)
 - **Push Notifications**: Expo Push Service
 - **Email**: Resend (transactional)

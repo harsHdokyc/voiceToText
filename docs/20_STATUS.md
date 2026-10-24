@@ -5,26 +5,37 @@ Last updated: 2026-10-24 (Phases 0–7 complete + audio retention + user time zo
 **Phases 0–7 complete** against plan exit criteria (see inventory below). Hosted backend: [voiceToWork](https://supabase.com/dashboard/project/ubqhyeicmgmdzethtids).
 **AI provider:** Google Gemini via LangChain + `@google/genai` (see [17_DECISIONS.md](./17_DECISIONS.md)).
 **Product UI:** Saydo workspace/dashboard (+ auth) from `ui/goals-in-motion-55` reference — see [22_ui-execution-planner.md](./22_ui-execution-planner.md) (Steps 1–13).
-**Marketing:** Vite app in `LandingPage/` on **Vercel** + `waitlist` on the same hosted project — see [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
+**Marketing:** Vite app in `LandingPage/` on **Vercel** (`saydooo.vercel.app`) + `waitlist` on the same hosted project — see [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md).
+**Product web:** Expo export on **Vercel** project `getsaydo` (`getsaydo.vercel.app`); landing Sign in → that URL via `VITE_APP_URL`.
 
 Living phase map: [13_IMPLEMENTATION_PLAN.md](./13_IMPLEMENTATION_PLAN.md). P0/P1/P2: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 
-## Marketing deploy (Vercel) — progress
+## Vercel deploy — progress
+
+### Marketing (`voice-to-text` → https://saydooo.vercel.app/)
 
 | Item | Status |
 |---|---|
 | Host | **Vercel** (GitHub `harsHdokyc/voiceToText`, branch `main`) |
 | Root Directory | `LandingPage` |
 | Build | `npm run build` (`prebuild` = `tsc -b`, then `vite build`) |
-| Backend | Same Supabase project; `public.waitlist` live (RLS insert-only; rows present on hosted) |
-| Env at build | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (optional `VITE_APP_URL` for Sign-in links) |
-| Green deploy | Yes — e.g. `f3c3219` (PR #2 merge) built + deployed |
-| Lenis smooth scroll | On `main` (`b134cf4`); included once Vercel builds that commit or later |
-| Known fail (fixed) | `e9b19b1` — `tsc` typechecked `vite.config.ts` → missing `node:url` types. Reverted include in `3dbf7e9` |
-| Harmless warning | Vite may log `Cannot find base config file "expo/tsconfig.base"` (parent Expo `tsconfig`); does not fail the build |
-| Production URL | https://saydooo.vercel.app/ |
+| Backend | Same Supabase project; `public.waitlist` live (RLS insert-only) |
+| Env at build | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_APP_URL=https://getsaydo.vercel.app` |
+| Green deploy | Yes |
 | SPA refresh 404 | Fixed via `LandingPage/vercel.json` rewrite → `index.html` |
-| Custom domain | Optional; Vercel URL above until set |
+| Custom domain | Optional |
+
+### Product Expo web (`getsaydo` → https://getsaydo.vercel.app/)
+
+| Item | Status |
+|---|---|
+| Host | **Vercel** (same repo / `main`; Root Directory = repo root) |
+| Build | `npx expo export --platform web` → `dist` |
+| Env at build | `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` |
+| SPA refresh | Root `vercel.json` rewrites except `/_expo/` and `/assets/` |
+| Deployment Protection | Disabled on production (public Auth) |
+| Legacy alias | `saydo-app.vercel.app` (prefer `getsaydo`) |
+| Auth URLs | Add `https://getsaydo.vercel.app` in Supabase Auth URL config |
 
 Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING_ARCHITECTURE.md#deployment-vercel).
 

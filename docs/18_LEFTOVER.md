@@ -18,7 +18,7 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | A3 | Schedule `dispatch-reminders` ~every 1 min with header `x-cron-secret: <CRON_SECRET>` (Dashboard Cron or pg_cron + Vault) | [x] |
 | A4 | Set `ENABLE_DEBUG_FUNCTIONS=true` briefly, verify `openai-spike` → `config` → `chat`, unset it, then record a real note | [ ] |
 | A5 | **Rotate** any provider key that appeared in git; purge history or unblock after rotate so `git push` works | [ ] |
-| A6 | Confirm Auth email OTP templates on hosted Supabase | [ ] |
+| A6 | Fix Auth SMTP on hosted (signup 500). Auth logs: Gmail `535 BadCredentials` / “Username and Password not accepted”. Dashboard → Authentication → Emails → SMTP: use a **Google App Password** (not normal Gmail password), or switch to Resend SMTP. Then confirm OTP templates still use `{{ .Token }}` (8-digit). Retry sign-up | [ ] |
 | A7 | Re-read Google Gemini + Supabase terms before broader launch | [ ] |
 | A8 | `20261022140000_audio_retention` is applied. Do not edit that file | [x] |
 | A9 | Redeploy Edge `purge-note-audio` (`verify_jwt` off) and `extract-note` after A11. `note-audio` / `process-note` have no further change for this rule | [ ] |
@@ -50,15 +50,18 @@ Scope: [02_V1_SCOPE.md](./02_V1_SCOPE.md).
 | C5 | Production/preview build + secret scan clean | [ ] |
 | C6 | Optional: wire local Supabase RLS suite into CI | [ ] |
 
-### E. Marketing deploy follow-ups (Vercel)
+### E. Vercel deploy follow-ups (marketing + product web)
 
 | # | Item | Done? |
 |---|---|---|
-| E1 | Confirm Vercel env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (Production + Preview) | [ ] |
-| E2 | Smoke waitlist on production URL (new email + duplicate) | [ ] |
-| E3 | Set `VITE_APP_URL` to real product web URL | [ ] |
-| E4 | Optional custom domain on Vercel | [ ] |
-| E5 | Keep Root Directory = `LandingPage`; do not re-include `vite.config.ts` in `tsc` without `@types/node` | [ ] (process) |
+| E1 | Confirm landing env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (Production + Preview) | [x] |
+| E2 | Smoke waitlist on https://saydooo.vercel.app/early-access (new email + duplicate) | [ ] |
+| E3 | Set `VITE_APP_URL=https://getsaydo.vercel.app` and redeploy landing | [x] |
+| E4 | Optional custom domains (`saydo.com` / `app.saydo.com`) | [ ] |
+| E5 | Keep landing Root Directory = `LandingPage`; do not re-include `vite.config.ts` in `tsc` without `@types/node` | [x] (process) |
+| E6 | Expo web project `getsaydo` live; SPA rewrite excludes `/_expo/` | [x] |
+| E7 | Supabase Auth allowlist includes `https://getsaydo.vercel.app` | [ ] |
+| E8 | Smoke product sign-in / sign-up on https://getsaydo.vercel.app/sign-in | [ ] |
 
 ### D. Optional / later (not required for private beta)
 

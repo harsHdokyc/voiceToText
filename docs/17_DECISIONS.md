@@ -99,6 +99,17 @@ Format: date · decision · context · alternatives considered · consequence.
 - **Consequence:** Hosted Edge secrets must **replace** any `OPENAI_*` values with `GOOGLE_API_KEY` (+ optional model overrides). Spike slug `openai-spike` remains historical. Supersedes “AI provider = official OpenAI” defaults for new deploys.
 - **Why STT is not LangChain:** `gemini-3.5-transcribe` is Interactions-API STT; LangChain’s Google chat integration covers chat models, not this unary transcribe path.
 
+## 2026-10-24 · Product Expo web on Vercel (`getsaydo`) + landing Sign in URL
+- **Context:** Landing Sign in fell back to `/early-access` without `VITE_APP_URL`. Product needed a public web host separate from the Vite marketing site.
+- **Alternatives:** Single Vercel project with path prefixes; Expo web under `LandingPage`; EAS Hosting only; custom domain immediately.
+- **Decision:**
+  - Second Vercel project **`getsaydo`** on the same repo, Root Directory = **repo root**, build `npx expo export --platform web`, output `dist`.
+  - Production URL https://getsaydo.vercel.app/ (legacy alias `saydo-app.vercel.app`). `saydo.vercel.app` was unavailable.
+  - Root `vercel.json` SPA rewrite **must exclude** `/_expo/` (and `/assets/`) so JS bundles are not rewritten to HTML.
+  - Landing project keeps Root Directory `LandingPage`; set `VITE_APP_URL=https://getsaydo.vercel.app` and redeploy so Sign in leaves the marketing site.
+  - Turn off Vercel Deployment Protection on product production so Auth is public.
+- **Consequence:** Two Vercel projects, one repo. Documented in [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md) / [20_STATUS.md](./20_STATUS.md). Add product origin to Supabase Auth redirect URLs. Custom `app.saydo.com` later.
+
 ## 2026-10-19 · Marketing host = Vercel, Root Directory `LandingPage`
 - **Context:** Landing Vite app lives in a monorepo next to Expo. Building from repo root pulls Expo `tsconfig` / wrong install graph; Vercel needs an explicit app root.
 - **Alternatives:** Netlify; Expo web for marketing; subdirectory rewrite without Root Directory.
@@ -106,7 +117,7 @@ Format: date · decision · context · alternatives considered · consequence.
   - Host static marketing on **Vercel** with **Root Directory = `LandingPage`**, production branch `main`.
   - Inject `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (and optional `VITE_APP_URL`) as Vercel env at build time.
   - Keep `tsc -b` scoped to `LandingPage/src` only — do not include `vite.config.ts` in that project unless `@types/node` is added.
-- **Consequence:** Deploy progress and ops checklist live in [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md) and [20_STATUS.md](./20_STATUS.md). Never put `service_role` in Vercel.
+- **Consequence:** Deploy progress and ops checklist live in [21_LANDING_ARCHITECTURE.md](./21_LANDING_ARCHITECTURE.md) and [20_STATUS.md](./20_STATUS.md). Never put `service_role` in Vercel. Superseded in part by 2026-10-24 for product web hosting / required `VITE_APP_URL`.
 
 ## 2026-10-18 · Marketing landing = Vite app + shared Supabase waitlist
 - **Context:** Marketing site was deferred from Expo; `LandingPage/` needed a real waitlist without a second backend. Reference UI already inserts into `waitlist` (table was missing on hosted).

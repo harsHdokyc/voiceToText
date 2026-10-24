@@ -11,7 +11,9 @@ npm install
 npm run dev
 ```
 
-Uses the same Supabase project as the Expo app. See `docs/LANDING_ARCHITECTURE.md`.
+Uses the same Supabase project as the Expo app. Deploy docs: [`docs/21_LANDING_ARCHITECTURE.md`](../docs/21_LANDING_ARCHITECTURE.md).
+
+Production: https://saydooo.vercel.app/ (Vercel project `voice-to-text`, Root Directory `LandingPage`). Set `VITE_APP_URL=https://getsaydo.vercel.app` so Sign in opens the product app.
 
 ## Scripts
 
