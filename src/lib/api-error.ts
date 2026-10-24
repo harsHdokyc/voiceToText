@@ -69,18 +69,15 @@ export function describeError(error: unknown): DescribedError {
   return { code: 'unknown', reason: 'Unknown error' };
 }
 
-/** Prefer API/Supabase reason for UI; keep authErrorMessage compatible. */
+/**
+ * Prefer the real API/Edge `reason` for UI (toast, inline errors).
+ * Logs keep `code` + `reason` via withApiLog — do not invent a second generic string here.
+ */
 export function errorMessageForUi(
   error: unknown,
   fallback = 'Something went wrong',
 ) {
-  const { code, reason } = describeError(error);
-  if (code === 'rate_limited') {
-    return 'Daily AI limit reached. Try again tomorrow.';
-  }
-  if (code === 'usage_count_failed') {
-    return 'Could not check your daily AI limit. Try again in a moment.';
-  }
-  if (code === 'unknown' && reason === 'Unknown error') return fallback;
+  const { reason } = describeError(error);
+  if (reason === 'Unknown error') return fallback;
   return reason;
 }

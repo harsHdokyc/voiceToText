@@ -27,7 +27,6 @@ import {
   displayTranscript,
   isNoteAudioPurged,
   isNoteProcessing,
-  isQuotaBlocked,
   noteRefetchIntervalMs,
   noteStatusLabel,
   showProcessingRetry,
@@ -143,14 +142,8 @@ export default function NoteDetailScreen() {
       </Text>
       {row.status !== 'review_ready' && !processing ? (
         <Text className="mt-2 font-sans text-[13px] text-stone">
-          {isQuotaBlocked(row.last_error_code)
-            ? errorMessageForUi(
-                { code: row.last_error_code, message: row.last_error_code },
-                noteStatusLabel(row.status),
-              )
-            : `${noteStatusLabel(row.status)}${
-                row.last_error_code ? ` · ${row.last_error_code}` : ''
-              }`}
+          {noteStatusLabel(row.status)}
+          {row.last_error_code ? ` · ${row.last_error_code}` : ''}
         </Text>
       ) : null}
 

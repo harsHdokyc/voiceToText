@@ -3,21 +3,21 @@ import { describe, expect, it } from 'vitest';
 import { ApiError, errorMessageForUi } from '@/lib/api-error';
 
 describe('errorMessageForUi', () => {
-  it('maps rate_limited to a clear daily-cap message', () => {
+  it('surfaces the real Edge reason for rate_limited, not a rewritten blurb', () => {
     expect(
-      errorMessageForUi(new ApiError('rate_limited', 'Daily process-note limit 40 reached')),
-    ).toBe('Daily AI limit reached. Try again tomorrow.');
+      errorMessageForUi(
+        new ApiError('rate_limited', 'Daily process-note limit 40 reached'),
+      ),
+    ).toBe('Daily process-note limit 40 reached');
   });
 
-  it('maps usage_count_failed to a retryable check message', () => {
+  it('surfaces the real usage-count failure reason', () => {
     expect(
       errorMessageForUi(new ApiError('usage_count_failed', 'connection reset')),
-    ).toBe('Could not check your daily AI limit. Try again in a moment.');
+    ).toBe('connection reset');
   });
 
-  it('keeps other reasons as-is', () => {
-    expect(errorMessageForUi(new ApiError('note_not_found', 'Note missing'))).toBe(
-      'Note missing',
-    );
+  it('uses fallback only when the error has no reason', () => {
+    expect(errorMessageForUi({}, 'Save failed')).toBe('Save failed');
   });
 });

@@ -21,13 +21,19 @@ function publish() {
   for (const listener of listeners) listener(current);
 }
 
-/** Show a short feedback banner. Empty messages are ignored. */
+/** True when someone tried to put a structured [vtw] log line on screen. */
+export function isStructuredLogDump(message: string) {
+  const t = message.trim();
+  return t.startsWith('[vtw]') || (t.includes('"src":') && t.includes('"scope":'));
+}
+
+/** Show a short feedback banner. Empty messages and [vtw] log dumps are ignored. */
 export function showToast(
   message: string,
   opts?: { tone?: ToastTone },
 ): void {
   const text = message.trim();
-  if (!text) return;
+  if (!text || isStructuredLogDump(text)) return;
   current = {
     id: ++seq,
     message: text,

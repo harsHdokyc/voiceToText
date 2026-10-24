@@ -29,6 +29,17 @@ describe('showToast', () => {
     unsub();
   });
 
+  it('never publishes a [vtw] structured log dump to the UI', () => {
+    let seen: unknown = 'unset';
+    const unsub = subscribeToast((t) => {
+      seen = t;
+    });
+    seen = 'unset';
+    showToast('[vtw]\n{\n  "src": "app",\n  "scope": "api.notes.process"\n}');
+    expect(seen).toBe('unset');
+    unsub();
+  });
+
   it('replaces the previous toast and supports destructive tone', () => {
     const messages: (string | null)[] = [];
     const unsub = subscribeToast((t) => {
