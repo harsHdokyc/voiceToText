@@ -1,5 +1,5 @@
 # Project Status
-Last updated: 2026-10-24 (Phases 0–7 complete + 3-day voice-audio retention + user time zone / due times live. Edge shared-module refactor is live in `extract-note` only).
+Last updated: 2026-10-24 (Phases 0–7 complete + audio retention + user time zone + `dispatch-reminders-every-minute` cron live. Edge shared-module refactor is live in `extract-note` only).
 
 ## Current phase
 **Phases 0–7 complete** against plan exit criteria (see inventory below). Hosted backend: [voiceToWork](https://supabase.com/dashboard/project/ubqhyeicmgmdzethtids).
@@ -44,12 +44,14 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 ### Phase 6 — Reminders
 **Shipped:** `device_tokens`, `reminders`, `notification_deliveries`; `claim_due_reminders` (service_role); Edge `register-push-token`, `dispatch-reminders` (`x-cron-secret`); app schedule/cancel on task detail; Expo push registration (skips web/simulator).
 
+**Live cron (2026-10-24):** Vault `cron_secret` + `project_url`; pg_cron `dispatch-reminders-every-minute` (`* * * * *`, active). Edge `CRON_SECRET` must match Vault. SQL pattern in [09_NOTIFICATIONS_EMAIL_CRON.md](./09_NOTIFICATIONS_EMAIL_CRON.md) — not a migration.
+
 **Intentionally left**
 | Leftover | Lands in / notes |
 |---|---|
-| Dashboard Cron / pg_cron+Vault wiring | Ops — set `CRON_SECRET`, schedule POST every minute (see DECISIONS) |
 | Resend email channel | Optional; schema supports `email` channel |
 | Timezone picker / native due picker | Zone auto-syncs from device (no manual picker). Native edit sheet types `YYYY-MM-DD` / `HH:mm`; web has native pickers |
+| Physical push smoke | Expo Go / device — enable push, schedule reminder, confirm `notification_deliveries` |
 
 ### Phase 7 — Beta hardening
 **Shipped:** Edge `delete-note`, `delete-account`; Settings privacy disclosure + push enable + account delete; note delete; `ai_usage_events` + daily process-note cap (40); Vitest policy inventory; `supabase/tests/rls_phase6_phase7.sql` checklist; provider-terms note in DECISIONS.
@@ -89,10 +91,9 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 - [ ] Delete note (audio gone); delete account (cannot sign in)
 
 ### Ops still required
-1. Edge secrets: `GOOGLE_API_KEY`, **`CRON_SECRET`** (optional model overrides `AI_*`)
-2. Schedule `dispatch-reminders` every minute with header `x-cron-secret: <CRON_SECRET>`
-3. Redeploy the remaining Edge functions (all except `health` and `extract-note`) for the 2026-10-23 shared-module refactor (no migration)
-4. Re-check Google Gemini + Supabase terms before public launch
+1. Edge secrets: `GOOGLE_API_KEY` (optional model overrides `AI_*`). **`CRON_SECRET`** + reminder/purge schedules are live (2026-10-24)
+2. Redeploy the remaining Edge functions (all except `health` and `extract-note`) for the 2026-10-23 shared-module refactor (no migration)
+3. Re-check Google Gemini + Supabase terms before public launch
 
 ---
 
@@ -139,7 +140,7 @@ Details / ops checklist: [21_LANDING_ARCHITECTURE.md § Deployment](./21_LANDING
 | `20261022200000_count_ai_usage_invoker` | Applied |
 | `20261023190000_user_timezone_day` | Applied (2026-10-24) |
 | Edge functions above | All ACTIVE. `extract-note` v14 has the shared-module refactor + user time; the others predate the refactor |
-| pg_cron | `purge-note-audio-hourly` active. `dispatch-reminders` not scheduled |
+| pg_cron | `purge-note-audio-hourly` (`0 * * * *`) + `dispatch-reminders-every-minute` (`* * * * *`) both active |
 | Marketing static site | Vercel ← `LandingPage/` (see Marketing deploy above) |
 
 ## Logging
@@ -162,4 +163,4 @@ See [16_LOGGING_COMBINED.md](./16_LOGGING_COMBINED.md).
 See [17_DECISIONS.md](./17_DECISIONS.md).
 
 ## Blockers
-None for code exit. Live reminders need `CRON_SECRET` + cron schedule; live AI needs `GOOGLE_API_KEY` Edge secret.
+None for code exit. Reminder cron is live; confirm push on a physical device / Expo Go. Live AI needs `GOOGLE_API_KEY` Edge secret.

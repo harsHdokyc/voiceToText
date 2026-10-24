@@ -82,6 +82,19 @@ export async function getTask(taskId: string) {
   return withApiLog('api.tasks.get', { taskId }, async () => loadTask(taskId));
 }
 
+/** Tasks created from a note's approved suggestions (for note-detail history). */
+export async function listTasksForNote(noteId: string) {
+  return withApiLog('api.tasks.listForNote', { noteId }, async () => {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select(TASK_PUBLIC_SELECT)
+      .eq('source_note_id', noteId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as TaskRow[];
+  });
+}
+
 export async function updateTask(taskId: string, draft: TaskEditDraft) {
   return withApiLog('api.tasks.update', { taskId }, async () => {
     const current = await loadTask(taskId);

@@ -35,25 +35,60 @@ function SourceNoteLink({ noteId }: { noteId: string }) {
   );
 }
 
-export function SuggestionReviewRow({
-  title,
-  kindLabel,
-  dueAt,
-  sourceNoteId,
-  busy,
-  onApprove,
-  onDismiss,
-  onEdit,
-}: BaseProps & {
+type SuggestionReviewPending = BaseProps & {
+  decision?: undefined;
   busy?: boolean;
   onApprove: () => void;
   onDismiss: () => void;
-}) {
-  const due = dueLabel(dueAt);
+};
+
+type SuggestionReviewSettled = BaseProps & {
+  decision: 'approved' | 'rejected';
+  busy?: boolean;
+  /** Approved rows edit the linked task; rejected has no live task to edit. */
+  onEdit?: () => void;
+};
+
+function DecisionStamp({ decision }: { decision: 'approved' | 'rejected' }) {
+  const approved = decision === 'approved';
+  const label = approved ? 'Approved' : 'Rejected';
   return (
-    <View className="flex-row flex-wrap items-start gap-3 border-b border-border py-5">
-      <View className="mt-0.5 h-8 w-8 items-center justify-center rounded-full bg-lavender">
-        <Ionicons name="sparkles" size={16} color={colors.cobalt} />
+    <View
+      accessibilityRole="text"
+      accessibilityLabel={label}
+      className={cn(
+        'border-[3px] border-ink px-2 py-1',
+        approved ? 'bg-lime' : 'bg-paper',
+      )}
+    >
+      <Text className="font-mono text-[11px] font-bold uppercase tracking-[1.5px] text-ink">
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+export function SuggestionReviewRow(props: SuggestionReviewPending | SuggestionReviewSettled) {
+  const { title, kindLabel, dueAt, sourceNoteId, decision } = props;
+  const due = dueLabel(dueAt);
+  const approved = decision === 'approved';
+  const rejected = decision === 'rejected';
+  return (
+    <View
+      accessibilityLabel={decision ? `${title}, ${decision}` : undefined}
+      className="flex-row flex-wrap items-start gap-3 border-b border-border py-5"
+    >
+      <View
+        className={cn(
+          'mt-0.5 h-8 w-8 items-center justify-center rounded-full',
+          approved ? 'bg-lime' : rejected ? 'bg-muted' : 'bg-lavender',
+        )}
+      >
+        <Ionicons
+          name={approved ? 'checkmark' : rejected ? 'close' : 'sparkles'}
+          size={16}
+          color={rejected ? colors.stone : approved ? colors.ink : colors.cobalt}
+        />
       </View>
       <View className="min-w-[140px] flex-1 gap-2">
         <Text className="font-sans-medium text-[15px] text-ink">{title}</Text>
@@ -63,7 +98,7 @@ export function SuggestionReviewRow({
           <Text
             className={cn(
               'font-sans text-xs text-stone',
-              isOverdueDueLabel(due) && 'text-destructive',
+              isOverdueDueLabel(due) && !decision && 'text-destructive',
             )}
           >
             {due}
@@ -71,32 +106,49 @@ export function SuggestionReviewRow({
           {sourceNoteId ? <SourceNoteLink noteId={sourceNoteId} /> : null}
         </View>
       </View>
-      <View className="ml-auto flex-row items-center gap-1">
-        <Button variant="cta" size="sm" disabled={busy} onPress={onApprove}>
-          <Ionicons name="checkmark" size={14} color={colors.card} />
-          <Text className="font-sans-medium text-[13px] text-card">Approve</Text>
-        </Button>
-        {onEdit ? (
+      {decision ? (
+        <View className="ml-auto flex-row items-center gap-1">
+          <DecisionStamp decision={decision} />
+          {props.onEdit ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={props.busy}
+              accessibilityLabel={`Edit ${title}`}
+              onPress={props.onEdit}
+            >
+              <Ionicons name="pencil" size={16} color={colors.ink} />
+            </Button>
+          ) : null}
+        </View>
+      ) : (
+        <View className="ml-auto flex-row items-center gap-1">
+          <Button variant="cta" size="sm" disabled={props.busy} onPress={props.onApprove}>
+            <Ionicons name="checkmark" size={14} color={colors.card} />
+            <Text className="font-sans-medium text-[13px] text-card">Approve</Text>
+          </Button>
+          {props.onEdit ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={props.busy}
+              accessibilityLabel={`Edit ${title}`}
+              onPress={props.onEdit}
+            >
+              <Ionicons name="pencil" size={16} color={colors.ink} />
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="icon"
-            disabled={busy}
-            accessibilityLabel={`Edit ${title}`}
-            onPress={onEdit}
+            disabled={props.busy}
+            accessibilityLabel={`Dismiss ${title}`}
+            onPress={props.onDismiss}
           >
-            <Ionicons name="pencil" size={16} color={colors.ink} />
+            <Ionicons name="close" size={18} color={colors.ink} />
           </Button>
-        ) : null}
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={busy}
-          accessibilityLabel={`Dismiss ${title}`}
-          onPress={onDismiss}
-        >
-          <Ionicons name="close" size={18} color={colors.ink} />
-        </Button>
-      </View>
+        </View>
+      )}
     </View>
   );
 }

@@ -38,6 +38,8 @@ import {
 } from '@/features/notes/services/notes-service';
 import { suggestionKindLabel } from '@/features/notes/services/pending-suggestions';
 import { getSuggestions } from '@/features/notes/services/suggestions-service';
+import { useTaskActions } from '@/features/tasks/hooks/use-task-actions';
+import { listTasksForNote } from '@/features/tasks/services/tasks-service';
 import { errorMessageForUi } from '@/lib/api-error';
 import { invalidateWorkspace } from '@/lib/query-client';
 import { cn } from '@/lib/cn';
@@ -53,6 +55,7 @@ export default function NoteDetailScreen() {
   const queryClient = useQueryClient();
   const wide = useWorkspaceWide();
   const review = useSuggestionReview();
+  const tasks = useTaskActions();
 
   const note = useQuery({
     queryKey: ['notes', noteId],
@@ -64,6 +67,12 @@ export default function NoteDetailScreen() {
   const suggestions = useQuery({
     queryKey: ['suggestions', noteId],
     queryFn: () => getSuggestions(noteId),
+    enabled: Boolean(noteId) && note.data?.status === 'review_ready',
+  });
+
+  const noteTasks = useQuery({
+    queryKey: ['tasks', 'note', noteId],
+    queryFn: () => listTasksForNote(noteId),
     enabled: Boolean(noteId) && note.data?.status === 'review_ready',
   });
 
@@ -96,7 +105,8 @@ export default function NoteDetailScreen() {
   const row = note.data;
   const transcript = displayTranscript(row);
   const processing = isNoteProcessing(row.status);
-  const pendingSuggestions = (suggestions.data ?? []).filter((s) => s.status === 'pending');
+  const noteSuggestions = suggestions.data ?? [];
+  const taskById = new Map((noteTasks.data ?? []).map((t) => [t.id, t]));
   const displayTitle = row.title?.trim() || 'A new thought';
   const audioPurged = isNoteAudioPurged(row);
   const retryBlocked = audioRetryUnavailableLabel(row);
@@ -175,24 +185,52 @@ export default function NoteDetailScreen() {
               <View className="mt-6">
                 <ActivityIndicator color={colors.cobalt} />
               </View>
-            ) : pendingSuggestions.length ? (
-              pendingSuggestions.map((s) => (
-                <SuggestionReviewRow
-                  key={s.id}
-                  title={s.title}
-                  kindLabel={suggestionKindLabel(s.kind)}
-                  dueAt={s.due_at}
-                  sourceNoteId={null}
-                  busy={review.isBusy(s.id)}
-                  onApprove={() => review.approve(s)}
-                  onDismiss={() => review.dismiss(s)}
-                  onEdit={() => review.edit(s)}
-                />
-              ))
+            ) : suggestions.isError ? (
+              <Text className="mt-3 font-sans text-sm text-destructive">
+                {errorMessageForUi(suggestions.error, 'Could not load suggestions')}
+              </Text>
+            ) : noteSuggestions.length ? (
+              noteSuggestions.map((s) => {
+                if (s.status === 'pending') {
+                  return (
+                    <SuggestionReviewRow
+                      key={s.id}
+                      title={s.title}
+                      kindLabel={suggestionKindLabel(s.kind)}
+                      dueAt={s.due_at}
+                      sourceNoteId={null}
+                      busy={review.isBusy(s.id)}
+                      onApprove={() => review.approve(s)}
+                      onDismiss={() => review.dismiss(s)}
+                      onEdit={() => review.edit(s)}
+                    />
+                  );
+                }
+                const linked =
+                  s.status === 'approved' && s.created_task_id
+                    ? taskById.get(s.created_task_id)
+                    : undefined;
+                return (
+                  <SuggestionReviewRow
+                    key={s.id}
+                    title={linked?.title ?? s.title}
+                    kindLabel={suggestionKindLabel(linked?.kind ?? s.kind)}
+                    dueAt={linked?.due_at ?? s.due_at}
+                    sourceNoteId={null}
+                    decision={s.status}
+                    busy={
+                      linked
+                        ? tasks.isBusy(linked.id) || tasks.sheetBusy
+                        : false
+                    }
+                    onEdit={linked ? () => tasks.edit(linked) : undefined}
+                  />
+                );
+              })
             ) : (
               <EmptyState
                 title="Nothing waiting here."
-                body="Your note stays safe — no pending suggestions."
+                body="Your note stays safe — no suggestions came out of it."
               />
             )
           ) : showLiveProcessing ? (
@@ -205,9 +243,10 @@ export default function NoteDetailScreen() {
               body="Process this note to extract next steps."
             />
           )}
-          {review.error ? (
+          {review.error || tasks.error || tasks.sheet.error ? (
             <Text className="mt-2 font-sans text-destructive">
-              {errorMessageForUi(review.error, 'Update failed')}
+              {tasks.sheet.error ??
+                errorMessageForUi(review.error ?? tasks.error, 'Update failed')}
             </Text>
           ) : null}
         </View>
@@ -242,6 +281,7 @@ export default function NoteDetailScreen() {
       ) : null}
 
       <EditNextStepSheet {...review.sheet} />
+      <EditNextStepSheet {...tasks.sheet} />
     </WorkspacePage>
   );
 }

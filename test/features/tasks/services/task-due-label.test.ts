@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  dueDayOffset,
   dueLabel,
   isOverdueDueLabel,
-  taskListQueryForFilter,
+  taskListQueryForStatus,
+  taskMatchesListFilter,
+  whenFilterDayMeta,
 } from '@/features/tasks/services/task-due-label';
 
 afterEach(() => vi.useRealTimers());
@@ -70,12 +73,70 @@ describe('isOverdueDueLabel', () => {
   });
 });
 
-describe('taskListQueryForFilter', () => {
+describe('taskListQueryForStatus', () => {
   it('maps Open Completed All to list params', () => {
-    expect(taskListQueryForFilter('Open')).toEqual({ status: 'open' });
-    expect(taskListQueryForFilter('Completed')).toEqual({
+    expect(taskListQueryForStatus('Open')).toEqual({ status: 'open' });
+    expect(taskListQueryForStatus('Completed')).toEqual({
       status: 'completed',
     });
-    expect(taskListQueryForFilter('All')).toEqual({});
+    expect(taskListQueryForStatus('All')).toEqual({});
+  });
+});
+
+describe('dueDayOffset', () => {
+  it('returns calendar-day offset from local midnight', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 9, 15));
+    expect(dueDayOffset(null)).toBeNull();
+    expect(dueDayOffset(new Date(2026, 9, 9, 12).toISOString())).toBe(0);
+    expect(dueDayOffset(new Date(2026, 9, 10, 9).toISOString())).toBe(1);
+    expect(dueDayOffset(new Date(2026, 9, 8, 23).toISOString())).toBe(-1);
+  });
+});
+
+describe('whenFilterDayMeta', () => {
+  it('returns weekday and calendar day for relative filters', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 9, 15)); // Thu Oct 9
+    expect(whenFilterDayMeta('Today').day).toBe(9);
+    expect(whenFilterDayMeta('Today').weekday.length).toBeGreaterThan(0);
+    expect(whenFilterDayMeta('Tomorrow').day).toBe(10);
+    expect(whenFilterDayMeta('Yesterday').day).toBe(8);
+  });
+});
+
+describe('taskMatchesListFilter', () => {
+  it('applies status and when as independent axes', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 9, 9));
+    const todayOpen = {
+      status: 'open',
+      due_at: new Date(2026, 9, 9, 12).toISOString(),
+    };
+    const tomorrowDone = {
+      status: 'completed',
+      due_at: new Date(2026, 9, 10, 12).toISOString(),
+    };
+    const yesterdayOpen = {
+      status: 'open',
+      due_at: new Date(2026, 9, 8, 12).toISOString(),
+    };
+    const anytime = { status: 'open', due_at: null };
+
+    expect(taskMatchesListFilter(todayOpen, 'Open', 'Anytime')).toBe(true);
+    expect(taskMatchesListFilter(tomorrowDone, 'Open', 'Anytime')).toBe(false);
+    expect(taskMatchesListFilter(tomorrowDone, 'Completed', 'Anytime')).toBe(
+      true,
+    );
+    expect(taskMatchesListFilter(anytime, 'All', 'Anytime')).toBe(true);
+
+    expect(taskMatchesListFilter(todayOpen, 'Open', 'Today')).toBe(true);
+    expect(taskMatchesListFilter(anytime, 'Open', 'Today')).toBe(false);
+    expect(taskMatchesListFilter(tomorrowDone, 'All', 'Tomorrow')).toBe(true);
+    expect(taskMatchesListFilter(tomorrowDone, 'Open', 'Tomorrow')).toBe(false);
+    expect(taskMatchesListFilter(yesterdayOpen, 'Open', 'Yesterday')).toBe(
+      true,
+    );
+    expect(taskMatchesListFilter(todayOpen, 'Open', 'Yesterday')).toBe(false);
   });
 });
